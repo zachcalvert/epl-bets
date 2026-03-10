@@ -9,7 +9,7 @@ try:
     s.connect(('db', 5432))
     s.close()
     exit(0)
-except:
+except Exception:
     exit(1)
 " 2>/dev/null; do
     sleep 1

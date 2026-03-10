@@ -1,4 +1,4 @@
-# Calvert Labs — Full-Stack Demo Application
+# EPL Bets — Full-Stack Demo Application
 
 ## Overview
 

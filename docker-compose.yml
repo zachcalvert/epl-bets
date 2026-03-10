@@ -4,7 +4,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: calvert-labs
+      POSTGRES_DB: epl-bets
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
@@ -17,7 +17,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8001:8000"
+      - "8000:8000"
     depends_on:
       - db
       - redis
