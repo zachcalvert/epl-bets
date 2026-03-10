@@ -14,9 +14,17 @@ django-cors-headers = "^4.4"
 django-environ = "^0.11"
 psycopg2-binary = "^2.9"
 gunicorn = "^23.0"
+channels = {version = "^4.0", extras = ["daphne"]}
+channels-redis = "^4.2"
+celery = {version = "^5.4", extras = ["redis"]}
+django-celery-beat = "^2.7"
+redis = "^5.0"
+httpx = "^0.28"
+django-htmx = "^1.21"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11"
+django-debug-toolbar = "^5.0"
 
 [build-system]
 requires = ["poetry-core"]
