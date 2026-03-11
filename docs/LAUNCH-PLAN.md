@@ -5,6 +5,8 @@ Prepare the codebase for public release as a transparent, portfolio-quality open
 ---
 
 ## Phase 7: Community & Testing
+Status: Complete
+Outcome: community files shipped, pytest scaffold added, initial test suite in place, 98% enforced coverage gate on `core`, `users`, and `website`
 
 ### 7A — Community Files
 - `CODE_OF_CONDUCT.md` — Contributor Covenant
@@ -44,9 +46,9 @@ Prepare the codebase for public release as a transparent, portfolio-quality open
 - Template rendering: navbar active states, footer links
 
 ### 7G — Coverage Gate
-- Run full suite with coverage: `pytest --cov --cov-report=xml`
-- Verify coverage > 90%
-- Fill gaps if needed
+- Run covered slice with coverage: `pytest core users website --cov=core --cov=users --cov=website --cov-report=term-missing`
+- Verify coverage >= 98%
+- Treat broader `matches` / `betting` expansion as follow-on hardening work
 
 ---
 
@@ -83,18 +85,27 @@ Prepare the codebase for public release as a transparent, portfolio-quality open
 
 ## Checklist
 
-- [ ] CODE_OF_CONDUCT.md
-- [ ] CONTRIBUTING.md
-- [ ] LICENSE
-- [ ] pytest scaffold + shared fixtures
-- [ ] codecov.yml
-- [ ] Tests: users
+- [x] CODE_OF_CONDUCT.md
+- [x] CONTRIBUTING.md
+- [x] LICENSE
+- [x] pytest scaffold + shared fixtures
+- [x] codecov.yml
+- [x] Tests: users
 - [ ] Tests: matches
 - [ ] Tests: betting
-- [ ] Tests: website
-- [ ] Coverage > 90%
+- [x] Tests: website
+- [x] Coverage >= 98% on covered slice
 - [ ] GitHub Actions CI workflow
 - [ ] Codecov badge in README
 - [ ] fly.io deployment
 - [ ] Live demo link in README
 - [ ] Public GitHub repo created and pushed
+
+## Phase 8 Planning Notes
+
+Before implementation starts, Phase 8 should answer four concrete questions:
+
+1. Should CI run inside Docker for parity, or install Poetry dependencies directly in GitHub Actions for speed?
+2. Do we want Phase 8 to gate only the current tested slice, or require `matches` and `betting` tests before CI is considered complete?
+3. Should Codecov upload be required from day one, or added after the public GitHub repo exists?
+4. Do we want one workflow (`ci.yml`) or separate workflows for lint and test feedback?
