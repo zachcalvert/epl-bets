@@ -53,6 +53,7 @@ Outcome: community files shipped, pytest scaffold added, initial test suite in p
 ---
 
 ## Phase 8: CI/CD
+Status: In Progress
 
 ### 8A — GitHub Actions
 - `.github/workflows/ci.yml`:
@@ -95,7 +96,7 @@ Outcome: community files shipped, pytest scaffold added, initial test suite in p
 - [ ] Tests: betting
 - [x] Tests: website
 - [x] Coverage >= 98% on covered slice
-- [ ] GitHub Actions CI workflow
+- [x] GitHub Actions CI workflow
 - [ ] Codecov badge in README
 - [ ] fly.io deployment
 - [ ] Live demo link in README
@@ -103,7 +104,7 @@ Outcome: community files shipped, pytest scaffold added, initial test suite in p
 
 ## Phase 8 Planning Notes
 
-Before implementation starts, Phase 8 should answer four concrete questions:
+Phase 8 still has a few open implementation decisions:
 
 1. Should CI run inside Docker for parity, or install Poetry dependencies directly in GitHub Actions for speed?
 2. Do we want Phase 8 to gate only the current tested slice, or require `matches` and `betting` tests before CI is considered complete?

@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -38,7 +37,7 @@ class FootballDataClient:
         return resp.json()
 
     def get_teams(self, season):
-        data = self._get(f"competitions/PL/teams", params={"season": season})
+        data = self._get("competitions/PL/teams", params={"season": season})
         return [self._normalize_team(t) for t in data.get("teams", [])]
 
     def get_matches(self, season, matchday=None, status=None):

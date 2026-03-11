@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: epl_bets_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d epl_bets_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-secret-key
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/epl_bets_test
+      REDIS_URL: redis://localhost:6379/0
+      FOOTBALL_DATA_API_KEY: ci-football-data-key
+      ODDS_API_KEY: ci-odds-api-key
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: poetry
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-ansi --no-root
+
+      - name: Run Ruff
+        run: poetry run ruff check .
+
+      - name: Run pytest with coverage
+        run: >
+          poetry run pytest core users website
+          --cov=core
+          --cov=users
+          --cov=website
+          --cov-report=term-missing
+          --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+

@@ -1,5 +1,8 @@
-import environ
+from datetime import timedelta
 from pathlib import Path
+
+import environ
+from celery.schedules import crontab
 
 env = environ.Env(
     DEBUG=(bool, True),
@@ -140,8 +143,6 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-from celery.schedules import crontab
-from datetime import timedelta
 
 CELERY_BEAT_SCHEDULE = {
     "fetch-teams-daily": {

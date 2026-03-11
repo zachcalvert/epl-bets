@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Min, Sum
-from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.views.generic import TemplateView
