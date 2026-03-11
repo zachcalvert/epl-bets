@@ -1,5 +1,4 @@
 from decimal import Decimal
-from types import SimpleNamespace
 
 import pytest
 
@@ -7,7 +6,6 @@ from betting.services import OddsApiClient, _build_team_lookup, _resolve_team, s
 from betting.tests.factories import OddsFactory
 from matches.models import Match
 from matches.tests.factories import MatchFactory, TeamFactory
-
 
 pytestmark = pytest.mark.django_db
 

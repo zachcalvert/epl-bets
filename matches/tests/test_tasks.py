@@ -12,7 +12,6 @@ from matches.tasks import (
 )
 from matches.tests.factories import MatchFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

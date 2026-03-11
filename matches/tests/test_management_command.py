@@ -1,7 +1,6 @@
 import pytest
 from django.core.management import call_command
 
-
 pytestmark = pytest.mark.django_db
 
 

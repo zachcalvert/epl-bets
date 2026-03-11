@@ -5,7 +5,6 @@ import pytest
 from matches.consumers import LiveUpdatesConsumer
 from matches.tests.factories import MatchFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

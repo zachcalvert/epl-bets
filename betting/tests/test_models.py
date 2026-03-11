@@ -4,7 +4,6 @@ from betting.models import BetSlip
 from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory, TeamFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

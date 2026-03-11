@@ -53,7 +53,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.11"
           cache: poetry
 
       - name: Install Poetry
@@ -67,10 +67,7 @@ jobs:
 
       - name: Run pytest with coverage
         run: >
-          poetry run pytest core users website
-          --cov=core
-          --cov=users
-          --cov=website
+          poetry run pytest
           --cov-report=term-missing
           --cov-report=xml
 
@@ -81,4 +78,3 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
-

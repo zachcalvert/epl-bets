@@ -1,5 +1,8 @@
 # Pitch & Odds
 
+[![CI](https://github.com/zachcalvert/epl-bets/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zachcalvert/epl-bets/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/zachcalvert/epl-bets/branch/main/graph/badge.svg)](https://codecov.io/gh/zachcalvert/epl-bets)
+
 EPL betting demo built with Django, HTMX, Redis, and Celery. Live scores via WebSocket, real bookmaker odds, and simulated bet placement — all server-rendered with zero JavaScript frameworks.
 
 **This is a portfolio demo. No real money. No real gambling.**

@@ -9,7 +9,6 @@ from betting.tests.factories import BetSlipFactory, UserBalanceFactory
 from matches.models import Match
 from matches.tests.factories import MatchFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

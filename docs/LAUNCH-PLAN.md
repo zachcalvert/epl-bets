@@ -53,14 +53,14 @@ Outcome: community files shipped, pytest scaffold added, full app test suite in 
 ---
 
 ## Phase 8: CI/CD
-Status: In Progress
+Status: Complete
 
 ### 8A — GitHub Actions
 - `.github/workflows/ci.yml`:
   - Trigger: push to main, pull requests
   - Services: PostgreSQL, Redis
-  - Steps: install deps, ruff lint, pytest with coverage, upload to Codecov
-- Add Codecov badge to README
+  - Steps: install deps, ruff lint, full pytest suite with coverage gate, upload to Codecov when configured
+- Add CI and Codecov badges to README
 
 ---
 
@@ -98,7 +98,7 @@ Status: In Progress
 - [x] Coverage >= 98% on covered slice
 - [x] Full-source coverage target met
 - [x] GitHub Actions CI workflow
-- [ ] Codecov badge in README
+- [x] Codecov badge in README
 - [ ] fly.io deployment
 - [ ] Live demo link in README
 - [ ] Public GitHub repo created and pushed

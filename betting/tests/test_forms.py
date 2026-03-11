@@ -1,7 +1,5 @@
 from decimal import Decimal
 
-import pytest
-
 from betting.forms import PlaceBetForm
 from betting.models import BetSlip
 

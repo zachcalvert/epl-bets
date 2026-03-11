@@ -9,7 +9,6 @@ from betting.tests.factories import OddsFactory
 from matches.tests.factories import MatchFactory, StandingFactory
 from users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

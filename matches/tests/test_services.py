@@ -14,7 +14,6 @@ from matches.services import (
 )
 from matches.tests.factories import MatchFactory, StandingFactory, TeamFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

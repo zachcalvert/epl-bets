@@ -9,7 +9,6 @@ from matches.models import Match
 from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 
