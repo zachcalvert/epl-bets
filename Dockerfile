@@ -14,7 +14,9 @@ RUN poetry install --no-interaction --no-ansi --no-root
 COPY . .
 
 COPY entrypoint.sh /entrypoint.sh
+COPY release.sh /release.sh
 RUN chmod +x /entrypoint.sh
+RUN chmod +x /release.sh
 
 EXPOSE 8000
 
