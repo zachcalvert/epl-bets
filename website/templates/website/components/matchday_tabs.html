@@ -1,0 +1,13 @@
+<div class="flex gap-1 overflow-x-auto pb-2 scrollbar-thin" style="scrollbar-width: thin;">
+    {% for md in matchdays %}
+        <button
+            hx-get="{% url 'matches:fixtures' %}?matchday={{ md }}"
+            hx-target="#fixture-list"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            class="flex-shrink-0 px-3 py-1.5 rounded text-sm font-medium transition-colors
+                {% if md == current_matchday %}bg-accent text-dark{% else %}bg-surface text-gray-400 hover:text-white hover:bg-gray-700{% endif %}">
+            {{ md }}
+        </button>
+    {% endfor %}
+</div>

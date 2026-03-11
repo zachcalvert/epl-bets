@@ -3,33 +3,35 @@
         <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center">
-                <a href="{% url 'website:home' %}" class="flex items-center gap-2">
+                <a href="{% url 'matches:dashboard' %}" class="flex items-center gap-2">
                     <span class="text-accent text-2xl font-bold" style="font-family: 'Oswald', sans-serif;">PITCH & ODDS</span>
                 </a>
             </div>
 
             <!-- Desktop nav -->
             <div class="hidden md:flex items-center gap-1">
-                <a href="{% url 'website:home' %}"
-                   class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-dark transition-colors">
+                {% with url_name=request.resolver_match.url_name %}
+                <a href="{% url 'matches:dashboard' %}"
+                   class="px-3 py-2 rounded-md text-sm font-medium transition-colors
+                          {% if url_name == 'dashboard' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">
                     Dashboard
                 </a>
-                <a href="#"
-                   class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-dark transition-colors">
+                <a href="{% url 'matches:fixtures' %}"
+                   class="px-3 py-2 rounded-md text-sm font-medium transition-colors
+                          {% if url_name == 'fixtures' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">
                     Fixtures
                 </a>
-                <a href="#"
-                   class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-dark transition-colors">
+                <a href="{% url 'matches:table' %}"
+                   class="px-3 py-2 rounded-md text-sm font-medium transition-colors
+                          {% if url_name == 'table' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">
                     Table
                 </a>
-                <a href="#"
-                   class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-dark transition-colors">
+                <a href="{% url 'betting:odds' %}"
+                   class="px-3 py-2 rounded-md text-sm font-medium transition-colors
+                          {% if url_name == 'odds' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">
                     Odds
                 </a>
-                <a href="#"
-                   class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-dark transition-colors">
-                    My Bets
-                </a>
+                {% endwith %}
             </div>
 
             <!-- Mobile menu button -->
@@ -48,11 +50,12 @@
     <!-- Mobile menu -->
     <div id="mobile-menu" class="hidden md:hidden border-t border-gray-700">
         <div class="px-2 pt-2 pb-3 space-y-1">
-            <a href="{% url 'website:home' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-dark">Dashboard</a>
-            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-dark">Fixtures</a>
-            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-dark">Table</a>
-            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-dark">Odds</a>
-            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-dark">My Bets</a>
+            {% with url_name=request.resolver_match.url_name %}
+            <a href="{% url 'matches:dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'dashboard' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">Dashboard</a>
+            <a href="{% url 'matches:fixtures' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'fixtures' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">Fixtures</a>
+            <a href="{% url 'matches:table' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'table' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">Table</a>
+            <a href="{% url 'betting:odds' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'odds' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">Odds</a>
+            {% endwith %}
         </div>
     </div>
 </nav>
