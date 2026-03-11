@@ -1,9 +1,19 @@
 from django.urls import path
 
-from website.views import HomeView
+from website.views import (
+    ComponentDetailView,
+    HowItWorksView,
+    LoginView,
+    LogoutView,
+    SignupView,
+)
 
 app_name = "website"
 
 urlpatterns = [
-    path("", HomeView.as_view(), name="home"),
+    path("login/", LoginView.as_view(), name="login"),
+    path("signup/", SignupView.as_view(), name="signup"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path("how-it-works/", HowItWorksView.as_view(), name="how_it_works"),
+    path("how-it-works/component/", ComponentDetailView.as_view(), name="component_detail"),
 ]

@@ -16,7 +16,5 @@
     </tbody>
 </table>
 {% else %}
-<div class="text-center py-8 text-muted">
-    <p>Odds not yet available for this match.</p>
-</div>
+{% include "website/components/empty_state.html" with icon="odds" title="Odds not yet available" message="Odds will appear once bookmakers publish them." %}
 {% endif %}

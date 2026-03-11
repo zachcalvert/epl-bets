@@ -1,0 +1,36 @@
+<div class="bg-dark rounded-md border border-gray-600 p-3 my-1">
+    <form hx-post="{% url 'betting:place_bet' match.pk %}"
+          hx-target="closest td"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']"
+          class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="selection" value="{{ selection }}">
+
+        <span class="text-sm text-gray-300">
+            <span class="text-white font-medium">
+                {% if selection == "HOME_WIN" %}{{ match.home_team.short_name|default:match.home_team.name }}{% elif selection == "DRAW" %}Draw{% else %}{{ match.away_team.short_name|default:match.away_team.name }}{% endif %}
+            </span>
+            &mdash;
+            {{ match.home_team.short_name|default:match.home_team.tla }} vs {{ match.away_team.short_name|default:match.away_team.tla }}
+        </span>
+
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-muted">Stake:</label>
+            <input type="number" name="stake"
+                   class="w-24 bg-surface border border-gray-600 rounded px-2 py-1 text-white font-mono text-base sm:text-sm text-right focus:outline-none focus:border-accent"
+                   placeholder="0.00" step="0.50" min="0.50" max="500.00" required>
+        </div>
+
+        <button type="submit"
+                class="bg-accent text-dark font-bold text-sm py-1 px-4 rounded hover:bg-accent/90 transition-colors disabled:opacity-50">
+            <span class="htmx-indicator"><span class="spinner spinner-sm mr-1"></span></span>Bet
+        </button>
+
+        <button type="button"
+                class="text-muted hover:text-white text-sm px-2 transition-colors"
+                onclick="this.closest('td').innerHTML = ''">
+            Cancel
+        </button>
+    </form>
+</div>

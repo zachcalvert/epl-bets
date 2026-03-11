@@ -11,6 +11,9 @@
     {% include "website/components/matchday_tabs.html" %}
 </div>
 
+<div id="fixture-loading" class="htmx-indicator text-center py-8">
+    <span class="spinner text-accent"></span>
+</div>
 <div id="fixture-list">
     {% include "matches/partials/fixture_list.html" %}
 </div>

@@ -102,3 +102,12 @@ def _broadcast_score_changes(pre_sync):
             logger.info("Broadcasting score update for match %d", pk)
             send("live_scores", {"type": "score_update", "match_id": pk})
             send(f"match_{pk}", {"type": "match_score_update", "match_id": pk})
+
+            # Trigger bet settlement when a match finishes
+            old_status = old[2] if old else None
+            new_status = m["status"]
+            if new_status in ("FINISHED", "CANCELLED", "POSTPONED") and old_status != new_status:
+                from betting.tasks import settle_match_bets
+
+                logger.info("Triggering bet settlement for match %d (status: %s)", pk, new_status)
+                settle_match_bets.delay(pk)

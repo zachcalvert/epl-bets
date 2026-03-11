@@ -6,7 +6,5 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="text-center py-16 text-muted">
-    <p class="text-lg">No fixtures for matchday {{ matchday }}</p>
-</div>
+{% include "website/components/empty_state.html" with icon="calendar" title="No fixtures for this matchday" %}
 {% endif %}

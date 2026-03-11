@@ -8,10 +8,15 @@
     <p class="text-muted text-sm">Best available odds for upcoming matches</p>
 </div>
 
-<div class="overflow-x-auto" id="odds-board"
+<div id="odds-board"
      hx-get="{% url 'betting:odds_partial' %}"
      hx-trigger="every 30s"
-     hx-swap="innerHTML">
+     hx-swap="innerHTML"
+     hx-indicator="#odds-loading">
     {% include "betting/partials/odds_board_body.html" %}
+</div>
+<div id="odds-loading" class="htmx-indicator text-center py-2">
+    <span class="spinner spinner-sm text-accent"></span>
+    <span class="text-xs text-muted ml-2">Refreshing odds&hellip;</span>
 </div>
 {% endblock %}

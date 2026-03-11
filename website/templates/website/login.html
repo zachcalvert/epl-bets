@@ -1,0 +1,48 @@
+{% extends "website/base.html" %}
+{% block title %}Log In{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-12">
+    <div class="bg-surface rounded-lg border border-gray-700 p-8">
+        <h1 class="text-2xl font-bold text-white mb-6 text-center">Log In</h1>
+
+        {% if form.non_field_errors %}
+        <div class="bg-danger/10 border border-danger/30 rounded-md p-3 mb-4">
+            {% for error in form.non_field_errors %}
+            <p class="text-danger text-sm">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="id_email" class="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <p class="text-danger text-xs mt-1">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="id_password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                <p class="text-danger text-xs mt-1">{{ form.password.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-accent text-dark font-bold py-2 px-4 rounded-md hover:bg-accent/90 transition-colors">
+                Log In
+            </button>
+        </form>
+
+        <p class="text-center text-sm text-muted mt-4">
+            Don't have an account?
+            <a href="{% url 'website:signup' %}" class="text-accent hover:underline">Sign up</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -49,13 +49,31 @@
     <div class="overflow-x-auto" id="odds-table"
          hx-get="{% url 'matches:match_odds_partial' match.pk %}"
          hx-trigger="every 30s"
-         hx-swap="innerHTML">
+         hx-swap="innerHTML"
+         hx-indicator="#match-odds-loading">
         {% include "matches/partials/odds_table_body.html" %}
+    </div>
+    <div id="match-odds-loading" class="htmx-indicator text-center py-1">
+        <span class="spinner spinner-sm text-accent"></span>
     </div>
 </div>
 
-<!-- Bet form placeholder (Phase 5) -->
-<div class="bg-surface rounded-lg border border-gray-700 border-dashed p-6 text-center text-muted">
-    <p class="text-sm">Bet placement coming in Phase 5</p>
-</div>
+<!-- Bet placement -->
+{% if user.is_authenticated %}
+    {% if match.status == "SCHEDULED" or match.status == "TIMED" %}
+        {% include "betting/partials/bet_form.html" %}
+    {% else %}
+        <div class="bg-surface rounded-lg border border-gray-700 p-6 text-center text-muted">
+            <p class="text-sm">Betting is closed for this match.</p>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="bg-surface rounded-lg border border-gray-700 border-dashed p-6 text-center">
+        <p class="text-muted text-sm mb-3">Log in to place a bet on this match.</p>
+        <a href="{% url 'website:login' %}?next={{ request.path }}"
+           class="inline-block bg-accent text-dark font-bold py-2 px-6 rounded-md hover:bg-accent/90 transition-colors text-sm">
+            Log In
+        </a>
+    </div>
+{% endif %}
 {% endblock %}

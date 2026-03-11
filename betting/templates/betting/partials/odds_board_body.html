@@ -1,53 +1,151 @@
 {% load match_tags %}
 {% if matches %}
-<table class="w-full">
-    <thead>
-        <tr class="border-b border-gray-600 text-xs text-muted uppercase tracking-wider">
-            <th class="px-3 py-3 text-left">Kickoff</th>
-            <th class="px-3 py-3 text-left">Home</th>
-            <th class="px-3 py-3 text-center">H</th>
-            <th class="px-3 py-3 text-center">D</th>
-            <th class="px-3 py-3 text-center">A</th>
-            <th class="px-3 py-3 text-right">Away</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for match in matches %}
-        <tr class="border-b border-gray-700/50 hover:bg-surface/50">
-            <td class="px-3 py-3 text-sm text-muted whitespace-nowrap">
-                {{ match.kickoff|date:"D d M, H:i" }}
-            </td>
-            <td class="px-3 py-3">
-                <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 hover:text-accent transition-colors">
-                    {% if match.home_team.crest_url %}
-                        <img src="{{ match.home_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+<!-- Desktop table -->
+<div class="hidden md:block">
+    <table class="w-full">
+        <thead>
+            <tr class="border-b border-gray-600 text-xs text-muted uppercase tracking-wider">
+                <th class="px-3 py-3 text-left">Kickoff</th>
+                <th class="px-3 py-3 text-left">Home</th>
+                <th class="px-3 py-3 text-center">H</th>
+                <th class="px-3 py-3 text-center">D</th>
+                <th class="px-3 py-3 text-center">A</th>
+                <th class="px-3 py-3 text-right">Away</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches %}
+            <tr class="border-b border-gray-700/50 hover:bg-surface/50">
+                <td class="px-3 py-3 text-sm text-muted whitespace-nowrap">
+                    {{ match.kickoff|date:"D d M, H:i" }}
+                </td>
+                <td class="px-3 py-3">
+                    <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 hover:text-accent transition-colors">
+                        {% if match.home_team.crest_url %}
+                            <img src="{{ match.home_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                        {% endif %}
+                        <span class="text-sm font-medium">{{ match.home_team.short_name|default:match.home_team.name }}</span>
+                    </a>
+                </td>
+                <td class="px-3 py-3 text-center">
+                    {% if match.best_home_odds %}
+                    <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN"
+                            hx-target="#quick-bet-{{ match.pk }}"
+                            hx-swap="innerHTML">
+                        {{ match.best_home_odds|format_odds }}
+                    </button>
+                    {% else %}
+                    <span class="text-sm font-mono text-muted">&mdash;</span>
                     {% endif %}
-                    <span class="text-sm font-medium">{{ match.home_team.short_name|default:match.home_team.name }}</span>
-                </a>
-            </td>
-            <td class="px-3 py-3 text-sm text-center font-mono {% if match.best_home_odds %}text-accent font-bold{% else %}text-muted{% endif %}">
-                {{ match.best_home_odds|format_odds }}
-            </td>
-            <td class="px-3 py-3 text-sm text-center font-mono {% if match.best_draw_odds %}text-accent font-bold{% else %}text-muted{% endif %}">
-                {{ match.best_draw_odds|format_odds }}
-            </td>
-            <td class="px-3 py-3 text-sm text-center font-mono {% if match.best_away_odds %}text-accent font-bold{% else %}text-muted{% endif %}">
-                {{ match.best_away_odds|format_odds }}
-            </td>
-            <td class="px-3 py-3 text-right">
-                <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 justify-end hover:text-accent transition-colors">
-                    <span class="text-sm font-medium">{{ match.away_team.short_name|default:match.away_team.name }}</span>
-                    {% if match.away_team.crest_url %}
-                        <img src="{{ match.away_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                </td>
+                <td class="px-3 py-3 text-center">
+                    {% if match.best_draw_odds %}
+                    <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW"
+                            hx-target="#quick-bet-{{ match.pk }}"
+                            hx-swap="innerHTML">
+                        {{ match.best_draw_odds|format_odds }}
+                    </button>
+                    {% else %}
+                    <span class="text-sm font-mono text-muted">&mdash;</span>
                     {% endif %}
-                </a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<div class="text-center py-8 text-muted">
-    <p>No upcoming matches with odds available.</p>
+                </td>
+                <td class="px-3 py-3 text-center">
+                    {% if match.best_away_odds %}
+                    <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN"
+                            hx-target="#quick-bet-{{ match.pk }}"
+                            hx-swap="innerHTML">
+                        {{ match.best_away_odds|format_odds }}
+                    </button>
+                    {% else %}
+                    <span class="text-sm font-mono text-muted">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-3 text-right">
+                    <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 justify-end hover:text-accent transition-colors">
+                        <span class="text-sm font-medium">{{ match.away_team.short_name|default:match.away_team.name }}</span>
+                        {% if match.away_team.crest_url %}
+                            <img src="{{ match.away_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                        {% endif %}
+                    </a>
+                </td>
+            </tr>
+            <!-- Quick bet row (hidden until user clicks an odds button) -->
+            <tr>
+                <td colspan="6" id="quick-bet-{{ match.pk }}"></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+
+<!-- Mobile card list -->
+<div class="md:hidden space-y-3">
+    {% for match in matches %}
+    <div class="bg-surface/50 rounded-lg border border-gray-700/50 p-4">
+        <div class="text-xs text-muted mb-2">{{ match.kickoff|date:"D d M, H:i" }}</div>
+        <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center justify-between mb-3 hover:text-accent transition-colors">
+            <div class="flex items-center gap-2">
+                {% if match.home_team.crest_url %}
+                    <img src="{{ match.home_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                {% endif %}
+                <span class="text-sm font-medium">{{ match.home_team.short_name|default:match.home_team.name }}</span>
+            </div>
+            <span class="text-xs text-muted">vs</span>
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-medium">{{ match.away_team.short_name|default:match.away_team.name }}</span>
+                {% if match.away_team.crest_url %}
+                    <img src="{{ match.away_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                {% endif %}
+            </div>
+        </a>
+        <div class="grid grid-cols-3 gap-2">
+            <div class="text-center">
+                {% if match.best_home_odds %}
+                <button class="w-full font-mono text-sm text-accent font-bold py-2 rounded border border-gray-600 hover:bg-accent/10 transition-colors"
+                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN"
+                        hx-target="#quick-bet-mobile-{{ match.pk }}"
+                        hx-swap="innerHTML">
+                    {{ match.best_home_odds|format_odds }}
+                </button>
+                <div class="text-xs text-muted mt-1">Home</div>
+                {% else %}
+                <span class="text-sm font-mono text-muted">&mdash;</span>
+                {% endif %}
+            </div>
+            <div class="text-center">
+                {% if match.best_draw_odds %}
+                <button class="w-full font-mono text-sm text-accent font-bold py-2 rounded border border-gray-600 hover:bg-accent/10 transition-colors"
+                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW"
+                        hx-target="#quick-bet-mobile-{{ match.pk }}"
+                        hx-swap="innerHTML">
+                    {{ match.best_draw_odds|format_odds }}
+                </button>
+                <div class="text-xs text-muted mt-1">Draw</div>
+                {% else %}
+                <span class="text-sm font-mono text-muted">&mdash;</span>
+                {% endif %}
+            </div>
+            <div class="text-center">
+                {% if match.best_away_odds %}
+                <button class="w-full font-mono text-sm text-accent font-bold py-2 rounded border border-gray-600 hover:bg-accent/10 transition-colors"
+                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN"
+                        hx-target="#quick-bet-mobile-{{ match.pk }}"
+                        hx-swap="innerHTML">
+                    {{ match.best_away_odds|format_odds }}
+                </button>
+                <div class="text-xs text-muted mt-1">Away</div>
+                {% else %}
+                <span class="text-sm font-mono text-muted">&mdash;</span>
+                {% endif %}
+            </div>
+        </div>
+        <div id="quick-bet-mobile-{{ match.pk }}" class="mt-2"></div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+{% include "website/components/empty_state.html" with icon="odds" title="No upcoming matches with odds" message="Check back later for new odds." cta_url="/fixtures/" cta_text="View Fixtures" %}
 {% endif %}

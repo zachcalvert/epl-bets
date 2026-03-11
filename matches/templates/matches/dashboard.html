@@ -2,10 +2,18 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="mb-6">
-    <h1 class="text-3xl font-bold text-white mb-1">Dashboard</h1>
-    {% if current_matchday %}
-        <p class="text-muted text-sm">Matchday {{ current_matchday }}</p>
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-3xl font-bold text-white mb-1">Dashboard</h1>
+        {% if current_matchday %}
+            <p class="text-muted text-sm">Matchday {{ current_matchday }}</p>
+        {% endif %}
+    </div>
+    {% if matches %}
+    <div id="ws-status-container" class="flex items-center gap-2 text-xs text-muted">
+        <span class="ws-status disconnected" id="ws-dot"></span>
+        <span id="ws-label">Connecting&hellip;</span>
+    </div>
     {% endif %}
 </div>
 
@@ -17,9 +25,25 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="text-center py-16 text-muted">
-    <p class="text-lg">No matches today</p>
-    <p class="text-sm mt-1">Check the <a href="{% url 'matches:fixtures' %}" class="text-accent hover:underline">Fixtures</a> page for upcoming matches.</p>
-</div>
+{% include "website/components/empty_state.html" with icon="calendar" title="No matches today" message="Check the fixtures page for upcoming matches." cta_url="/fixtures/" cta_text="View Fixtures" %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if matches %}
+<script>
+    document.body.addEventListener('htmx:wsOpen', function() {
+        var dot = document.getElementById('ws-dot');
+        var label = document.getElementById('ws-label');
+        if (dot) { dot.className = 'ws-status connected'; }
+        if (label) { label.textContent = 'Live'; }
+    });
+    document.body.addEventListener('htmx:wsClose', function() {
+        var dot = document.getElementById('ws-dot');
+        var label = document.getElementById('ws-label');
+        if (dot) { dot.className = 'ws-status disconnected'; }
+        if (label) { label.textContent = 'Reconnecting\u2026'; }
+    });
+</script>
 {% endif %}
 {% endblock %}

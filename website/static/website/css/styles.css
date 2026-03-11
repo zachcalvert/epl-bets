@@ -1,6 +1,8 @@
 /* Custom styles beyond Tailwind */
 
-/* HTMX loading indicator */
+/* ================================================
+   HTMX Loading Indicators
+   ================================================ */
 .htmx-indicator {
     opacity: 0;
     transition: opacity 200ms ease-in;
@@ -20,4 +22,109 @@
 .htmx-settling {
     opacity: 1;
     transition: opacity 200ms ease-in;
+}
+
+/* ================================================
+   Spinner
+   ================================================ */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 600ms linear infinite;
+    vertical-align: middle;
+}
+
+.spinner-sm {
+    width: 0.875em;
+    height: 0.875em;
+    border-width: 1.5px;
+}
+
+/* ================================================
+   Odds Flash (on polling refresh)
+   ================================================ */
+@keyframes odds-flash {
+    0% { background-color: rgba(0, 230, 118, 0.2); }
+    100% { background-color: transparent; }
+}
+
+.htmx-settling .odds-value {
+    animation: odds-flash 800ms ease-out;
+}
+
+/* ================================================
+   Mobile Menu
+   ================================================ */
+.mobile-menu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 300ms ease-out;
+}
+.mobile-menu.open {
+    max-height: 500px;
+    transition: max-height 300ms ease-in;
+}
+
+/* ================================================
+   WebSocket Connection Status
+   ================================================ */
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.ws-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.ws-status.connected {
+    background-color: #00e676;
+}
+.ws-status.disconnected {
+    background-color: #9e9e9e;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ================================================
+   Toast Notifications
+   ================================================ */
+@keyframes slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+.animate-slide-in {
+    animation: slide-in 300ms ease-out;
+}
+
+.animate-slide-out {
+    animation: slide-out 300ms ease-in forwards;
+}
+
+/* ================================================
+   Form Error Shake
+   ================================================ */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+.shake {
+    animation: shake 400ms ease-in-out;
 }

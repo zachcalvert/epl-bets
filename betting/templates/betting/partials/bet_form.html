@@ -1,0 +1,60 @@
+<div id="bet-form-container" class="bg-surface rounded-lg border border-gray-700 p-6">
+    <h3 class="text-xl font-bold text-white mb-4">Place a Bet</h3>
+
+    {% if error %}
+    <div class="bg-danger/10 border border-danger/30 rounded-md p-3 mb-4">
+        <p class="text-danger text-sm">{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <form hx-post="{% url 'betting:place_bet' match.pk %}"
+          hx-target="#bet-form-container"
+          hx-swap="outerHTML"
+          hx-disabled-elt="find button[type='submit']"
+          class="space-y-4">
+        {% csrf_token %}
+
+        <!-- Selection buttons -->
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Your pick</label>
+            <div class="grid grid-cols-3 gap-2">
+                {% for value, label in form.fields.selection.choices %}
+                <label class="cursor-pointer">
+                    <input type="radio" name="selection" value="{{ value }}"
+                           class="hidden peer"
+                           {% if form.selection.value == value %}checked{% endif %}>
+                    <div class="peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent
+                                border border-gray-600 rounded-md py-3 text-center text-sm font-medium
+                                text-gray-300 hover:border-gray-400 transition-colors">
+                        {% if value == "HOME_WIN" %}
+                            {{ match.home_team.short_name|default:match.home_team.name }}
+                        {% elif value == "DRAW" %}
+                            Draw
+                        {% else %}
+                            {{ match.away_team.short_name|default:match.away_team.name }}
+                        {% endif %}
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            {% if form.selection.errors %}
+            <p class="text-danger text-xs mt-1">{{ form.selection.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Stake input -->
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Stake (credits)</label>
+            {{ form.stake }}
+            {% if form.stake.errors %}
+            <p class="text-danger text-xs mt-1">{{ form.stake.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <button type="submit"
+                class="w-full bg-accent text-dark font-bold py-2.5 px-4 rounded-md hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="htmx-indicator"><span class="spinner spinner-sm mr-1"></span></span>
+            Place Bet
+        </button>
+    </form>
+</div>

@@ -12,16 +12,16 @@
     <table class="w-full" id="standings-table">
         <thead>
             <tr class="border-b border-gray-600 text-xs text-muted uppercase tracking-wider">
-                <th class="px-3 py-3 text-left">Pos</th>
-                <th class="px-3 py-3 text-left">Team</th>
-                <th class="px-3 py-3 text-center">P</th>
-                <th class="px-3 py-3 text-center">W</th>
-                <th class="px-3 py-3 text-center">D</th>
-                <th class="px-3 py-3 text-center">L</th>
-                <th class="px-3 py-3 text-center">GF</th>
-                <th class="px-3 py-3 text-center">GA</th>
-                <th class="px-3 py-3 text-center">GD</th>
-                <th class="px-3 py-3 text-center">Pts</th>
+                <th class="px-2 sm:px-3 py-3 text-left">Pos</th>
+                <th class="px-2 sm:px-3 py-3 text-left">Team</th>
+                <th class="px-2 sm:px-3 py-3 text-center">P</th>
+                <th class="px-2 sm:px-3 py-3 text-center hidden sm:table-cell">W</th>
+                <th class="px-2 sm:px-3 py-3 text-center hidden sm:table-cell">D</th>
+                <th class="px-2 sm:px-3 py-3 text-center hidden sm:table-cell">L</th>
+                <th class="px-2 sm:px-3 py-3 text-center hidden sm:table-cell">GF</th>
+                <th class="px-2 sm:px-3 py-3 text-center hidden sm:table-cell">GA</th>
+                <th class="px-2 sm:px-3 py-3 text-center">GD</th>
+                <th class="px-2 sm:px-3 py-3 text-center">Pts</th>
             </tr>
         </thead>
         <tbody>
@@ -41,9 +41,6 @@
     </div>
 </div>
 {% else %}
-<div class="text-center py-16 text-muted">
-    <p class="text-lg">No standings data available</p>
-    <p class="text-sm mt-1">Run the data pipeline to populate standings.</p>
-</div>
+{% include "website/components/empty_state.html" with icon="table" title="No standings data available" message="Run the data pipeline to populate standings." %}
 {% endif %}
 {% endblock %}

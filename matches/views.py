@@ -173,6 +173,13 @@ class MatchDetailView(DetailView):
         ctx["best_home"] = best_home
         ctx["best_draw"] = best_draw
         ctx["best_away"] = best_away
+
+        # Bet form for authenticated users
+        if self.request.user.is_authenticated:
+            from betting.forms import PlaceBetForm
+
+            ctx["form"] = PlaceBetForm()
+
         return ctx
 
 

@@ -107,6 +107,9 @@ REST_FRAMEWORK = {
 
 # Auth
 AUTH_USER_MODEL = "users.User"
+LOGIN_URL = "website:login"
+LOGIN_REDIRECT_URL = "matches:dashboard"
+LOGOUT_REDIRECT_URL = "matches:dashboard"
 
 # Redis
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
