@@ -1,0 +1,17 @@
+[
+  {"external_id": 100001, "home_team_external_id": 57, "away_team_external_id": 76, "home_score": 2, "away_score": 0, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100002, "home_team_external_id": 64, "away_team_external_id": 349, "home_score": 3, "away_score": 0, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100003, "home_team_external_id": 65, "away_team_external_id": 61, "home_score": 1, "away_score": 1, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T16:30:00Z", "season": "2025"},
+  {"external_id": 100004, "home_team_external_id": 67, "away_team_external_id": 402, "home_score": 2, "away_score": 1, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100005, "home_team_external_id": 58, "away_team_external_id": 563, "home_score": 3, "away_score": 1, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100006, "home_team_external_id": 354, "away_team_external_id": 328, "home_score": 1, "away_score": 0, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100007, "home_team_external_id": 62, "away_team_external_id": 397, "home_score": 0, "away_score": 2, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100008, "home_team_external_id": 63, "away_team_external_id": 338, "home_score": 2, "away_score": 2, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-16T14:00:00Z", "season": "2025"},
+  {"external_id": 100009, "home_team_external_id": 351, "away_team_external_id": 73, "home_score": 1, "away_score": 0, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-17T15:00:00Z", "season": "2025"},
+  {"external_id": 100010, "home_team_external_id": 66, "away_team_external_id": 341, "home_score": 2, "away_score": 1, "status": "FINISHED", "matchday": 1, "kickoff": "2025-08-17T15:00:00Z", "season": "2025"},
+  {"external_id": 100011, "home_team_external_id": 61, "away_team_external_id": 57, "home_score": null, "away_score": null, "status": "SCHEDULED", "matchday": 2, "kickoff": "2025-08-23T14:00:00Z", "season": "2025"},
+  {"external_id": 100012, "home_team_external_id": 73, "away_team_external_id": 64, "home_score": null, "away_score": null, "status": "SCHEDULED", "matchday": 2, "kickoff": "2025-08-23T16:30:00Z", "season": "2025"},
+  {"external_id": 100013, "home_team_external_id": 563, "away_team_external_id": 65, "home_score": null, "away_score": null, "status": "SCHEDULED", "matchday": 2, "kickoff": "2025-08-23T14:00:00Z", "season": "2025"},
+  {"external_id": 100014, "home_team_external_id": 402, "away_team_external_id": 62, "home_score": null, "away_score": null, "status": "SCHEDULED", "matchday": 2, "kickoff": "2025-08-23T14:00:00Z", "season": "2025"},
+  {"external_id": 100015, "home_team_external_id": 349, "away_team_external_id": 66, "home_score": null, "away_score": null, "status": "SCHEDULED", "matchday": 2, "kickoff": "2025-08-24T15:00:00Z", "season": "2025"}
+]

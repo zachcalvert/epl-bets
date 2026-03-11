@@ -137,7 +137,34 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+from celery.schedules import crontab
+from datetime import timedelta
+
+CELERY_BEAT_SCHEDULE = {
+    "fetch-teams-daily": {
+        "task": "matches.tasks.fetch_teams",
+        "schedule": crontab(hour=3, minute=0),  # 3 AM daily
+    },
+    "fetch-fixtures-6h": {
+        "task": "matches.tasks.fetch_fixtures",
+        "schedule": timedelta(hours=6),
+    },
+    "fetch-standings-6h": {
+        "task": "matches.tasks.fetch_standings",
+        "schedule": timedelta(hours=6),
+    },
+    "fetch-live-scores-60s": {
+        "task": "matches.tasks.fetch_live_scores",
+        "schedule": timedelta(seconds=60),
+    },
+    "fetch-odds-30m": {
+        "task": "betting.tasks.fetch_odds",
+        "schedule": timedelta(minutes=30),
+    },
+}
 
 # External APIs
 FOOTBALL_DATA_API_KEY = env("FOOTBALL_DATA_API_KEY", default="")
 ODDS_API_KEY = env("ODDS_API_KEY", default="")
+API_TIMEOUT = 30
+CURRENT_SEASON = "2025"
