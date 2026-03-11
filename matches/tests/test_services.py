@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -104,6 +105,122 @@ def test_get_standings_normalizes_only_total_group(monkeypatch):
     ]
 
 
+def test_get_teams_and_matches_normalize_payloads(monkeypatch):
+    client = FootballDataClient()
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: {
+            "teams": [
+                {
+                    "id": 1,
+                    "name": "Arsenal FC",
+                    "shortName": "Arsenal",
+                    "tla": "ARS",
+                    "crest": "https://example.com/arsenal.png",
+                    "venue": "Emirates Stadium",
+                }
+            ],
+            "matches": [
+                {
+                    "id": 10,
+                    "homeTeam": {"id": 1},
+                    "awayTeam": {"id": 2},
+                    "score": {"fullTime": {"home": 2, "away": 1}},
+                    "status": "FINISHED",
+                    "matchday": 28,
+                    "utcDate": "2026-03-11T20:00:00Z",
+                }
+            ],
+        }
+        if "matches" in path
+        else {
+            "teams": [
+                {
+                    "id": 1,
+                    "name": "Arsenal FC",
+                    "shortName": "Arsenal",
+                    "tla": "ARS",
+                    "crest": "https://example.com/arsenal.png",
+                    "venue": "Emirates Stadium",
+                }
+            ]
+        },
+    )
+
+    teams = client.get_teams("2025")
+    matches = client.get_matches("2025", matchday=28, status="FINISHED")
+
+    assert teams == [
+        {
+            "external_id": 1,
+            "name": "Arsenal FC",
+            "short_name": "Arsenal",
+            "tla": "ARS",
+            "crest_url": "https://example.com/arsenal.png",
+            "venue": "Emirates Stadium",
+        }
+    ]
+    assert matches[0]["external_id"] == 10
+    assert matches[0]["kickoff"] == timezone.make_aware(datetime(2026, 3, 11, 20, 0))
+    assert matches[0]["season"] == "2025"
+
+
+def test_get_match_and_normalizers_cover_optional_fields(monkeypatch):
+    client = FootballDataClient()
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: {
+            "id": 15,
+            "homeTeam": {"id": 1},
+            "awayTeam": {"id": 2},
+            "score": {},
+            "season": {"id": 2025},
+        },
+    )
+
+    match = client.get_match(15)
+
+    assert match == {
+        "external_id": 15,
+        "home_team_external_id": 1,
+        "away_team_external_id": 2,
+        "home_score": None,
+        "away_score": None,
+        "status": "SCHEDULED",
+        "matchday": 0,
+        "kickoff": None,
+        "season": "2025",
+    }
+    assert client._normalize_team({"id": 2, "name": "Chelsea FC"}) == {
+        "external_id": 2,
+        "name": "Chelsea FC",
+        "short_name": "",
+        "tla": "",
+        "crest_url": "",
+        "venue": "",
+    }
+
+
+def test_client_context_manager_closes_http_client(monkeypatch):
+    client = FootballDataClient()
+    close = SimpleNamespace(called=False)
+
+    def fake_close():
+        close.called = True
+
+    monkeypatch.setattr(client.client, "close", fake_close)
+    client.close()
+    assert close.called is True
+
+    close.called = False
+    managed = client.__enter__()
+    assert managed is client
+    client.__exit__()
+    assert close.called is True
+
+
 def test_sync_teams_creates_and_updates_records(monkeypatch):
     existing = TeamFactory(external_id=1, name="Old Name")
     monkeypatch.setattr(
@@ -133,6 +250,74 @@ def test_sync_teams_creates_and_updates_records(monkeypatch):
 
     assert (created, updated) == (1, 1)
     assert existing.name == "New Name"
+
+
+def test_sync_helpers_support_offline_static_json(tmp_path, monkeypatch):
+    data_dir = tmp_path / "static_data"
+    data_dir.mkdir()
+    (data_dir / "teams.json").write_text(
+        json.dumps(
+            [
+                {
+                    "external_id": 1,
+                    "name": "Arsenal FC",
+                    "short_name": "Arsenal",
+                    "tla": "ARS",
+                    "crest_url": "https://example.com/arsenal.png",
+                    "venue": "Emirates",
+                }
+            ]
+        )
+    )
+    kickoff = timezone.make_aware(datetime(2026, 3, 11, 20, 0))
+    (data_dir / "matches.json").write_text(
+        json.dumps(
+            [
+                {
+                    "external_id": 100,
+                    "home_team_external_id": 1,
+                    "away_team_external_id": 2,
+                    "home_score": None,
+                    "away_score": None,
+                    "status": "SCHEDULED",
+                    "matchday": 1,
+                    "kickoff": kickoff.isoformat(),
+                    "season": "2025",
+                }
+            ]
+        )
+    )
+    (data_dir / "standings.json").write_text(
+        json.dumps(
+            [
+                {
+                    "team_external_id": 1,
+                    "season": "2025",
+                    "position": 1,
+                    "played": 1,
+                    "won": 1,
+                    "drawn": 0,
+                    "lost": 0,
+                    "goals_for": 2,
+                    "goals_against": 0,
+                    "goal_difference": 2,
+                    "points": 3,
+                }
+            ]
+        )
+    )
+    monkeypatch.setattr("matches.services.STATIC_DATA_DIR", data_dir)
+    TeamFactory(external_id=2, name="Chelsea FC")
+
+    team_counts = sync_teams("2025", offline=True)
+    match_counts = sync_matches("2025", offline=True)
+    standing_counts = sync_standings("2025", offline=True)
+
+    created_match = MatchFactory._meta.model.objects.get(external_id=100)
+    assert team_counts == (1, 0)
+    assert match_counts == (1, 0)
+    assert standing_counts == (1, 0)
+    assert created_match.kickoff == kickoff
 
 
 def test_sync_matches_creates_updates_and_skips_missing_teams(monkeypatch):

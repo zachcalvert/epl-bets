@@ -74,6 +74,31 @@ def test_fetch_live_scores_calls_broadcast_when_sync_changes_exist(monkeypatch, 
     )
 
 
+def test_fetch_live_scores_skips_broadcast_when_nothing_changes(monkeypatch):
+    broadcast = Mock()
+    monkeypatch.setattr("matches.tasks.sync_matches", lambda season, status=None: (0, 0))
+    monkeypatch.setattr("matches.tasks._broadcast_score_changes", broadcast)
+
+    fetch_live_scores.run()
+
+    broadcast.assert_not_called()
+
+
+def test_fetch_live_scores_retries_with_exponential_backoff(monkeypatch):
+    retry = Mock(side_effect=RuntimeError("retry"))
+    monkeypatch.setattr("matches.tasks.sync_matches", Mock(side_effect=ValueError("boom")))
+    fetch_live_scores.push_request(retries=2)
+    monkeypatch.setattr(fetch_live_scores, "retry", retry)
+
+    try:
+        with pytest.raises(RuntimeError, match="retry"):
+            fetch_live_scores.run()
+    finally:
+        fetch_live_scores.pop_request()
+
+    assert retry.call_args.kwargs["countdown"] == 120
+
+
 def test_broadcast_score_changes_sends_updates_and_triggers_settlement(monkeypatch, settings):
     match = MatchFactory(
         status=Match.Status.FINISHED,
@@ -100,6 +125,22 @@ def test_broadcast_score_changes_returns_when_channel_layer_missing(monkeypatch)
     monkeypatch.setattr("channels.layers.get_channel_layer", lambda: None)
 
     _broadcast_score_changes({})
+
+
+def test_broadcast_score_changes_ignores_unchanged_match(monkeypatch, settings):
+    match = MatchFactory(
+        status=Match.Status.IN_PLAY,
+        season=settings.CURRENT_SEASON,
+        home_score=1,
+        away_score=1,
+    )
+    sent = []
+    channel_layer = SimpleChannelLayer(sent)
+    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: channel_layer)
+
+    _broadcast_score_changes({match.pk: (1, 1, Match.Status.IN_PLAY)})
+
+    assert sent == []
 
 
 class SimpleChannelLayer:

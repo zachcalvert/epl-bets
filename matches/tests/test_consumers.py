@@ -81,6 +81,29 @@ def test_score_update_renders_and_sends_html(monkeypatch):
     assert "matches/partials/match_card_oob.html" in consumer.send.call_args.kwargs["text_data"]
 
 
+def test_score_update_returns_when_match_missing():
+    consumer = build_consumer("dashboard")
+    consumer.send = Mock()
+
+    consumer.score_update({"match_id": 999999})
+
+    consumer.send.assert_not_called()
+
+
+def test_score_update_swallow_render_errors(monkeypatch):
+    match = MatchFactory()
+    consumer = build_consumer("dashboard")
+    consumer.send = Mock(side_effect=RuntimeError("send failed"))
+    monkeypatch.setattr(
+        "matches.consumers.render_to_string",
+        lambda template, context: "payload",
+    )
+
+    consumer.score_update({"match_id": match.pk})
+
+    consumer.send.assert_called_once_with(text_data="payload")
+
+
 def test_match_score_update_renders_and_sends_html(monkeypatch):
     match = MatchFactory()
     consumer = build_consumer(str(match.pk))
@@ -95,6 +118,29 @@ def test_match_score_update_renders_and_sends_html(monkeypatch):
     consumer.send.assert_called_once_with(
         text_data=f"matches/partials/score_display_oob.html:{match.pk}"
     )
+
+
+def test_match_score_update_returns_when_match_missing():
+    consumer = build_consumer("42")
+    consumer.send = Mock()
+
+    consumer.match_score_update({"match_id": 999999})
+
+    consumer.send.assert_not_called()
+
+
+def test_match_score_update_swallow_render_errors(monkeypatch):
+    match = MatchFactory()
+    consumer = build_consumer(str(match.pk))
+    consumer.send = Mock(side_effect=RuntimeError("send failed"))
+    monkeypatch.setattr(
+        "matches.consumers.render_to_string",
+        lambda template, context: "payload",
+    )
+
+    consumer.match_score_update({"match_id": match.pk})
+
+    consumer.send.assert_called_once_with(text_data="payload")
 
 
 class SimpleLayer:
