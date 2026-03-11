@@ -1,0 +1,39 @@
+import factory
+from django.utils import timezone
+
+from betting.models import BetSlip, Odds, UserBalance
+from matches.tests.factories import MatchFactory
+from users.tests.factories import UserFactory
+
+
+class OddsFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Odds
+
+    match = factory.SubFactory(MatchFactory)
+    bookmaker = factory.Sequence(lambda n: f"Bookmaker {n}")
+    home_win = "2.10"
+    draw = "3.30"
+    away_win = "3.90"
+    fetched_at = factory.LazyFunction(timezone.now)
+
+
+class BetSlipFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = BetSlip
+
+    user = factory.SubFactory(UserFactory)
+    match = factory.SubFactory(MatchFactory)
+    selection = BetSlip.Selection.HOME_WIN
+    odds_at_placement = "2.10"
+    stake = "10.00"
+    status = BetSlip.Status.PENDING
+    payout = None
+
+
+class UserBalanceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = UserBalance
+
+    user = factory.SubFactory(UserFactory)
+    balance = "1000.00"

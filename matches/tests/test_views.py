@@ -1,0 +1,112 @@
+from datetime import datetime, time, timedelta
+from decimal import Decimal
+
+import pytest
+from django.urls import reverse
+from django.utils import timezone
+
+from betting.tests.factories import OddsFactory
+from matches.tests.factories import MatchFactory, StandingFactory
+from users.tests.factories import UserFactory
+
+
+pytestmark = pytest.mark.django_db
+
+
+def test_dashboard_view_prefers_todays_matches_and_sets_best_odds(client):
+    today = timezone.localdate()
+    first_kickoff = timezone.make_aware(datetime.combine(today, time(12, 0)))
+    second_kickoff = timezone.make_aware(datetime.combine(today, time(15, 0)))
+    today_match = MatchFactory(kickoff=first_kickoff, matchday=5)
+    later_match = MatchFactory(kickoff=second_kickoff, matchday=5)
+    OddsFactory(match=today_match, bookmaker="A", home_win="2.50", draw="3.20", away_win="3.10")
+    OddsFactory(match=today_match, bookmaker="B", home_win="2.10", draw="3.00", away_win="3.80")
+
+    response = client.get(reverse("matches:dashboard"))
+
+    matches = list(response.context["matches"])
+    assert response.status_code == 200
+    assert matches == [today_match, later_match]
+    assert response.context["current_matchday"] == 5
+    assert matches[0].best_home_odds == Decimal("2.10")
+    assert matches[0].best_draw_odds == Decimal("3.00")
+    assert matches[0].best_away_odds == Decimal("3.10")
+    assert matches[1].best_home_odds is None
+
+
+def test_dashboard_view_falls_back_to_next_matchday_when_no_matches_today(client):
+    MatchFactory(kickoff=timezone.now() + timedelta(days=3), matchday=8)
+
+    response = client.get(reverse("matches:dashboard"))
+
+    assert response.status_code == 200
+    assert response.context["current_matchday"] == 8
+    assert len(response.context["matches"]) == 1
+
+
+def test_fixtures_view_returns_partial_for_htmx_and_invalid_matchday_falls_back(client):
+    upcoming = MatchFactory(kickoff=timezone.now() + timedelta(days=1), matchday=9)
+    OddsFactory(match=upcoming, home_win="1.95", draw="3.20", away_win="4.30")
+
+    response = client.get(
+        reverse("matches:fixtures"),
+        data={"matchday": "not-a-number"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "matches/partials/fixture_list.html"
+        for template in response.templates
+    )
+    assert response.context["matchday"] == 9
+    assert response.context["matches"][0].best_home_odds == Decimal("1.95")
+
+
+def test_league_table_view_orders_current_season_standings(client):
+    first = StandingFactory(position=2)
+    second = StandingFactory(position=1)
+
+    response = client.get(reverse("matches:table"))
+
+    standings = list(response.context["standings"])
+    assert response.status_code == 200
+    assert standings == [second, first]
+    assert response.context["season"] == "2025"
+
+
+def test_match_detail_view_includes_best_odds_and_form_for_authenticated_user(client):
+    match = MatchFactory()
+    OddsFactory(match=match, bookmaker="A", home_win="2.60", draw="3.40", away_win="2.90")
+    OddsFactory(match=match, bookmaker="B", home_win="2.20", draw="3.10", away_win="3.20")
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert response.context["best_home"] == Decimal("2.20")
+    assert response.context["best_draw"] == Decimal("3.10")
+    assert response.context["best_away"] == Decimal("2.90")
+    assert "form" in response.context
+
+
+def test_match_detail_view_omits_form_for_anonymous_user(client):
+    match = MatchFactory()
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert "form" not in response.context
+
+
+def test_match_odds_partial_uses_partial_template(client):
+    match = MatchFactory()
+
+    response = client.get(reverse("matches:match_odds_partial", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "matches/partials/odds_table_body.html"
+        for template in response.templates
+    )
