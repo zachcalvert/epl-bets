@@ -5,8 +5,8 @@ Prepare the codebase for public release as a transparent, portfolio-quality open
 ---
 
 ## Phase 7: Community & Testing
-Status: Complete
-Outcome: community files shipped, pytest scaffold added, initial test suite in place, 98% enforced coverage gate on `core`, `users`, and `website`
+Status: In Progress
+Outcome so far: community files shipped, pytest scaffold added, initial test suite in place, 98% enforced coverage gate on `core`, `users`, and `website`
 
 ### 7A — Community Files
 - `CODE_OF_CONDUCT.md` — Contributor Covenant
@@ -48,7 +48,8 @@ Outcome: community files shipped, pytest scaffold added, initial test suite in p
 ### 7G — Coverage Gate
 - Run covered slice with coverage: `pytest core users website --cov=core --cov=users --cov=website --cov-report=term-missing`
 - Verify coverage >= 98%
-- Treat broader `matches` / `betting` expansion as follow-on hardening work
+- Expand tests for `matches` and `betting`
+- Verify full-source coverage target is actually met before marking Phase 7 complete
 
 ---
 
@@ -96,6 +97,7 @@ Status: In Progress
 - [ ] Tests: betting
 - [x] Tests: website
 - [x] Coverage >= 98% on covered slice
+- [ ] Full-source coverage target met
 - [x] GitHub Actions CI workflow
 - [ ] Codecov badge in README
 - [ ] fly.io deployment
@@ -107,6 +109,6 @@ Status: In Progress
 Phase 8 still has a few open implementation decisions:
 
 1. Should CI run inside Docker for parity, or install Poetry dependencies directly in GitHub Actions for speed?
-2. Do we want Phase 8 to gate only the current tested slice, or require `matches` and `betting` tests before CI is considered complete?
+2. When should CI switch from the current covered slice to full-source coverage enforcement?
 3. Should Codecov upload be required from day one, or added after the public GitHub repo exists?
 4. Do we want one workflow (`ci.yml`) or separate workflows for lint and test feedback?
