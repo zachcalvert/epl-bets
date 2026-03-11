@@ -1,0 +1,53 @@
+{% load match_tags %}
+{% if matches %}
+<table class="w-full">
+    <thead>
+        <tr class="border-b border-gray-600 text-xs text-muted uppercase tracking-wider">
+            <th class="px-3 py-3 text-left">Kickoff</th>
+            <th class="px-3 py-3 text-left">Home</th>
+            <th class="px-3 py-3 text-center">H</th>
+            <th class="px-3 py-3 text-center">D</th>
+            <th class="px-3 py-3 text-center">A</th>
+            <th class="px-3 py-3 text-right">Away</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for match in matches %}
+        <tr class="border-b border-gray-700/50 hover:bg-surface/50">
+            <td class="px-3 py-3 text-sm text-muted whitespace-nowrap">
+                {{ match.kickoff|date:"D d M, H:i" }}
+            </td>
+            <td class="px-3 py-3">
+                <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 hover:text-accent transition-colors">
+                    {% if match.home_team.crest_url %}
+                        <img src="{{ match.home_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                    {% endif %}
+                    <span class="text-sm font-medium">{{ match.home_team.short_name|default:match.home_team.name }}</span>
+                </a>
+            </td>
+            <td class="px-3 py-3 text-sm text-center font-mono {% if match.best_home_odds %}text-accent font-bold{% else %}text-muted{% endif %}">
+                {{ match.best_home_odds|format_odds }}
+            </td>
+            <td class="px-3 py-3 text-sm text-center font-mono {% if match.best_draw_odds %}text-accent font-bold{% else %}text-muted{% endif %}">
+                {{ match.best_draw_odds|format_odds }}
+            </td>
+            <td class="px-3 py-3 text-sm text-center font-mono {% if match.best_away_odds %}text-accent font-bold{% else %}text-muted{% endif %}">
+                {{ match.best_away_odds|format_odds }}
+            </td>
+            <td class="px-3 py-3 text-right">
+                <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 justify-end hover:text-accent transition-colors">
+                    <span class="text-sm font-medium">{{ match.away_team.short_name|default:match.away_team.name }}</span>
+                    {% if match.away_team.crest_url %}
+                        <img src="{{ match.away_team.crest_url }}" alt="" class="w-5 h-5 object-contain">
+                    {% endif %}
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="text-center py-8 text-muted">
+    <p>No upcoming matches with odds available.</p>
+</div>
+{% endif %}

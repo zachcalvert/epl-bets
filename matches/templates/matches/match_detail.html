@@ -3,10 +3,11 @@
 {% block title %}{{ match }}{% endblock %}
 
 {% block content %}
-<!-- Match header -->
-<div class="bg-surface rounded-lg border border-gray-700 p-6 mb-6">
+<!-- Match header (WebSocket for live score updates) -->
+<div class="bg-surface rounded-lg border border-gray-700 p-6 mb-6"
+     hx-ext="ws" ws-connect="/ws/live/{{ match.pk }}/">
     <div class="flex items-center justify-between mb-4">
-        {% status_badge match %}
+        <span id="match-status">{% status_badge match %}</span>
         <span class="text-sm text-muted">Matchday {{ match.matchday }}</span>
     </div>
 
@@ -20,7 +21,7 @@
         </div>
 
         <!-- Score / vs -->
-        <div class="text-center">
+        <div id="score-display" class="text-center">
             {% score_display match %}
         </div>
 
@@ -45,29 +46,12 @@
 <div class="mb-6">
     <h3 class="text-xl font-bold text-white mb-3">Odds Comparison</h3>
 
-    {% if odds %}
-    <div class="overflow-x-auto" id="odds-table">
-        <table class="w-full">
-            <thead>
-                <tr class="border-b border-gray-600 text-xs text-muted uppercase tracking-wider">
-                    <th class="px-3 py-3 text-left">Bookmaker</th>
-                    <th class="px-3 py-3 text-center">Home</th>
-                    <th class="px-3 py-3 text-center">Draw</th>
-                    <th class="px-3 py-3 text-center">Away</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for o in odds %}
-                    {% include "betting/partials/odds_row.html" with odds=o best_home=best_home best_draw=best_draw best_away=best_away %}
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="overflow-x-auto" id="odds-table"
+         hx-get="{% url 'matches:match_odds_partial' match.pk %}"
+         hx-trigger="every 30s"
+         hx-swap="innerHTML">
+        {% include "matches/partials/odds_table_body.html" %}
     </div>
-    {% else %}
-    <div class="text-center py-8 text-muted bg-surface rounded-lg border border-gray-700">
-        <p>Odds not yet available for this match.</p>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Bet form placeholder (Phase 5) -->

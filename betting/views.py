@@ -45,3 +45,9 @@ class OddsBoardView(TemplateView):
 
         ctx["matches"] = matches_with_odds
         return ctx
+
+
+class OddsBoardPartialView(OddsBoardView):
+    """Returns just the odds board body for HTMX polling."""
+
+    template_name = "betting/partials/odds_board_body.html"

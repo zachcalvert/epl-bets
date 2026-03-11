@@ -45,8 +45,60 @@ def fetch_standings(self):
 def fetch_live_scores(self):
     logger.info("fetch_live_scores: starting")
     try:
+        # Snapshot live matches before sync to detect changes
+        from matches.models import Match
+
+        pre_sync = {
+            m["pk"]: (m["home_score"], m["away_score"], m["status"])
+            for m in Match.objects.filter(
+                status__in=["IN_PLAY", "PAUSED", "FINISHED"],
+                season=settings.CURRENT_SEASON,
+            ).values("pk", "home_score", "away_score", "status")
+        }
+
         created, updated = sync_matches(settings.CURRENT_SEASON, status="LIVE")
         logger.info("fetch_live_scores: done created=%d updated=%d", created, updated)
+
+        # Broadcast changes via channel layer
+        if updated > 0 or created > 0:
+            _broadcast_score_changes(pre_sync)
+
     except Exception as exc:
         logger.exception("fetch_live_scores failed")
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+
+
+def _broadcast_score_changes(pre_sync):
+    """Compare current match state to pre-sync snapshot and broadcast changes."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+
+    from matches.models import Match
+
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        logger.warning("No channel layer configured, skipping broadcast")
+        return
+
+    send = async_to_sync(channel_layer.group_send)
+
+    # Check all matches that were live or just finished
+    current = Match.objects.filter(
+        pk__in=list(pre_sync.keys())
+    ).union(
+        Match.objects.filter(
+            status__in=["IN_PLAY", "PAUSED"],
+            season=settings.CURRENT_SEASON,
+        )
+    ).values("pk", "home_score", "away_score", "status")
+
+    for m in current:
+        pk = m["pk"]
+        old = pre_sync.get(pk)
+        new_state = (m["home_score"], m["away_score"], m["status"])
+
+        # Broadcast if score changed, status changed, or this is a newly live match
+        if old is None or old != new_state:
+            logger.info("Broadcasting score update for match %d", pk)
+            send("live_scores", {"type": "score_update", "match_id": pk})
+            send(f"match_{pk}", {"type": "match_score_update", "match_id": pk})

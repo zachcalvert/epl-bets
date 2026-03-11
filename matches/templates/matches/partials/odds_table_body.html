@@ -1,0 +1,22 @@
+{% load match_tags %}
+{% if odds %}
+<table class="w-full">
+    <thead>
+        <tr class="border-b border-gray-600 text-xs text-muted uppercase tracking-wider">
+            <th class="px-3 py-3 text-left">Bookmaker</th>
+            <th class="px-3 py-3 text-center">Home</th>
+            <th class="px-3 py-3 text-center">Draw</th>
+            <th class="px-3 py-3 text-center">Away</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for o in odds %}
+            {% include "betting/partials/odds_row.html" with odds=o best_home=best_home best_draw=best_draw best_away=best_away %}
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="text-center py-8 text-muted">
+    <p>Odds not yet available for this match.</p>
+</div>
+{% endif %}

@@ -174,3 +174,9 @@ class MatchDetailView(DetailView):
         ctx["best_draw"] = best_draw
         ctx["best_away"] = best_away
         return ctx
+
+
+class MatchOddsPartialView(MatchDetailView):
+    """Returns just the odds table body for HTMX polling."""
+
+    template_name = "matches/partials/odds_table_body.html"

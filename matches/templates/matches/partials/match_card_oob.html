@@ -1,5 +1,5 @@
 {% load match_tags %}
-<a id="match-{{ match.pk }}" href="{% url 'matches:match_detail' match.pk %}"
+<a id="match-{{ match.pk }}" hx-swap-oob="true" href="{% url 'matches:match_detail' match.pk %}"
    class="block bg-surface rounded-lg border border-gray-700 p-4 hover:border-accent/50 transition-colors
           {% if match.status == 'IN_PLAY' or match.status == 'PAUSED' %}ring-1 ring-accent/30 shadow-lg shadow-accent/5{% endif %}">
     <div class="flex items-center justify-between mb-3">
