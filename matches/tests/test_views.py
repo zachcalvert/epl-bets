@@ -5,8 +5,7 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
-from betting.tests.factories import UserBalanceFactory
-from betting.tests.factories import OddsFactory
+from betting.tests.factories import OddsFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory, StandingFactory
 from users.tests.factories import UserFactory
 
