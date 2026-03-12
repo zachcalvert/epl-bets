@@ -5,6 +5,7 @@ from django.views.generic import DetailView, TemplateView
 
 from betting.services import get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
+from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 
 class DashboardView(TemplateView):
@@ -79,6 +80,17 @@ class LeaderboardPartialView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        record_event(
+            scope=page_scope("dashboard"),
+            scopes=[GLOBAL_SCOPE],
+            category="htmx",
+            source="leaderboard_partial",
+            action="partial_refreshed",
+            summary="Homepage leaderboard refreshed from the server.",
+            detail=f"Returned {len(ctx['leaderboard'])} ranked balances.",
+            status="info",
+            route=self.request.path,
+        )
         return ctx
 
 
@@ -200,3 +212,19 @@ class MatchOddsPartialView(MatchDetailView):
     """Returns just the odds table body for HTMX polling."""
 
     template_name = "matches/partials/odds_table_body.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        record_event(
+            scope=page_scope("match_detail"),
+            scopes=[GLOBAL_SCOPE, match_scope(self.object.pk)],
+            category="htmx",
+            source="match_odds_partial",
+            action="partial_refreshed",
+            summary="Match odds table refreshed.",
+            detail=f"Rendered {len(ctx['odds'])} bookmaker rows for match {self.object.pk}.",
+            status="info",
+            route=self.request.path,
+            entity_ref=self.object.pk,
+        )
+        return ctx

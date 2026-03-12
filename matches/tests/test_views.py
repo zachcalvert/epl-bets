@@ -8,6 +8,7 @@ from django.utils import timezone
 from betting.tests.factories import OddsFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory, StandingFactory
 from users.tests.factories import UserFactory
+from website.transparency import get_events, match_scope, page_scope
 
 pytestmark = pytest.mark.django_db
 
@@ -163,6 +164,7 @@ def test_match_odds_partial_uses_partial_template(client):
         template.name == "matches/partials/odds_table_body.html"
         for template in response.templates
     )
+    assert get_events(match_scope(match.pk))[0]["action"] == "partial_refreshed"
 
 
 def test_leaderboard_partial_renders_partial_template_and_content(client):
@@ -180,6 +182,7 @@ def test_leaderboard_partial_renders_partial_template_and_content(client):
     )
     assert "le****@example.com" in response.content.decode()
     assert "leader@example.com" not in response.content.decode()
+    assert get_events(page_scope("dashboard"))[0]["source"] == "leaderboard_partial"
 
 
 def test_leaderboard_partial_shows_signed_in_user_rank_when_outside_top_10(client):

@@ -8,6 +8,7 @@ from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFact
 from matches.models import Match
 from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
+from website.transparency import get_events, match_scope, page_scope
 
 pytestmark = pytest.mark.django_db
 
@@ -36,6 +37,7 @@ def test_odds_board_partial_uses_partial_template(client):
         template.name == "betting/partials/odds_board_body.html"
         for template in response.templates
     )
+    assert get_events(page_scope("odds_board"))[0]["source"] == "odds_board_partial"
 
 
 def test_place_bet_redirects_anonymous_user_to_login(client):
@@ -125,6 +127,7 @@ def test_place_bet_creates_bet_and_deducts_balance(client):
     assert bet.odds_at_placement == Decimal("2.10")
     assert balance.balance == Decimal("90.00")
     assert "21.00" in response.content.decode()
+    assert get_events(match_scope(match.pk))[0]["action"] == "bet_placed"
 
 
 def test_place_bet_auto_creates_balance_when_missing(client):

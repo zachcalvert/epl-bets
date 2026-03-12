@@ -11,6 +11,7 @@ from matches.tasks import (
     fetch_teams,
 )
 from matches.tests.factories import MatchFactory
+from website.transparency import GLOBAL_SCOPE, get_events, match_scope, page_scope
 
 pytestmark = pytest.mark.django_db
 
@@ -71,6 +72,7 @@ def test_fetch_live_scores_calls_broadcast_when_sync_changes_exist(monkeypatch, 
     broadcast.assert_called_once_with(
         {live_match.pk: (0, 0, Match.Status.IN_PLAY)}
     )
+    assert get_events(page_scope("dashboard"))[0]["action"] == "scores_synced"
 
 
 def test_fetch_live_scores_skips_broadcast_when_nothing_changes(monkeypatch):
@@ -118,6 +120,9 @@ def test_broadcast_score_changes_sends_updates_and_triggers_settlement(monkeypat
         (f"match_{match.pk}", {"type": "match_score_update", "match_id": match.pk}),
     ]
     delay.assert_called_once_with(match.pk)
+    assert get_events(match_scope(match.pk))[0]["action"] == "score_broadcast"
+    assert get_events(page_scope("dashboard"))[0]["action"] == "score_broadcast"
+    assert get_events(GLOBAL_SCOPE)[0]["action"] == "score_broadcast"
 
 
 def test_broadcast_score_changes_returns_when_channel_layer_missing(monkeypatch):
