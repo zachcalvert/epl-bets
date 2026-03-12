@@ -27,6 +27,9 @@ primary_region = "sjc"
     grace_period = "20s"
     method = "GET"
     path = "/"
+    [http_service.checks.headers]
+      Host = "epl-bets.fly.dev"
+      X-Forwarded-Proto = "https"
 
 [processes]
   app = "daphne -b 0.0.0.0 -p 8000 config.asgi:application"
