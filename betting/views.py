@@ -13,9 +13,41 @@ from betting.forms import PlaceBetForm
 from betting.models import BetSlip, Odds, UserBalance
 from betting.services import get_user_rank
 from matches.models import Match
-from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
+from website.transparency import (
+    GLOBAL_SCOPE,
+    get_events,
+    match_scope,
+    page_scope,
+    record_event,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _get_odds_board_transparency_context():
+    events = get_events(page_scope("odds_board"), limit=8)
+    latest_event = events[0] if events else None
+
+    counts = {
+        "htmx": 0,
+        "celery": 0,
+        "betting": 0,
+    }
+    for event in events:
+        category = event["category"]
+        if category in counts:
+            counts[category] += 1
+
+    tracked_categories = [category for category, count in counts.items() if count]
+    if not tracked_categories:
+        tracked_categories = list(counts.keys())
+
+    return {
+        "under_the_hood_events": events,
+        "under_the_hood_latest": latest_event,
+        "under_the_hood_counts": counts,
+        "under_the_hood_tracked_categories": tracked_categories,
+    }
 
 
 class OddsBoardView(TemplateView):
@@ -56,6 +88,16 @@ class OddsBoardView(TemplateView):
             matches_with_odds.append(match)
 
         ctx["matches"] = matches_with_odds
+        ctx.update(_get_odds_board_transparency_context())
+        return ctx
+
+
+class OddsBoardUnderTheHoodPartialView(TemplateView):
+    template_name = "betting/partials/odds_board_under_the_hood.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(_get_odds_board_transparency_context())
         return ctx
 
 
