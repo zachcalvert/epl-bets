@@ -62,13 +62,19 @@ def mask_email(email):
     return f"{visible_prefix}{masked_suffix}@{domain}"
 
 
+def get_public_identity(user):
+    if getattr(user, "display_name", None):
+        return user.display_name
+    return mask_email(user.email)
+
+
 def get_leaderboard_entries(limit=10):
     leaderboard = list(
         UserBalance.objects.select_related("user")
         .order_by("-balance", "user_id")[:limit]
     )
     for entry in leaderboard:
-        entry.display_email = mask_email(entry.user.email)
+        entry.display_identity = get_public_identity(entry.user)
     return leaderboard
 
 
@@ -90,7 +96,7 @@ def get_user_rank(user, leaderboard=None):
         | Q(balance=balance.balance, user_id__lt=user.id)
     ).count()
 
-    balance.display_email = mask_email(user.email)
+    balance.display_identity = get_public_identity(user)
     balance.rank = higher_ranked_count + 1
     return balance
 

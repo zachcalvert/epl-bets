@@ -1,8 +1,11 @@
 from decimal import Decimal
 
 from django import forms
+from django.contrib.auth import get_user_model
 
 from betting.models import BetSlip
+
+User = get_user_model()
 
 
 class PlaceBetForm(forms.Form):
@@ -27,3 +30,33 @@ class PlaceBetForm(forms.Form):
             }
         ),
     )
+
+
+class DisplayNameForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("display_name",)
+        widgets = {
+            "display_name": forms.TextInput(
+                attrs={
+                    "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-accent",
+                    "placeholder": "Enter a display name",
+                    "maxlength": "50",
+                }
+            )
+        }
+
+    def clean_display_name(self):
+        display_name = (self.cleaned_data.get("display_name") or "").strip()
+        if not display_name:
+            return None
+
+        duplicate_exists = (
+            User.objects.exclude(pk=self.instance.pk)
+            .filter(display_name__iexact=display_name)
+            .exists()
+        )
+        if duplicate_exists:
+            raise forms.ValidationError("Display name already taken.")
+
+        return display_name

@@ -1,7 +1,10 @@
 from decimal import Decimal
 
-from betting.forms import PlaceBetForm
+import pytest
+
+from betting.forms import DisplayNameForm, PlaceBetForm
 from betting.models import BetSlip
+from users.tests.factories import UserFactory
 
 
 def test_place_bet_form_valid():
@@ -38,3 +41,24 @@ def test_place_bet_form_rejects_stake_above_maximum():
 
     assert form.is_valid() is False
     assert "Ensure this value is less than or equal to 500." in form.errors["stake"][0]
+
+
+@pytest.mark.django_db
+def test_display_name_form_normalizes_blank_to_none():
+    user = UserFactory(display_name="Existing")
+
+    form = DisplayNameForm(data={"display_name": "   "}, instance=user)
+
+    assert form.is_valid() is True
+    assert form.cleaned_data["display_name"] is None
+
+
+@pytest.mark.django_db
+def test_display_name_form_rejects_case_insensitive_duplicates():
+    UserFactory(display_name="TopPunter")
+    user = UserFactory()
+
+    form = DisplayNameForm(data={"display_name": " toppunter "}, instance=user)
+
+    assert form.is_valid() is False
+    assert form.errors["display_name"] == ["Display name already taken."]

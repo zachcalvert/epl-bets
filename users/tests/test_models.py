@@ -1,4 +1,5 @@
 import pytest
+from django.db import IntegrityError
 
 from users.tests.factories import UserFactory
 
@@ -70,3 +71,19 @@ def test_user_str():
 def test_user_username_field(django_user_model):
     assert django_user_model.USERNAME_FIELD == "email"
 
+
+@pytest.mark.django_db
+def test_display_name_allows_multiple_null_values():
+    first = UserFactory(display_name=None)
+    second = UserFactory(display_name=None)
+
+    assert first.display_name is None
+    assert second.display_name is None
+
+
+@pytest.mark.django_db
+def test_display_name_unique_constraint_is_case_insensitive():
+    UserFactory(display_name="SharpBettor")
+
+    with pytest.raises(IntegrityError):
+        UserFactory(display_name="sharpbettor")

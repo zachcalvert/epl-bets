@@ -204,6 +204,72 @@ def test_my_bets_view_calculates_totals_and_default_balance(client):
     assert response.context["current_balance"] == Decimal("1000.00")
 
 
+def test_my_bets_view_shows_current_display_name_in_account_card(client):
+    user = UserFactory(email="bettor@example.com", display_name="Top Punter")
+    client.force_login(user)
+
+    response = client.get(reverse("betting:my_bets"))
+
+    assert response.status_code == 200
+    assert "Public display name" in response.content.decode()
+    assert "Top Punter" in response.content.decode()
+
+
+def test_my_bets_view_updates_display_name_via_htmx(client):
+    user = UserFactory(email="bettor@example.com")
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:my_bets"),
+        data={"display_name": "Top Punter"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 200
+    assert user.display_name == "Top Punter"
+    assert "Display name updated." in response.content.decode()
+    assert "Leaderboard preview" in response.content.decode()
+
+
+def test_my_bets_view_shows_duplicate_display_name_error_and_allows_retry(client):
+    UserFactory(display_name="Top Punter")
+    user = UserFactory(email="bettor@example.com")
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:my_bets"),
+        data={"display_name": "top punter"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 422
+    assert user.display_name in (None, "")
+    assert "Display name already taken." in response.content.decode()
+    assert 'value="top punter"' in response.content.decode()
+
+
+def test_my_bets_view_allows_clearing_display_name(client):
+    user = UserFactory(email="bettor@example.com", display_name="Top Punter")
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:my_bets"),
+        data={"display_name": "   "},
+        HTTP_HX_REQUEST="true",
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 200
+    assert user.display_name is None
+    assert "Not set" in response.content.decode()
+    assert "be****@example.com" in response.content.decode()
+
+
 def test_my_bets_view_includes_rank_summary_when_user_is_outside_top_10(client):
     for index in range(10):
         UserBalanceFactory(
@@ -234,6 +300,18 @@ def test_my_bets_view_shows_rank_summary_when_user_is_in_top_10(client):
     assert response.context["user_rank"].rank == 1
     assert "Your leaderboard rank" in response.content.decode()
     assert "You are currently #1" in response.content.decode()
+
+
+def test_my_bets_view_rank_summary_prefers_display_name(client):
+    user = UserFactory(email="winner@example.com", display_name="League Leader")
+    UserBalanceFactory(user=user, balance="2500.00")
+    client.force_login(user)
+
+    response = client.get(reverse("betting:my_bets"))
+
+    assert response.status_code == 200
+    assert response.context["user_rank"].display_identity == "League Leader"
+    assert "League Leader" in response.content.decode()
 
 
 def test_quick_bet_form_view_returns_initial_selection(client):

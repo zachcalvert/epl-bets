@@ -58,7 +58,20 @@ def test_dashboard_view_includes_top_10_leaderboard_entries_in_balance_order(cli
     assert len(leaderboard) == 10
     assert leaderboard[0].user.email == "user11@example.com"
     assert leaderboard[-1].user.email == "user2@example.com"
-    assert leaderboard[0].display_email == "us****@example.com"
+    assert leaderboard[0].display_identity == "us****@example.com"
+
+
+def test_dashboard_view_leaderboard_prefers_display_name_when_present(client):
+    UserBalanceFactory(
+        user__email="user@example.com",
+        user__display_name="Top Punter",
+        balance="1250.00",
+    )
+
+    response = client.get(reverse("matches:dashboard"))
+
+    assert response.status_code == 200
+    assert response.context["leaderboard"][0].display_identity == "Top Punter"
 
 
 def test_dashboard_view_leaderboard_breaks_ties_by_user_id(client):
@@ -272,6 +285,23 @@ def test_leaderboard_partial_renders_partial_template_and_content(client):
     assert "le****@example.com" in response.content.decode()
     assert "leader@example.com" not in response.content.decode()
     assert get_events(page_scope("dashboard"))[0]["source"] == "leaderboard_partial"
+
+
+def test_leaderboard_partial_renders_display_name_when_available(client):
+    UserBalanceFactory(
+        user__email="leader@example.com",
+        user__display_name="Top Punter",
+        balance="1400.00",
+    )
+
+    response = client.get(
+        reverse("matches:leaderboard_partial"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert "Top Punter" in response.content.decode()
+    assert "le****@example.com" not in response.content.decode()
 
 
 def test_leaderboard_partial_shows_signed_in_user_rank_when_outside_top_10(client):

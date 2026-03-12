@@ -9,9 +9,9 @@ from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.views.generic import TemplateView
 
-from betting.forms import PlaceBetForm
+from betting.forms import DisplayNameForm, PlaceBetForm
 from betting.models import BetSlip, Odds, UserBalance
-from betting.services import get_user_rank
+from betting.services import get_public_identity, get_user_rank, mask_email
 from matches.models import Match
 from website.transparency import (
     GLOBAL_SCOPE,
@@ -256,8 +256,8 @@ class PlaceBetView(LoginRequiredMixin, View):
 class MyBetsView(LoginRequiredMixin, TemplateView):
     template_name = "betting/my_bets.html"
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
+    def _build_context(self, form=None, account_save_success=False):
+        ctx = super().get_context_data()
         user = self.request.user
 
         bets = (
@@ -281,7 +281,44 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
         ctx["net_pnl"] = total_payout - total_staked
         ctx["current_balance"] = current_balance
         ctx["user_rank"] = get_user_rank(user)
+        ctx["display_name_form"] = form or DisplayNameForm(instance=user)
+        ctx["account_public_identity"] = get_public_identity(user)
+        ctx["account_masked_email"] = mask_email(user.email)
+        ctx["account_save_success"] = account_save_success
         return ctx
+
+    def get_context_data(self, **kwargs):
+        return self._build_context()
+
+    def post(self, request, *args, **kwargs):
+        form = DisplayNameForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            if request.htmx:
+                return render(
+                    request,
+                    "betting/partials/account_settings_card.html",
+                    self._build_context(
+                        form=DisplayNameForm(instance=request.user),
+                        account_save_success=True,
+                    ),
+                )
+            return self.render_to_response(
+                self._build_context(
+                    form=DisplayNameForm(instance=request.user),
+                    account_save_success=True,
+                )
+            )
+
+        context = self._build_context(form=form)
+        if request.htmx:
+            return render(
+                request,
+                "betting/partials/account_settings_card.html",
+                context,
+                status=422,
+            )
+        return self.render_to_response(context, status=422)
 
 
 class QuickBetFormView(LoginRequiredMixin, View):

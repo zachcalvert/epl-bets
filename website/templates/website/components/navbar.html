@@ -40,7 +40,7 @@
                 <a href="{% url 'betting:my_bets' %}"
                    class="px-3 py-2 rounded-md text-sm font-medium transition-colors
                           {% if url_name == 'my_bets' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">
-                    My Bets
+                    My Stuff
                 </a>
                 {% endif %}
                 {% endwith %}
@@ -95,7 +95,7 @@
             <a href="{% url 'betting:odds' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'odds' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">Odds</a>
             <a href="{% url 'website:how_it_works' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'how_it_works' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">How It Works</a>
             {% if user.is_authenticated %}
-            <a href="{% url 'betting:my_bets' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'my_bets' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">My Bets</a>
+            <a href="{% url 'betting:my_bets' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if url_name == 'my_bets' %}text-accent bg-accent/10{% else %}text-gray-300 hover:text-white hover:bg-dark{% endif %}">My Stuff</a>
             <div class="px-3 py-2 text-sm font-mono text-accent">{{ user.balance.balance|floatformat:2 }} credits</div>
             <form method="post" action="{% url 'website:logout' %}">
                 {% csrf_token %}
