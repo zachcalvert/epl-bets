@@ -114,25 +114,27 @@ Status: Planned
 ---
 
 ## Phase 11: Homepage Leaderboard
-Status: Planned
+Status: Complete
 
 ### Goal
 - Add a live leaderboard to the homepage that showcases the top ten user balances
 - Refresh the section every 30 seconds via backend-driven HTMX polling
 
 ### 11A — Leaderboard Data + Ranking
-- Query `UserBalance` records ordered by highest balance
-- Limit to ten entries with deterministic tie-breaking
-- Reuse lightweight display fields suitable for a public-facing homepage module
+- [x] Query `UserBalance` records ordered by highest balance
+- [x] Limit to ten entries with deterministic tie-breaking
+- [x] Mask public email display on leaderboard entries
 
 ### 11B — Homepage Integration
-- Add the leaderboard to the root dashboard page without displacing live match content
-- Include rank, user label, balance, and a clear empty state
+- [x] Add the leaderboard to the root dashboard page without displacing live match content
+- [x] Include rank, user label, balance, and a clear empty state
+- [x] Show a signed-in "your rank" callout on the homepage when the user is outside the top ten
+- [x] Link the homepage rank callout to a rank summary section in `My Bets`
 
 ### 11C — HTMX Refresh + Tests
-- Serve the leaderboard through a reusable partial and polling endpoint
-- Refresh every 30 seconds from the backend
-- Add tests for render, ordering, limits, partial responses, and empty states
+- [x] Serve the leaderboard through a reusable partial and polling endpoint
+- [x] Refresh every 30 seconds from the backend
+- [x] Add tests for render, ordering, limits, partial responses, masking, and rank states
 
 ---
 
@@ -173,15 +175,6 @@ Phase 10 should answer a few operational questions before implementation:
 3. Do we want production-safe seed behavior on deploy, or should seeding remain a one-time manual/bootstrap step?
 4. Which pages deserve caching first based on real-world traffic and query cost?
 5. What should the minimum safe Fly memory be for each process group now that interactive management commands have already triggered an OOM in production?
-
-## Phase 11 Planning Notes
-
-Phase 11 should settle a few product details before implementation:
-
-1. Should the leaderboard identify users by full email, masked email, or a display nickname?
-2. What is the best deterministic tie-breaker when balances are equal?
-3. Should the leaderboard live alongside the existing match dashboard on `/`, or should the root page layout be rebalanced around it?
-4. Do we want to surface the signed-in user's personal rank if they are outside the top ten, or leave that for a later phase?
 
 ## Phase 12: Transparency & Portfolio Depth
 Status: Backlog
