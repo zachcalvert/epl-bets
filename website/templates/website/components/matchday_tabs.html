@@ -1,4 +1,4 @@
-<div class="flex gap-1 overflow-x-auto pb-2 scrollbar-thin" style="scrollbar-width: thin;">
+<div id="matchday-tabs" class="flex gap-1 overflow-x-auto pb-2 scrollbar-thin" style="scrollbar-width: thin;">
     {% for md in matchdays %}
         <button
             hx-get="{% url 'matches:fixtures' %}?matchday={{ md }}"
@@ -6,9 +6,29 @@
             hx-swap="innerHTML"
             hx-push-url="true"
             hx-indicator="#fixture-loading"
+            {% if md == current_matchday %}id="active-matchday"{% endif %}
             class="flex-shrink-0 px-3 py-1.5 rounded text-sm font-medium transition-colors
                 {% if md == current_matchday %}bg-accent text-dark{% else %}bg-surface text-gray-400 hover:text-white hover:bg-gray-700{% endif %}">
             {{ md }}
         </button>
     {% endfor %}
 </div>
+<script>
+(function () {
+    function scrollToActiveMatchday() {
+        var el = document.getElementById('active-matchday');
+        if (el) {
+            el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scrollToActiveMatchday);
+    } else {
+        scrollToActiveMatchday();
+    }
+    if (!window._matchdayScrollListenerAttached) {
+        document.addEventListener('htmx:historyRestore', scrollToActiveMatchday);
+        window._matchdayScrollListenerAttached = true;
+    }
+})();
+</script>
