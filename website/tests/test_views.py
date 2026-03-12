@@ -194,3 +194,38 @@ def test_component_detail_raises_404_when_name_missing(client):
     response = client.get(reverse("website:component_detail"))
 
     assert response.status_code == 404
+
+
+def test_theme_context_defaults_to_dark_mode(client):
+    response = client.get(reverse("website:login"))
+
+    assert response.status_code == 200
+    assert response.context["ui_theme_name"] == "dark"
+    assert response.context["ui_theme_toggle_value"] == "light"
+
+
+@pytest.mark.django_db
+def test_theme_toggle_persists_preference_in_session(client):
+    response = client.post(
+        reverse("website:theme_toggle"),
+        data={"theme": "light", "next": reverse("website:login")},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("website:login")
+    assert client.session["theme_preference"] == "light"
+
+    follow_up = client.get(reverse("website:login"))
+    assert follow_up.context["ui_theme_name"] == "light"
+    assert follow_up.context["ui_theme_toggle_value"] == "dark"
+
+
+@pytest.mark.django_db
+def test_theme_toggle_rejects_external_redirects(client):
+    response = client.post(
+        reverse("website:theme_toggle"),
+        data={"theme": "light", "next": "https://example.com/phish"},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("matches:dashboard")

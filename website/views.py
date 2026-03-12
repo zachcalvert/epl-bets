@@ -1,11 +1,14 @@
 from django.contrib.auth import authenticate, login, logout
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import TemplateView
 
 from betting.models import UserBalance
 from website.forms import LoginForm, SignupForm
+from website.theme import THEME_SESSION_KEY, get_theme, normalize_theme
 
 ARCHITECTURE_COMPONENTS = {
     "browser": {
@@ -150,3 +153,24 @@ class LogoutView(View):
     def post(self, request):
         logout(request)
         return redirect("matches:dashboard")
+
+
+class ThemeToggleView(View):
+    def post(self, request):
+        requested_theme = request.POST.get("theme")
+        theme = normalize_theme(requested_theme)
+
+        if requested_theme is None:
+            theme = "light" if get_theme(request) == "dark" else "dark"
+
+        request.session[THEME_SESSION_KEY] = theme
+
+        next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
+        if not next_url or not url_has_allowed_host_and_scheme(
+            url=next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = reverse("matches:dashboard")
+
+        return redirect(next_url)

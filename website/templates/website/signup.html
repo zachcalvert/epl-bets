@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="max-w-md mx-auto mt-12">
-    <div class="bg-surface rounded-lg border border-gray-700 p-8">
-        <h1 class="text-2xl font-bold text-white mb-2 text-center">Create Account</h1>
+    <div class="themed-panel p-8">
+        <h1 class="themed-title text-2xl mb-2 text-center">Create Account</h1>
         <p class="text-center text-sm text-muted mb-6">Start with 1,000 demo credits</p>
 
         {% if form.non_field_errors %}
@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             <div>
-                <label for="id_email" class="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                <label for="id_email" class="themed-label">Email</label>
                 {{ form.email }}
                 {% if form.email.errors %}
                 <p class="text-danger text-xs mt-1">{{ form.email.errors.0 }}</p>
@@ -27,7 +27,7 @@
             </div>
 
             <div>
-                <label for="id_password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                <label for="id_password" class="themed-label">Password</label>
                 {{ form.password }}
                 {% if form.password.errors %}
                 <p class="text-danger text-xs mt-1">{{ form.password.errors.0 }}</p>
@@ -35,7 +35,7 @@
             </div>
 
             <div>
-                <label for="id_password_confirm" class="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
+                <label for="id_password_confirm" class="themed-label">Confirm Password</label>
                 {{ form.password_confirm }}
                 {% if form.password_confirm.errors %}
                 <p class="text-danger text-xs mt-1">{{ form.password_confirm.errors.0 }}</p>

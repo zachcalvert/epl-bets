@@ -6,6 +6,7 @@ from website.views import (
     LoginView,
     LogoutView,
     SignupView,
+    ThemeToggleView,
 )
 
 app_name = "website"
@@ -14,6 +15,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("signup/", SignupView.as_view(), name="signup"),
     path("logout/", LogoutView.as_view(), name="logout"),
+    path("theme/toggle/", ThemeToggleView.as_view(), name="theme_toggle"),
     path("how-it-works/", HowItWorksView.as_view(), name="how_it_works"),
     path("how-it-works/component/", ComponentDetailView.as_view(), name="component_detail"),
 ]

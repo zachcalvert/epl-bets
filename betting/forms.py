@@ -22,7 +22,7 @@ class PlaceBetForm(forms.Form):
         decimal_places=2,
         widget=forms.NumberInput(
             attrs={
-                "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white font-mono text-base text-right focus:outline-none focus:border-accent",
+                "class": "themed-input themed-input-mono themed-input-right",
                 "placeholder": "0.00",
                 "step": "0.50",
                 "min": "0.50",
@@ -39,7 +39,7 @@ class DisplayNameForm(forms.ModelForm):
         widgets = {
             "display_name": forms.TextInput(
                 attrs={
-                    "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-accent",
+                    "class": "themed-input themed-input-sm",
                     "placeholder": "Enter a display name",
                     "maxlength": "50",
                 }

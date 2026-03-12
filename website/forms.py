@@ -8,7 +8,7 @@ class SignupForm(forms.Form):
     email = forms.EmailField(
         widget=forms.EmailInput(
             attrs={
-                "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white placeholder-muted focus:outline-none focus:border-accent",
+                "class": "themed-input",
                 "placeholder": "you@example.com",
                 "autocomplete": "email",
             }
@@ -18,7 +18,7 @@ class SignupForm(forms.Form):
         min_length=8,
         widget=forms.PasswordInput(
             attrs={
-                "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white placeholder-muted focus:outline-none focus:border-accent",
+                "class": "themed-input",
                 "placeholder": "Min. 8 characters",
                 "autocomplete": "new-password",
             }
@@ -27,7 +27,7 @@ class SignupForm(forms.Form):
     password_confirm = forms.CharField(
         widget=forms.PasswordInput(
             attrs={
-                "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white placeholder-muted focus:outline-none focus:border-accent",
+                "class": "themed-input",
                 "placeholder": "Confirm password",
                 "autocomplete": "new-password",
             }
@@ -53,7 +53,7 @@ class LoginForm(forms.Form):
     email = forms.EmailField(
         widget=forms.EmailInput(
             attrs={
-                "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white placeholder-muted focus:outline-none focus:border-accent",
+                "class": "themed-input",
                 "placeholder": "you@example.com",
                 "autocomplete": "email",
             }
@@ -62,7 +62,7 @@ class LoginForm(forms.Form):
     password = forms.CharField(
         widget=forms.PasswordInput(
             attrs={
-                "class": "w-full bg-dark border border-gray-600 rounded-md px-3 py-2 text-white placeholder-muted focus:outline-none focus:border-accent",
+                "class": "themed-input",
                 "placeholder": "Password",
                 "autocomplete": "current-password",
             }
