@@ -5,6 +5,7 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
+from betting.tests.factories import UserBalanceFactory
 from betting.tests.factories import OddsFactory
 from matches.tests.factories import MatchFactory, StandingFactory
 from users.tests.factories import UserFactory
@@ -41,6 +42,32 @@ def test_dashboard_view_falls_back_to_next_matchday_when_no_matches_today(client
     assert response.status_code == 200
     assert response.context["current_matchday"] == 8
     assert len(response.context["matches"]) == 1
+
+
+def test_dashboard_view_includes_top_10_leaderboard_entries_in_balance_order(client):
+    for index in range(12):
+        UserBalanceFactory(
+            user__email=f"user{index}@example.com",
+            balance=Decimal("1000.00") + Decimal(index),
+        )
+
+    response = client.get(reverse("matches:dashboard"))
+
+    leaderboard = list(response.context["leaderboard"])
+    assert response.status_code == 200
+    assert len(leaderboard) == 10
+    assert leaderboard[0].user.email == "user11@example.com"
+    assert leaderboard[-1].user.email == "user2@example.com"
+
+
+def test_dashboard_view_leaderboard_breaks_ties_by_user_id(client):
+    first = UserBalanceFactory(user__email="alpha@example.com", balance="1250.00")
+    second = UserBalanceFactory(user__email="beta@example.com", balance="1250.00")
+
+    response = client.get(reverse("matches:dashboard"))
+
+    leaderboard = list(response.context["leaderboard"])
+    assert leaderboard[:2] == [first, second]
 
 
 def test_fixtures_view_returns_partial_for_htmx_and_invalid_matchday_falls_back(client):
@@ -109,3 +136,26 @@ def test_match_odds_partial_uses_partial_template(client):
         template.name == "matches/partials/odds_table_body.html"
         for template in response.templates
     )
+
+
+def test_leaderboard_partial_renders_partial_template_and_content(client):
+    UserBalanceFactory(user__email="leader@example.com", balance="1400.00")
+
+    response = client.get(
+        reverse("matches:leaderboard_partial"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "matches/partials/leaderboard.html"
+        for template in response.templates
+    )
+    assert "leader@example.com" in response.content.decode()
+
+
+def test_leaderboard_partial_shows_empty_state_when_no_balances_exist(client):
+    response = client.get(reverse("matches:leaderboard_partial"))
+
+    assert response.status_code == 200
+    assert "No leaderboard data yet" in response.content.decode()

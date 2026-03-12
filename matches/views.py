@@ -3,7 +3,15 @@ from django.db.models import Min
 from django.utils import timezone
 from django.views.generic import DetailView, TemplateView
 
+from betting.models import UserBalance
 from matches.models import Match, Standing
+
+
+def get_leaderboard_entries(limit=10):
+    return list(
+        UserBalance.objects.select_related("user")
+        .order_by("-balance", "user_id")[:limit]
+    )
 
 
 class DashboardView(TemplateView):
@@ -66,6 +74,16 @@ class DashboardView(TemplateView):
 
         ctx["matches"] = match_list
         ctx["current_matchday"] = match_list[0].matchday if match_list else None
+        ctx["leaderboard"] = get_leaderboard_entries()
+        return ctx
+
+
+class LeaderboardPartialView(TemplateView):
+    template_name = "matches/partials/leaderboard.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["leaderboard"] = get_leaderboard_entries()
         return ctx
 
 

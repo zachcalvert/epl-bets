@@ -113,23 +113,26 @@ Status: Planned
 
 ---
 
-## Phase 11: Transparency & Portfolio Depth
+## Phase 11: Homepage Leaderboard
 Status: Planned
 
-### 11A — Under The Hood Experience
-- Build the planned “Under the Hood” panel showing request, task, cache, and websocket activity
-- Surface which backend components powered the current page or action
-- Add lightweight event feed / recent activity timeline for demo storytelling
+### Goal
+- Add a live leaderboard to the homepage that showcases the top ten user balances
+- Refresh the section every 30 seconds via backend-driven HTMX polling
 
-### 11B — Product Storytelling
-- Expand `/how-it-works/` with production deployment details and data flow explanations
-- Add richer portfolio copy/screenshots explaining tradeoffs and architecture choices
-- Document fake-money safeguards and API data freshness expectations more clearly
+### 11A — Leaderboard Data + Ranking
+- Query `UserBalance` records ordered by highest balance
+- Limit to ten entries with deterministic tie-breaking
+- Reuse lightweight display fields suitable for a public-facing homepage module
 
-### 11C — Demo-Ready Insights
-- Add user-facing stats like bet history summaries, ROI trends, and market movement snapshots
-- Highlight interesting live moments (odds refresh, score changes, settlement) without adding SPA complexity
-- Create a tighter “guided tour” path for first-time visitors evaluating the project
+### 11B — Homepage Integration
+- Add the leaderboard to the root dashboard page without displacing live match content
+- Include rank, user label, balance, and a clear empty state
+
+### 11C — HTMX Refresh + Tests
+- Serve the leaderboard through a reusable partial and polling endpoint
+- Refresh every 30 seconds from the backend
+- Add tests for render, ordering, limits, partial responses, and empty states
 
 ---
 
@@ -173,9 +176,24 @@ Phase 10 should answer a few operational questions before implementation:
 
 ## Phase 11 Planning Notes
 
-Phase 11 should narrow the product-storytelling scope before building:
+Phase 11 should settle a few product details before implementation:
 
-1. Should the “Under the Hood” panel be visible by default, user-toggleable, or only enabled in a demo mode?
-2. Which live/internal events are most compelling to show without overwhelming the interface?
+1. Should the leaderboard identify users by full email, masked email, or a display nickname?
+2. What is the best deterministic tie-breaker when balances are equal?
+3. Should the leaderboard live alongside the existing match dashboard on `/`, or should the root page layout be rebalanced around it?
+4. Do we want to surface the signed-in user's personal rank if they are outside the top ten, or leave that for a later phase?
+
+## Phase 12: Transparency & Portfolio Depth
+Status: Backlog
+
+- Preserve the original transparency-focused Phase 11 direction as the next roadmap candidate
+- Revisit the "Under the Hood" panel, richer architecture storytelling, and demo-oriented insights after the leaderboard ships
+
+## Phase 12 Planning Notes
+
+Phase 12 should revive the original portfolio-storytelling questions:
+
+1. Should the "Under the Hood" panel be visible by default, user-toggleable, or only enabled in a demo mode?
+2. Which live and internal events are most compelling to show without overwhelming the interface?
 3. Do we want data visualizations in pure server-rendered HTML/CSS/SVG, or is a small progressive-enhancement script acceptable?
 4. Which portfolio artifacts matter most next: guided walkthrough, screenshots, architecture write-up, or richer user stats?
