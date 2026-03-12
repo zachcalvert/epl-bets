@@ -55,8 +55,11 @@ class NotificationConsumer(WebsocketConsumer):
         """Push a reward toast to the connected user via OOB swap."""
         distribution_id = event["distribution_id"]
         try:
+            user = self.scope.get("user")
             distribution = (
-                RewardDistribution.objects.filter(pk=distribution_id)
+                RewardDistribution.objects.filter(
+                    pk=distribution_id, user=user
+                )
                 .select_related("reward")
                 .first()
             )

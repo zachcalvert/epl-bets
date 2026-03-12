@@ -99,7 +99,7 @@ class TestNotificationConsumerEvents:
 
         consumer.send.assert_not_called()
 
-    def test_reward_notification_swallows_render_errors(self, monkeypatch):
+    def test_reward_notification_swallows_send_errors(self, monkeypatch):
         dist = RewardDistributionFactory()
         consumer = build_consumer(dist.user)
         consumer.send = Mock(side_effect=RuntimeError("send failed"))
@@ -121,22 +121,16 @@ class TestBroadcastOnDistribute:
         users = UserFactory.create_batch(3)
         reward = Reward.objects.create(name="Test", amount=10)
 
-        sent_events = []
-
-        def fake_group_send(group, event):
-            sent_events.append((group, event))
-
-        layer = Mock()
-        layer.group_send = Mock(side_effect=lambda g, e: fake_group_send(g, e))
+        layer = BroadcastLayer()
         monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
 
         distributions = reward.distribute_to_users(users)
 
         assert len(distributions) == 3
-        assert len(sent_events) == 3
+        assert len(layer.sent) == 3
         for dist in distributions:
             group = f"user_notifications_{dist.user_id}"
-            matching = [e for e in sent_events if e[0] == group]
+            matching = [e for e in layer.sent if e[0] == group]
             assert len(matching) == 1
             assert matching[0][1]["type"] == "reward_notification"
             assert matching[0][1]["distribution_id"] == dist.pk
@@ -149,15 +143,13 @@ class TestBroadcastOnDistribute:
         reward = Reward.objects.create(name="Test", amount=10)
         reward.distribute_to_users([user])  # first distribution
 
-        sent_events = []
-        layer = Mock()
-        layer.group_send = Mock(side_effect=lambda g, e: sent_events.append((g, e)))
+        layer = BroadcastLayer()
         monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
 
         distributions = reward.distribute_to_users([user])  # duplicate
 
         assert len(distributions) == 0
-        assert len(sent_events) == 0
+        assert len(layer.sent) == 0
 
 
 class SimpleLayer:
@@ -170,3 +162,13 @@ class SimpleLayer:
 
     async def group_discard(self, group, channel):
         self.discarded.append((group, channel))
+
+
+class BroadcastLayer:
+    """Async-compatible layer stub for testing group_send broadcasts."""
+
+    def __init__(self):
+        self.sent = []
+
+    async def group_send(self, group, event):
+        self.sent.append((group, event))
