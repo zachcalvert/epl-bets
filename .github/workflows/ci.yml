@@ -50,14 +50,14 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v5
 
+      - name: Install Poetry
+        run: pip install poetry
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: poetry
-
-      - name: Install Poetry
-        run: pip install poetry
 
       - name: Install dependencies
         run: poetry install --no-interaction --no-ansi --no-root
