@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   deploy:
@@ -31,6 +31,14 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      - name: Derive release metadata
+        id: release_meta
+        run: |
+          RELEASE_SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "release_tag=deploy-${RELEASE_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "release_name=Deploy ${RELEASE_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Flyctl
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
@@ -38,3 +46,56 @@ jobs:
         run: flyctl deploy --remote-only -a epl-bets
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Publish GitHub Release
+        uses: actions/github-script@v8
+        env:
+          RELEASE_SHA: ${{ steps.release_meta.outputs.release_sha }}
+          RELEASE_TAG: ${{ steps.release_meta.outputs.release_tag }}
+          RELEASE_NAME: ${{ steps.release_meta.outputs.release_name }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = process.env.RELEASE_TAG;
+            const target_commitish = process.env.RELEASE_SHA;
+            const name = process.env.RELEASE_NAME;
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag,
+              });
+
+              await github.rest.repos.updateRelease({
+                owner,
+                repo,
+                release_id: existing.data.id,
+                tag_name: tag,
+                target_commitish,
+                name,
+                draft: false,
+                prerelease: false,
+                generate_release_notes: true,
+              });
+
+              core.info(`Updated existing release for ${tag}`);
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                target_commitish,
+                name,
+                draft: false,
+                prerelease: false,
+                generate_release_notes: true,
+              });
+
+              core.info(`Created release for ${tag}`);
+            }
