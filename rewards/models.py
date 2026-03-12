@@ -33,12 +33,12 @@ class Reward(BaseModel):
         Skips users who have already received this reward.
         Returns the list of newly created distributions.
         """
-        existing = set(
-            self.distributions.filter(user__in=users).values_list("user_id", flat=True)
-        )
         new_distributions = []
 
         with transaction.atomic():
+            existing = set(
+                self.distributions.filter(user__in=users).values_list("user_id", flat=True)
+            )
             for user in users:
                 if user.pk in existing:
                     continue

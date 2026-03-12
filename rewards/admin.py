@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.contrib import admin, messages
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import ngettext
 
 from betting.models import UserBalance
@@ -27,10 +27,16 @@ class RewardAdmin(admin.ModelAdmin):
     inlines = [RewardDistributionInline]
     actions = ["distribute_to_all_users"]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            _recipient_count=models.Count("distributions")
+        )
+
     def recipient_count(self, obj):
-        return obj.distributions.count()
+        return obj._recipient_count
 
     recipient_count.short_description = "Recipients"
+    recipient_count.admin_order_field = "_recipient_count"
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -69,9 +75,10 @@ class RewardDistributionAdmin(admin.ModelAdmin):
         is_new = not change
         super().save_model(request, obj, form, change)
         if is_new:
-            balance, _ = UserBalance.objects.get_or_create(
-                user=obj.user, defaults={"balance": Decimal("1000.00")}
-            )
-            UserBalance.objects.filter(pk=balance.pk).update(
-                balance=models.F("balance") + obj.reward.amount
-            )
+            with transaction.atomic():
+                balance, _ = UserBalance.objects.get_or_create(
+                    user=obj.user, defaults={"balance": Decimal("1000.00")}
+                )
+                UserBalance.objects.filter(pk=balance.pk).update(
+                    balance=models.F("balance") + obj.reward.amount
+                )
