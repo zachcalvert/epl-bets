@@ -242,7 +242,8 @@ def test_my_bets_view_updates_display_name_via_htmx(client):
     assert response.status_code == 200
     assert user.display_name == "Top Punter"
     assert "Display name updated." in response.content.decode()
-    assert "Leaderboard preview" in response.content.decode()
+    assert "Display name" in response.content.decode()
+    assert "Leaderboard preview" not in response.content.decode()
 
 
 def test_my_bets_view_shows_duplicate_display_name_error_and_allows_retry(client):
