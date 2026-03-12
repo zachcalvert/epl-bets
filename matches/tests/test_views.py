@@ -9,6 +9,7 @@ from betting.tests.factories import OddsFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory, StandingFactory
 from users.tests.factories import UserFactory
 from website.transparency import get_events, match_scope, page_scope
+from website.transparency import record_event
 
 pytestmark = pytest.mark.django_db
 
@@ -96,6 +97,50 @@ def test_dashboard_view_omits_signed_in_user_rank_when_user_is_in_top_10(client)
 
     assert response.context["user_rank"] is None
     assert "Your rank" not in response.content.decode()
+
+
+def test_dashboard_view_renders_under_the_hood_summary_from_recent_events(client):
+    record_event(
+        scope=page_scope("dashboard"),
+        category="websocket",
+        source="score_broadcast",
+        action="score_broadcast",
+        summary="Live score broadcast sent for match 42.",
+        detail="Score changed from 0-0 to 1-0.",
+        status="info",
+    )
+
+    response = client.get(reverse("matches:dashboard"))
+
+    assert response.status_code == 200
+    assert "Under the Hood" in response.content.decode()
+    assert "Live score broadcast sent for match 42." in response.content.decode()
+
+
+def test_dashboard_under_the_hood_partial_renders_recent_events(client):
+    record_event(
+        scope=page_scope("dashboard"),
+        category="celery",
+        source="fetch_live_scores",
+        action="scores_synced",
+        summary="Live score sync completed.",
+        detail="Updated 2 matches and created 0 live records.",
+        status="success",
+    )
+
+    response = client.get(
+        reverse("matches:dashboard_under_the_hood"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "matches/partials/dashboard_under_the_hood.html"
+        for template in response.templates
+    )
+    assert "Recent dashboard events" in response.content.decode()
+    assert "Live score sync completed." in response.content.decode()
+    assert "See Architecture" in response.content.decode()
 
 
 def test_fixtures_view_returns_partial_for_htmx_and_invalid_matchday_falls_back(client):

@@ -17,7 +17,7 @@
     {% endif %}
 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-6 items-start">
+<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
     <div>
         {% if matches %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="match-grid"
@@ -31,8 +31,34 @@
         {% endif %}
     </div>
 
-    {% include "matches/partials/leaderboard.html" %}
+    <div class="space-y-6">
+        {% include "matches/partials/leaderboard.html" %}
+    </div>
 </div>
+
+<details class="mt-6 rounded-lg border border-gray-700 bg-surface shadow-lg">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
+        <div class="max-w-3xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Under the Hood</p>
+            {% if under_the_hood_latest %}
+                <p class="mt-1 text-sm text-white">{{ under_the_hood_latest.summary }}</p>
+            {% else %}
+                <p class="mt-1 text-sm text-muted">Open to see the live event feed behind this dashboard.</p>
+            {% endif %}
+        </div>
+        <span class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted">Expand</span>
+    </summary>
+
+    <div
+        id="dashboard-under-the-hood"
+        class="border-t border-gray-700 px-5 py-5 sm:px-6"
+        hx-get="{% url 'matches:dashboard_under_the_hood' %}"
+        hx-trigger="load, every 15s"
+        hx-swap="innerHTML"
+    >
+        {% include "matches/partials/dashboard_under_the_hood.html" %}
+    </div>
+</details>
 {% endblock %}
 
 {% block extra_js %}

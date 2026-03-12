@@ -5,7 +5,34 @@ from django.views.generic import DetailView, TemplateView
 
 from betting.services import get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
-from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
+from website.transparency import (
+    GLOBAL_SCOPE,
+    get_events,
+    match_scope,
+    page_scope,
+    record_event,
+)
+
+
+def _get_dashboard_transparency_context():
+    events = get_events(page_scope("dashboard"), limit=8)
+    latest_event = events[0] if events else None
+
+    counts = {
+        "htmx": 0,
+        "websocket": 0,
+        "celery": 0,
+    }
+    for event in events:
+        category = event["category"]
+        if category in counts:
+            counts[category] += 1
+
+    return {
+        "under_the_hood_events": events,
+        "under_the_hood_latest": latest_event,
+        "under_the_hood_counts": counts,
+    }
 
 
 class DashboardView(TemplateView):
@@ -70,6 +97,16 @@ class DashboardView(TemplateView):
         ctx["current_matchday"] = match_list[0].matchday if match_list else None
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        ctx.update(_get_dashboard_transparency_context())
+        return ctx
+
+
+class DashboardUnderTheHoodPartialView(TemplateView):
+    template_name = "matches/partials/dashboard_under_the_hood.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(_get_dashboard_transparency_context())
         return ctx
 
 
