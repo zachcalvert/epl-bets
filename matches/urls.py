@@ -1,14 +1,14 @@
 from django.urls import path
 
 from matches.views import (
-    DashboardView,
     DashboardUnderTheHoodPartialView,
+    DashboardView,
     FixturesView,
     LeaderboardPartialView,
     LeagueTableView,
     MatchDetailView,
-    MatchUnderTheHoodPartialView,
     MatchOddsPartialView,
+    MatchUnderTheHoodPartialView,
 )
 
 app_name = "matches"

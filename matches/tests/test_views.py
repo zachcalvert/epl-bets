@@ -8,8 +8,7 @@ from django.utils import timezone
 from betting.tests.factories import OddsFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory, StandingFactory
 from users.tests.factories import UserFactory
-from website.transparency import get_events, match_scope, page_scope
-from website.transparency import record_event
+from website.transparency import get_events, match_scope, page_scope, record_event
 
 pytestmark = pytest.mark.django_db
 
