@@ -8,6 +8,7 @@ from betting.tasks import fetch_odds, settle_match_bets
 from betting.tests.factories import BetSlipFactory, UserBalanceFactory
 from matches.models import Match
 from matches.tests.factories import MatchFactory
+from website.transparency import GLOBAL_SCOPE, get_events, match_scope, page_scope
 
 pytestmark = pytest.mark.django_db
 
@@ -19,6 +20,7 @@ def test_fetch_odds_calls_sync(monkeypatch):
     fetch_odds.run()
 
     called.assert_called_once_with()
+    assert get_events(page_scope("odds_board"))[0]["action"] == "odds_synced"
 
 
 def test_fetch_odds_retries_with_exponential_backoff(monkeypatch):
@@ -59,6 +61,7 @@ def test_settle_match_bets_voids_and_refunds_cancelled_match():
     assert bet.status == BetSlip.Status.VOID
     assert bet.payout == Decimal("12.00")
     assert winning_user.balance.balance == Decimal("62.00")
+    assert get_events(match_scope(match.pk))[0]["action"] == "bets_voided"
 
 
 def test_settle_match_bets_returns_for_non_finished_match():
@@ -113,3 +116,5 @@ def test_settle_match_bets_marks_winners_and_losers_and_updates_balances():
     assert loser.payout == Decimal("0.00")
     assert winner_balance.balance == Decimal("125.00")
     assert loser_balance.balance == Decimal("80.00")
+    assert get_events(match_scope(match.pk))[0]["action"] == "bets_settled"
+    assert get_events(GLOBAL_SCOPE)[0]["action"] == "bets_settled"

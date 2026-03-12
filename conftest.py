@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 
 
 @pytest.fixture(autouse=True)
@@ -22,3 +23,7 @@ def configure_test_settings(settings):
         "django.contrib.auth.hashers.MD5PasswordHasher",
     ]
 
+
+@pytest.fixture(autouse=True)
+def clear_cache_between_tests():
+    cache.clear()

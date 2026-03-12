@@ -5,6 +5,49 @@ from django.views.generic import DetailView, TemplateView
 
 from betting.services import get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
+from website.transparency import (
+    GLOBAL_SCOPE,
+    get_events,
+    match_scope,
+    page_scope,
+    record_event,
+)
+
+
+def _build_transparency_context(scope, *, limit=8, categories=None):
+    events = get_events(scope, limit=limit)
+    latest_event = events[0] if events else None
+
+    counts = {category: 0 for category in (categories or ["htmx", "websocket", "celery"])}
+    for event in events:
+        category = event["category"]
+        if category in counts:
+            counts[category] += 1
+
+    tracked_categories = [category for category, count in counts.items() if count]
+    if not tracked_categories:
+        tracked_categories = list(counts.keys())
+
+    return {
+        "under_the_hood_events": events,
+        "under_the_hood_latest": latest_event,
+        "under_the_hood_counts": counts,
+        "under_the_hood_tracked_categories": tracked_categories,
+    }
+
+
+def _get_dashboard_transparency_context():
+    return _build_transparency_context(
+        page_scope("dashboard"),
+        categories=["htmx", "websocket", "celery"],
+    )
+
+
+def _get_match_transparency_context(match_id):
+    return _build_transparency_context(
+        match_scope(match_id),
+        categories=["htmx", "websocket", "celery", "betting"],
+    )
 
 
 class DashboardView(TemplateView):
@@ -69,6 +112,16 @@ class DashboardView(TemplateView):
         ctx["current_matchday"] = match_list[0].matchday if match_list else None
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        ctx.update(_get_dashboard_transparency_context())
+        return ctx
+
+
+class DashboardUnderTheHoodPartialView(TemplateView):
+    template_name = "matches/partials/dashboard_under_the_hood.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(_get_dashboard_transparency_context())
         return ctx
 
 
@@ -79,6 +132,17 @@ class LeaderboardPartialView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        record_event(
+            scope=page_scope("dashboard"),
+            scopes=[GLOBAL_SCOPE],
+            category="htmx",
+            source="leaderboard_partial",
+            action="partial_refreshed",
+            summary="Homepage leaderboard refreshed from the server.",
+            detail=f"Returned {len(ctx['leaderboard'])} ranked balances.",
+            status="info",
+            route=self.request.path,
+        )
         return ctx
 
 
@@ -193,6 +257,21 @@ class MatchDetailView(DetailView):
 
             ctx["form"] = PlaceBetForm()
 
+        ctx.update(_get_match_transparency_context(match.pk))
+        return ctx
+
+
+class MatchUnderTheHoodPartialView(DetailView):
+    model = Match
+    template_name = "matches/partials/match_under_the_hood.html"
+    context_object_name = "match"
+
+    def get_queryset(self):
+        return Match.objects.select_related("home_team", "away_team")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(_get_match_transparency_context(self.object.pk))
         return ctx
 
 
@@ -200,3 +279,19 @@ class MatchOddsPartialView(MatchDetailView):
     """Returns just the odds table body for HTMX polling."""
 
     template_name = "matches/partials/odds_table_body.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        record_event(
+            scope=page_scope("match_detail"),
+            scopes=[GLOBAL_SCOPE, match_scope(self.object.pk)],
+            category="htmx",
+            source="match_odds_partial",
+            action="partial_refreshed",
+            summary="Match odds table refreshed.",
+            detail=f"Rendered {len(ctx['odds'])} bookmaker rows for match {self.object.pk}.",
+            status="info",
+            route=self.request.path,
+            entity_ref=self.object.pk,
+        )
+        return ctx

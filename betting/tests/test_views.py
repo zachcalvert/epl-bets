@@ -8,6 +8,7 @@ from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFact
 from matches.models import Match
 from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
+from website.transparency import get_events, match_scope, page_scope, record_event
 
 pytestmark = pytest.mark.django_db
 
@@ -28,6 +29,24 @@ def test_odds_board_view_lists_upcoming_matches_with_best_odds(client):
     assert matches[0].best_away_odds == Decimal("3.30")
 
 
+def test_odds_board_view_renders_under_the_hood_summary_from_recent_events(client):
+    record_event(
+        scope=page_scope("odds_board"),
+        category="celery",
+        source="fetch_odds",
+        action="odds_synced",
+        summary="Odds sync completed.",
+        detail="Created 3 bookmaker rows and updated 4 existing rows.",
+        status="success",
+    )
+
+    response = client.get(reverse("betting:odds"))
+
+    assert response.status_code == 200
+    assert "Under the Hood" in response.content.decode()
+    assert "Odds sync completed." in response.content.decode()
+
+
 def test_odds_board_partial_uses_partial_template(client):
     response = client.get(reverse("betting:odds_partial"))
 
@@ -36,6 +55,32 @@ def test_odds_board_partial_uses_partial_template(client):
         template.name == "betting/partials/odds_board_body.html"
         for template in response.templates
     )
+    assert get_events(page_scope("odds_board"))[0]["source"] == "odds_board_partial"
+
+
+def test_odds_board_under_the_hood_partial_renders_recent_events(client):
+    record_event(
+        scope=page_scope("odds_board"),
+        category="htmx",
+        source="odds_board_partial",
+        action="partial_refreshed",
+        summary="Odds board refreshed with the latest stored prices.",
+        detail="Rendered 8 upcoming matches.",
+        status="info",
+    )
+
+    response = client.get(
+        reverse("betting:odds_under_the_hood"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "betting/partials/odds_board_under_the_hood.html"
+        for template in response.templates
+    )
+    assert "Recent odds-board events" in response.content.decode()
+    assert "Odds board refreshed with the latest stored prices." in response.content.decode()
 
 
 def test_place_bet_redirects_anonymous_user_to_login(client):
@@ -125,6 +170,7 @@ def test_place_bet_creates_bet_and_deducts_balance(client):
     assert bet.odds_at_placement == Decimal("2.10")
     assert balance.balance == Decimal("90.00")
     assert "21.00" in response.content.decode()
+    assert get_events(match_scope(match.pk))[0]["action"] == "bet_placed"
 
 
 def test_place_bet_auto_creates_balance_when_missing(client):

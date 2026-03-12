@@ -184,9 +184,9 @@ Status: Backlog
 
 ## Phase 12 Planning Notes
 
-Phase 12 should revive the original portfolio-storytelling questions:
+Phase 12 now has a concrete direction captured in `docs/0012-PHASE_12.md`:
 
-1. Should the "Under the Hood" panel be visible by default, user-toggleable, or only enabled in a demo mode?
-2. Which live and internal events are most compelling to show without overwhelming the interface?
-3. Do we want data visualizations in pure server-rendered HTML/CSS/SVG, or is a small progressive-enhancement script acceptable?
-4. Which portfolio artifacts matter most next: guided walkthrough, screenshots, architecture write-up, or richer user stats?
+1. Build a page-specific, collapsed-by-default "Under the Hood" panel on the flagship pages
+2. Back the panel with real short-lived events from HTMX, websocket, Celery, and betting flows
+3. Expand `/how-it-works/` to explain the same runtime paths the panel exposes in-product
+4. Add one or two demo-friendly insight surfaces after the event plumbing and storytelling are in place

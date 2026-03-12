@@ -76,4 +76,28 @@
         </a>
     </div>
 {% endif %}
+
+<details class="mt-6 rounded-lg border border-gray-700 bg-surface shadow-lg">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
+        <div class="max-w-3xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Under the Hood</p>
+            {% if under_the_hood_latest %}
+                <p class="mt-1 text-sm text-white">{{ under_the_hood_latest.summary }}</p>
+            {% else %}
+                <p class="mt-1 text-sm text-muted">Open to see the live event trail for this match.</p>
+            {% endif %}
+        </div>
+        <span class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted">Expand</span>
+    </summary>
+
+    <div
+        id="match-under-the-hood"
+        class="border-t border-gray-700 px-5 py-5 sm:px-6"
+        hx-get="{% url 'matches:match_under_the_hood' match.pk %}"
+        hx-trigger="load, every 15s"
+        hx-swap="innerHTML"
+    >
+        {% include "matches/partials/match_under_the_hood.html" %}
+    </div>
+</details>
 {% endblock %}
