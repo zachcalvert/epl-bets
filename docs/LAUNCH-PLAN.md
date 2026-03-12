@@ -65,6 +65,9 @@ Status: Complete
 ---
 
 ## Phase 9: Deploy & Publish
+Status: Complete
+
+Outcome: live Fly deployment at `eplbets.net`, README updated with production links, and public GitHub repo connected to automated deploys
 
 ### 9A — Deploy to fly.io
 - `fly.toml` configuration
@@ -84,6 +87,52 @@ Status: Complete
 
 ---
 
+## Phase 10: Production Hardening & Observability
+Status: Planned
+
+### 10A — Operational Visibility
+- Structured application logging for web, worker, beat, and websocket paths
+- Error reporting integration for server errors and failed background jobs
+- Health endpoints/checks for web and worker processes
+- Admin-facing operational notes for common production issues
+- Runbook for safe Fly maintenance commands and production recovery
+
+### 10B — Runtime Guardrails
+- Production settings audit for security, caching, cookie, and host configuration
+- Basic rate limiting / abuse protection on auth and bet placement surfaces
+- Safer startup/deploy handling for migrations and seed behavior
+- Data retention rules for odds snapshots, stale matches, and task artifacts
+- Documented baseline memory sizing for Fly `app`, `worker`, and `beat` process groups
+
+### 10C — Performance & Resilience
+- Query review on high-traffic pages (`dashboard`, `odds board`, `match detail`, `my bets`)
+- Cache strategy for standings, fixtures, and computed betting summaries
+- Fallback UI and retry behavior when upstream APIs are unavailable
+- Production smoke-check checklist for deploy verification
+- Post-deploy memory/headroom validation after migrations and seed workflows
+
+---
+
+## Phase 11: Transparency & Portfolio Depth
+Status: Planned
+
+### 11A — Under The Hood Experience
+- Build the planned “Under the Hood” panel showing request, task, cache, and websocket activity
+- Surface which backend components powered the current page or action
+- Add lightweight event feed / recent activity timeline for demo storytelling
+
+### 11B — Product Storytelling
+- Expand `/how-it-works/` with production deployment details and data flow explanations
+- Add richer portfolio copy/screenshots explaining tradeoffs and architecture choices
+- Document fake-money safeguards and API data freshness expectations more clearly
+
+### 11C — Demo-Ready Insights
+- Add user-facing stats like bet history summaries, ROI trends, and market movement snapshots
+- Highlight interesting live moments (odds refresh, score changes, settlement) without adding SPA complexity
+- Create a tighter “guided tour” path for first-time visitors evaluating the project
+
+---
+
 ## Checklist
 
 - [x] CODE_OF_CONDUCT.md
@@ -99,9 +148,9 @@ Status: Complete
 - [x] Full-source coverage target met
 - [x] GitHub Actions CI workflow
 - [x] Codecov badge in README
-- [ ] fly.io deployment
-- [ ] Live demo link in README
-- [ ] Public GitHub repo created and pushed
+- [x] fly.io deployment
+- [x] Live demo link in README
+- [x] Public GitHub repo created and pushed
 
 ## Phase 8 Planning Notes
 
@@ -111,3 +160,22 @@ Phase 8 still has a few open implementation decisions:
 2. When should CI switch from the current covered slice to full-source coverage enforcement?
 3. Should Codecov upload be required from day one, or added after the public GitHub repo exists?
 4. Do we want one workflow (`ci.yml`) or separate workflows for lint and test feedback?
+
+## Phase 10 Planning Notes
+
+Phase 10 should answer a few operational questions before implementation:
+
+1. Which error-reporting tool fits the portfolio goal best without adding too much maintenance overhead?
+2. How much production telemetry should be visible only to maintainers versus exposed as part of the portfolio story?
+3. Do we want production-safe seed behavior on deploy, or should seeding remain a one-time manual/bootstrap step?
+4. Which pages deserve caching first based on real-world traffic and query cost?
+5. What should the minimum safe Fly memory be for each process group now that interactive management commands have already triggered an OOM in production?
+
+## Phase 11 Planning Notes
+
+Phase 11 should narrow the product-storytelling scope before building:
+
+1. Should the “Under the Hood” panel be visible by default, user-toggleable, or only enabled in a demo mode?
+2. Which live/internal events are most compelling to show without overwhelming the interface?
+3. Do we want data visualizations in pure server-rendered HTML/CSS/SVG, or is a small progressive-enhancement script acceptable?
+4. Which portfolio artifacts matter most next: guided walkthrough, screenshots, architecture write-up, or richer user stats?

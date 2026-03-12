@@ -1,4 +1,4 @@
-# EPL Bets — Pitch & Odds
+# EPL Bets
 
 ## Project Overview
 
