@@ -190,6 +190,25 @@ def test_match_detail_view_includes_best_odds_and_form_for_authenticated_user(cl
     assert "form" in response.context
 
 
+def test_match_detail_view_renders_under_the_hood_summary_from_match_events(client):
+    match = MatchFactory()
+    record_event(
+        scope=match_scope(match.pk),
+        category="betting",
+        source="place_bet",
+        action="bet_placed",
+        summary="Bet placed on Arsenal vs Chelsea.",
+        detail="Selection HOME_WIN at 2.10 for 10.00 credits.",
+        status="success",
+    )
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert "Under the Hood" in response.content.decode()
+    assert "Bet placed on Arsenal vs Chelsea." in response.content.decode()
+
+
 def test_match_detail_view_omits_form_for_anonymous_user(client):
     match = MatchFactory()
 
@@ -210,6 +229,32 @@ def test_match_odds_partial_uses_partial_template(client):
         for template in response.templates
     )
     assert get_events(match_scope(match.pk))[0]["action"] == "partial_refreshed"
+
+
+def test_match_under_the_hood_partial_renders_match_scoped_events(client):
+    match = MatchFactory()
+    record_event(
+        scope=match_scope(match.pk),
+        category="websocket",
+        source="score_broadcast",
+        action="score_broadcast",
+        summary=f"Live score broadcast sent for match {match.pk}.",
+        detail="Score/state changed from (0, 0, 'IN_PLAY') to (1, 0, 'IN_PLAY').",
+        status="info",
+    )
+
+    response = client.get(
+        reverse("matches:match_under_the_hood", args=[match.pk]),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "matches/partials/match_under_the_hood.html"
+        for template in response.templates
+    )
+    assert "Recent match events" in response.content.decode()
+    assert f"Live score broadcast sent for match {match.pk}." in response.content.decode()
 
 
 def test_leaderboard_partial_renders_partial_template_and_content(client):
