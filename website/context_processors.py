@@ -8,6 +8,7 @@ def theme(request):
     return {
         "ui_theme_name": current_theme,
         "ui_theme_is_light": current_theme == "light",
+        "ui_theme_is_dark": current_theme == "dark",
         "ui_theme_toggle_value": toggle_theme,
         "ui_theme_toggle_label": (
             "Light mode" if toggle_theme == "light" else "Dark mode"

@@ -46,8 +46,21 @@
                     {% csrf_token %}
                     <input type="hidden" name="theme" value="{{ ui_theme_toggle_value }}">
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="theme-toggle-btn">
-                        {{ ui_theme_toggle_label }}
+                    <button type="submit" class="theme-toggle-btn" aria-label="{{ ui_theme_toggle_label }}" title="{{ ui_theme_toggle_label }}">
+                        <span class="theme-toggle-track{% if ui_theme_is_dark %} is-dark{% endif %}">
+                            <span class="theme-toggle-icon theme-toggle-sun" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="4"></circle>
+                                    <path d="M12 2.5v2.5M12 19v2.5M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2.5 12H5M19 12h2.5M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+                                </svg>
+                            </span>
+                            <span class="theme-toggle-thumb{% if ui_theme_is_dark %} is-dark{% endif %}" aria-hidden="true"></span>
+                            <span class="theme-toggle-icon theme-toggle-moon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+                                </svg>
+                            </span>
+                        </span>
                     </button>
                 </form>
                 {% if user.is_authenticated %}
@@ -99,8 +112,22 @@
                 {% csrf_token %}
                 <input type="hidden" name="theme" value="{{ ui_theme_toggle_value }}">
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                <button type="submit" class="mobile-nav-link w-full text-left">
-                    {{ ui_theme_toggle_label }}
+                <button type="submit" class="mobile-nav-link theme-toggle-mobile" aria-label="{{ ui_theme_toggle_label }}">
+                    <span>Theme</span>
+                    <span class="theme-toggle-track{% if ui_theme_is_dark %} is-dark{% endif %}">
+                        <span class="theme-toggle-icon theme-toggle-sun" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="4"></circle>
+                                <path d="M12 2.5v2.5M12 19v2.5M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2.5 12H5M19 12h2.5M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+                            </svg>
+                        </span>
+                        <span class="theme-toggle-thumb{% if ui_theme_is_dark %} is-dark{% endif %}" aria-hidden="true"></span>
+                        <span class="theme-toggle-icon theme-toggle-moon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+                            </svg>
+                        </span>
+                    </span>
                 </button>
             </form>
             {% if user.is_authenticated %}
