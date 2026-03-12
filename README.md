@@ -9,9 +9,7 @@
 
 EPL betting demo built with Django, HTMX, Redis, and Celery. Live scores via WebSocket, real bookmaker odds, and simulated bet placement — all server-rendered with zero JavaScript frameworks.
 
-**Fast feedback loop:** 192 tests, 98.86% total coverage, and the full suite runs in under 5 seconds locally.
-
-**This is a portfolio demo. No real money. No real gambling.**
+**This is just a demo. No real money. No real gambling.**
 
 **Live demo:** [eplbets.net](https://eplbets.net)
 
