@@ -22,7 +22,7 @@
                     {{ forloop.counter }}
                 </div>
                 <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-white">{{ entry.user.email }}</p>
+                    <p class="truncate text-sm font-semibold text-white">{{ entry.display_email }}</p>
                     <p class="text-xs text-muted">Current balance</p>
                 </div>
             </div>
@@ -33,6 +33,21 @@
         </div>
         {% endfor %}
     </div>
+    {% if user_rank %}
+    <a href="{% url 'betting:my_bets' %}#rank-summary" class="mt-4 block rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 hover:border-accent/50 hover:bg-accent/15 transition-colors">
+        <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-wider text-accent">Your rank</p>
+                <p class="text-sm text-white">You are currently #{{ user_rank.rank }}</p>
+                <p class="text-xs text-muted">Open My Bets for your account snapshot</p>
+            </div>
+            <div class="shrink-0 text-right">
+                <p class="font-mono text-sm font-bold text-white">{{ user_rank.balance }}</p>
+                <p class="text-[11px] uppercase tracking-wider text-muted">credits</p>
+            </div>
+        </div>
+    </a>
+    {% endif %}
     {% else %}
     {% include "website/components/empty_state.html" with icon="chart" title="No leaderboard data yet" message="User balances will appear here once people sign up and place bets." %}
     {% endif %}

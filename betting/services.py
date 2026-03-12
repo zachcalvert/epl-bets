@@ -2,9 +2,10 @@ import logging
 
 import httpx
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
-from betting.models import Odds
+from betting.models import Odds, UserBalance
 from matches.models import Match, Team
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,50 @@ TEAM_NAME_ALIASES = {
     "burnley": "burnley fc",
     "leeds united": "leeds united fc",
 }
+
+
+def mask_email(email):
+    local_part, _, domain = email.partition("@")
+    if not domain:
+        return email
+
+    visible_count = min(2, len(local_part))
+    visible_prefix = local_part[:visible_count]
+    masked_suffix = "*" * max(len(local_part) - visible_count, 1)
+    return f"{visible_prefix}{masked_suffix}@{domain}"
+
+
+def get_leaderboard_entries(limit=10):
+    leaderboard = list(
+        UserBalance.objects.select_related("user")
+        .order_by("-balance", "user_id")[:limit]
+    )
+    for entry in leaderboard:
+        entry.display_email = mask_email(entry.user.email)
+    return leaderboard
+
+
+def get_user_rank(user, leaderboard=None):
+    if not getattr(user, "is_authenticated", False):
+        return None
+
+    try:
+        balance = user.balance
+    except UserBalance.DoesNotExist:
+        return None
+
+    leaderboard_user_ids = {entry.user_id for entry in leaderboard or []}
+    if user.id in leaderboard_user_ids:
+        return None
+
+    higher_ranked_count = UserBalance.objects.filter(
+        Q(balance__gt=balance.balance)
+        | Q(balance=balance.balance, user_id__lt=user.id)
+    ).count()
+
+    balance.display_email = mask_email(user.email)
+    balance.rank = higher_ranked_count + 1
+    return balance
 
 
 def _normalize_name(name):

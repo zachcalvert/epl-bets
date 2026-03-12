@@ -11,6 +11,7 @@ from django.views.generic import TemplateView
 
 from betting.forms import PlaceBetForm
 from betting.models import BetSlip, Odds, UserBalance
+from betting.services import get_user_rank
 from matches.models import Match
 
 logger = logging.getLogger(__name__)
@@ -178,6 +179,7 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
         ctx["total_payout"] = total_payout
         ctx["net_pnl"] = total_payout - total_staked
         ctx["current_balance"] = current_balance
+        ctx["user_rank"] = get_user_rank(user)
         return ctx
 
 

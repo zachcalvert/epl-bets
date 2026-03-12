@@ -57,6 +57,7 @@ def test_dashboard_view_includes_top_10_leaderboard_entries_in_balance_order(cli
     assert len(leaderboard) == 10
     assert leaderboard[0].user.email == "user11@example.com"
     assert leaderboard[-1].user.email == "user2@example.com"
+    assert leaderboard[0].display_email == "us****@example.com"
 
 
 def test_dashboard_view_leaderboard_breaks_ties_by_user_id(client):
@@ -67,6 +68,33 @@ def test_dashboard_view_leaderboard_breaks_ties_by_user_id(client):
 
     leaderboard = list(response.context["leaderboard"])
     assert leaderboard[:2] == [first, second]
+
+
+def test_dashboard_view_includes_signed_in_user_rank_when_outside_top_10(client):
+    for index in range(10):
+        UserBalanceFactory(
+            user__email=f"leader{index}@example.com",
+            balance=Decimal("2000.00") - Decimal(index),
+        )
+    user = UserFactory(email="supporter@example.com")
+    UserBalanceFactory(user=user, balance="1500.00")
+    client.force_login(user)
+
+    response = client.get(reverse("matches:dashboard"))
+
+    assert response.context["user_rank"].rank == 11
+    assert "You are currently #11" in response.content.decode()
+
+
+def test_dashboard_view_omits_signed_in_user_rank_when_user_is_in_top_10(client):
+    user = UserFactory(email="champion@example.com")
+    UserBalanceFactory(user=user, balance="2500.00")
+    client.force_login(user)
+
+    response = client.get(reverse("matches:dashboard"))
+
+    assert response.context["user_rank"] is None
+    assert "Your rank" not in response.content.decode()
 
 
 def test_fixtures_view_returns_partial_for_htmx_and_invalid_matchday_falls_back(client):
@@ -150,7 +178,28 @@ def test_leaderboard_partial_renders_partial_template_and_content(client):
         template.name == "matches/partials/leaderboard.html"
         for template in response.templates
     )
-    assert "leader@example.com" in response.content.decode()
+    assert "le****@example.com" in response.content.decode()
+    assert "leader@example.com" not in response.content.decode()
+
+
+def test_leaderboard_partial_shows_signed_in_user_rank_when_outside_top_10(client):
+    for index in range(10):
+        UserBalanceFactory(
+            user__email=f"leader{index}@example.com",
+            balance=Decimal("2000.00") - Decimal(index),
+        )
+    user = UserFactory(email="latecomer@example.com")
+    UserBalanceFactory(user=user, balance="1500.00")
+    client.force_login(user)
+
+    response = client.get(
+        reverse("matches:leaderboard_partial"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert "Your rank" in response.content.decode()
+    assert "You are currently #11" in response.content.decode()
 
 
 def test_leaderboard_partial_shows_empty_state_when_no_balances_exist(client):

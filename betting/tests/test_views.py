@@ -158,6 +158,38 @@ def test_my_bets_view_calculates_totals_and_default_balance(client):
     assert response.context["current_balance"] == Decimal("1000.00")
 
 
+def test_my_bets_view_includes_rank_summary_when_user_is_outside_top_10(client):
+    for index in range(10):
+        UserBalanceFactory(
+            user__email=f"leader{index}@example.com",
+            balance=Decimal("2000.00") - Decimal(index),
+        )
+    user = UserFactory(email="climber@example.com")
+    UserBalanceFactory(user=user, balance="1500.00")
+    client.force_login(user)
+
+    response = client.get(reverse("betting:my_bets"))
+
+    assert response.status_code == 200
+    assert response.context["user_rank"].rank == 11
+    assert "Your leaderboard rank" in response.content.decode()
+    assert "You are currently #11" in response.content.decode()
+    assert "cl*****@example.com" in response.content.decode()
+
+
+def test_my_bets_view_shows_rank_summary_when_user_is_in_top_10(client):
+    user = UserFactory(email="winner@example.com")
+    UserBalanceFactory(user=user, balance="2500.00")
+    client.force_login(user)
+
+    response = client.get(reverse("betting:my_bets"))
+
+    assert response.status_code == 200
+    assert response.context["user_rank"].rank == 1
+    assert "Your leaderboard rank" in response.content.decode()
+    assert "You are currently #1" in response.content.decode()
+
+
 def test_quick_bet_form_view_returns_initial_selection(client):
     user = UserFactory()
     match = MatchFactory()
