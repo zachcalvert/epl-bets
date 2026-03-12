@@ -48,8 +48,9 @@ cp .env.example .env   # Add your API keys
 docker compose up -d
 docker compose run --rm web python manage.py migrate
 docker compose run --rm web python manage.py seed_epl
-docker compose run --rm web python manage.py runserver 0.0.0.0:8000
 ```
+
+Then open `http://localhost:8000`.
 
 ## API Keys
 
