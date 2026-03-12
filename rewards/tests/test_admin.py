@@ -60,7 +60,7 @@ class TestRewardAdmin:
 
 class TestUserAdminGrantReward:
     def test_grant_latest_reward_action(self, admin_client):
-        reward = RewardFactory(amount="25.00")
+        RewardFactory(amount="25.00")
         users = UserFactory.create_batch(2)
         for user in users:
             UserBalance.objects.create(user=user, balance=Decimal("500.00"))

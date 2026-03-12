@@ -1,6 +1,10 @@
+from decimal import Decimal
+
 from django.contrib import admin, messages
+from django.db import models
 from django.utils.translation import ngettext
 
+from betting.models import UserBalance
 from rewards.models import Reward, RewardDistribution
 from users.models import User
 
@@ -60,3 +64,14 @@ class RewardDistributionAdmin(admin.ModelAdmin):
     list_filter = ["seen", "reward"]
     search_fields = ["user__email", "reward__name"]
     raw_id_fields = ["user", "reward"]
+
+    def save_model(self, request, obj, form, change):
+        is_new = not change
+        super().save_model(request, obj, form, change)
+        if is_new:
+            balance, _ = UserBalance.objects.get_or_create(
+                user=obj.user, defaults={"balance": Decimal("1000.00")}
+            )
+            UserBalance.objects.filter(pk=balance.pk).update(
+                balance=models.F("balance") + obj.reward.amount
+            )

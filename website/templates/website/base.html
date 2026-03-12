@@ -64,6 +64,15 @@
     <!-- Notifications container for real-time toasts (bet settlements, etc.) -->
     <div id="notifications" class="fixed top-20 right-4 z-50 space-y-2 max-w-sm"></div>
 
+    <!-- Reward notifications (rendered on page load for unseen rewards) -->
+    {% if unseen_rewards %}
+    <div id="reward-notifications" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 space-y-3 w-full max-w-sm px-4">
+        {% for distribution in unseen_rewards %}
+            {% include "rewards/partials/reward_toast.html" with distribution=distribution %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Global HTMX error handler -->
     <script>
         function showToast(message) {
