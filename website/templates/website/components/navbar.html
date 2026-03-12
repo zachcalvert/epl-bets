@@ -1,9 +1,16 @@
+{% load static %}
+
 <nav class="site-nav">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center">
-                <a href="{% url 'matches:dashboard' %}" class="flex items-center gap-2">
+                <a href="{% url 'matches:dashboard' %}" class="flex items-center gap-2.5">
+                    <img
+                        src="{% static 'website/epl.png' %}"
+                        alt="EPL Bets logo"
+                        class="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
+                    >
                     <span class="text-accent text-2xl font-bold" style="font-family: 'Oswald', sans-serif;">EPL BETS</span>
                 </a>
             </div>
