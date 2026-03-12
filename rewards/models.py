@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.conf import settings
@@ -6,6 +7,8 @@ from django.utils.translation import gettext_lazy as _
 
 from betting.models import UserBalance
 from core.models import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class Reward(BaseModel):
@@ -53,6 +56,11 @@ class Reward(BaseModel):
                     balance=models.F("balance") + self.amount
                 )
 
+        if new_distributions:
+            transaction.on_commit(
+                lambda: _broadcast_rewards(new_distributions)
+            )
+
         return new_distributions
 
 
@@ -77,3 +85,25 @@ class RewardDistribution(BaseModel):
 
     def __str__(self):
         return f"{self.reward.name} → {self.user}"
+
+
+def _broadcast_rewards(distributions):
+    """Send a WebSocket notification to each reward recipient."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+
+    channel_layer = get_channel_layer()
+    send = async_to_sync(channel_layer.group_send)
+
+    for dist in distributions:
+        group = f"user_notifications_{dist.user_id}"
+        try:
+            send(group, {
+                "type": "reward_notification",
+                "distribution_id": dist.pk,
+            })
+        except Exception:
+            logger.exception(
+                "Failed to broadcast reward notification for distribution %s",
+                dist.pk,
+            )

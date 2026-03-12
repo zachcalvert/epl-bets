@@ -64,17 +64,26 @@
     <!-- Notifications container for real-time toasts (bet settlements, etc.) -->
     <div id="notifications" class="fixed top-20 right-4 z-50 space-y-2 max-w-sm"></div>
 
-    <!-- Reward notifications (rendered on page load for unseen rewards) -->
-    {% if unseen_rewards %}
-    <div id="reward-notifications" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 space-y-3 w-full max-w-sm px-4">
+    <!-- Reward notifications: global WS connection + page-load toasts for unseen rewards -->
+    {% if user.is_authenticated %}
+    <div id="reward-notifications"
+         class="fixed top-20 left-1/2 -translate-x-1/2 z-50 space-y-3 w-full max-w-sm px-4"
+         hx-ext="ws" ws-connect="/ws/notifications/">
         {% for distribution in unseen_rewards %}
             {% include "rewards/partials/reward_toast.html" with distribution=distribution %}
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- Global HTMX error handler -->
+    <!-- Global HTMX CSRF + error handler -->
     <script>
+        document.body.addEventListener('htmx:configRequest', function(e) {
+            var csrfCookie = document.cookie.split('; ').find(function(c) { return c.startsWith('csrftoken='); });
+            if (csrfCookie) {
+                e.detail.headers['X-CSRFToken'] = csrfCookie.split('=')[1];
+            }
+        });
+
         function showToast(message) {
             var container = document.getElementById('notifications');
             var toast = document.createElement('div');

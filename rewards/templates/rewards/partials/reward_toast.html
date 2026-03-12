@@ -18,7 +18,6 @@
         </div>
         <button
             hx-post="{% url 'rewards:dismiss' distribution.pk %}"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
             hx-swap="outerHTML swap:300ms"
             hx-target="closest .reward-toast"
             class="toast-dismiss flex-shrink-0"
