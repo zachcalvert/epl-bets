@@ -30,7 +30,7 @@
                 <td class="px-3 py-3 text-center">
                     {% if match.best_home_odds %}
                     <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN"
+                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN&container=quick-bet-{{ match.pk }}"
                             hx-target="#quick-bet-{{ match.pk }}"
                             hx-swap="innerHTML">
                         {{ match.best_home_odds|format_odds }}
@@ -42,7 +42,7 @@
                 <td class="px-3 py-3 text-center">
                     {% if match.best_draw_odds %}
                     <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW"
+                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW&container=quick-bet-{{ match.pk }}"
                             hx-target="#quick-bet-{{ match.pk }}"
                             hx-swap="innerHTML">
                         {{ match.best_draw_odds|format_odds }}
@@ -54,7 +54,7 @@
                 <td class="px-3 py-3 text-center">
                     {% if match.best_away_odds %}
                     <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN"
+                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN&container=quick-bet-{{ match.pk }}"
                             hx-target="#quick-bet-{{ match.pk }}"
                             hx-swap="innerHTML">
                         {{ match.best_away_odds|format_odds }}
@@ -105,7 +105,7 @@
             <div class="text-center">
                 {% if match.best_home_odds %}
                 <button class="w-full font-mono text-sm text-accent font-bold py-2 rounded border border-gray-600 hover:bg-accent/10 transition-colors"
-                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN"
+                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN&container=quick-bet-mobile-{{ match.pk }}"
                         hx-target="#quick-bet-mobile-{{ match.pk }}"
                         hx-swap="innerHTML">
                     {{ match.best_home_odds|format_odds }}
@@ -118,7 +118,7 @@
             <div class="text-center">
                 {% if match.best_draw_odds %}
                 <button class="w-full font-mono text-sm text-accent font-bold py-2 rounded border border-gray-600 hover:bg-accent/10 transition-colors"
-                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW"
+                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW&container=quick-bet-mobile-{{ match.pk }}"
                         hx-target="#quick-bet-mobile-{{ match.pk }}"
                         hx-swap="innerHTML">
                     {{ match.best_draw_odds|format_odds }}
@@ -131,7 +131,7 @@
             <div class="text-center">
                 {% if match.best_away_odds %}
                 <button class="w-full font-mono text-sm text-accent font-bold py-2 rounded border border-gray-600 hover:bg-accent/10 transition-colors"
-                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN"
+                        hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN&container=quick-bet-mobile-{{ match.pk }}"
                         hx-target="#quick-bet-mobile-{{ match.pk }}"
                         hx-swap="innerHTML">
                     {{ match.best_away_odds|format_odds }}
