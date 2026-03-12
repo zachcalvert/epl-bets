@@ -493,3 +493,95 @@
 .shake {
     animation: shake 400ms ease-in-out;
 }
+
+/* ================================================
+   Reward Toast (Enhanced Celebration)
+   ================================================ */
+.reward-toast {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    box-shadow:
+        var(--theme-shadow-lg),
+        0 0 20px rgba(0, 230, 118, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.reward-toast-inner {
+    align-items: flex-start;
+    background: linear-gradient(
+        135deg,
+        rgb(var(--color-surface)) 0%,
+        color-mix(in srgb, rgb(var(--color-surface)) 92%, rgb(var(--color-accent))) 100%
+    );
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.reward-toast-icon {
+    color: rgb(var(--color-accent));
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgba(0, 230, 118, 0.4));
+}
+
+.reward-toast-title {
+    color: var(--theme-panel-text);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.reward-toast-amount {
+    color: rgb(var(--color-accent));
+    font-family: 'Roboto Mono', 'Courier New', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.3));
+}
+
+.reward-toast-desc {
+    color: rgb(var(--color-muted));
+    font-size: 0.8rem;
+    margin-top: 0.125rem;
+}
+
+/* Confetti */
+.reward-toast-confetti {
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+}
+
+.reward-toast-confetti span {
+    animation: confetti-fall 1.8s ease-out forwards;
+    border-radius: 2px;
+    display: block;
+    height: 6px;
+    opacity: 0;
+    position: absolute;
+    top: -8px;
+    width: 6px;
+}
+
+.reward-toast-confetti span:nth-child(1)  { left: 8%;  animation-delay: 0s;    background: #00e676; }
+.reward-toast-confetti span:nth-child(2)  { left: 18%; animation-delay: 0.08s; background: #ffab00; }
+.reward-toast-confetti span:nth-child(3)  { left: 30%; animation-delay: 0.16s; background: #ff1744; }
+.reward-toast-confetti span:nth-child(4)  { left: 42%; animation-delay: 0.05s; background: #2979ff; }
+.reward-toast-confetti span:nth-child(5)  { left: 55%; animation-delay: 0.12s; background: #00e676; }
+.reward-toast-confetti span:nth-child(6)  { left: 65%; animation-delay: 0.2s;  background: #ffab00; }
+.reward-toast-confetti span:nth-child(7)  { left: 75%; animation-delay: 0.03s; background: #ff1744; }
+.reward-toast-confetti span:nth-child(8)  { left: 85%; animation-delay: 0.15s; background: #2979ff; }
+.reward-toast-confetti span:nth-child(9)  { left: 22%; animation-delay: 0.1s;  background: #e040fb; }
+.reward-toast-confetti span:nth-child(10) { left: 50%; animation-delay: 0.18s; background: #e040fb; }
+
+@keyframes confetti-fall {
+    0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(64px) rotate(260deg); }
+}

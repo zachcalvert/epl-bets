@@ -14,6 +14,7 @@ from betting.forms import DisplayNameForm, PlaceBetForm
 from betting.models import BetSlip, Odds, UserBalance
 from betting.services import get_public_identity, get_user_rank, mask_email
 from matches.models import Match
+from rewards.models import RewardDistribution
 from website.transparency import (
     GLOBAL_SCOPE,
     get_events,
@@ -295,11 +296,32 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
         balance = getattr(user, "balance", None)
         current_balance = balance.balance if balance else Decimal("1000.00")
 
+        reward_distributions = (
+            RewardDistribution.objects.filter(user=user)
+            .select_related("reward")
+        )
+        total_rewards = (
+            reward_distributions.aggregate(
+                total=Sum("reward__amount")
+            )["total"]
+            or Decimal("0")
+        )
+
+        # Build unified activity feed sorted by date descending
+        activity = []
+        for bet in bets:
+            activity.append({"type": "bet", "date": bet.created_at, "item": bet})
+        for dist in reward_distributions:
+            activity.append({"type": "reward", "date": dist.created_at, "item": dist})
+        activity.sort(key=lambda a: a["date"], reverse=True)
+
         ctx["bets"] = bets
         ctx["total_staked"] = total_staked
         ctx["total_payout"] = total_payout
         ctx["net_pnl"] = total_payout - total_staked
         ctx["current_balance"] = current_balance
+        ctx["total_rewards"] = total_rewards
+        ctx["activity"] = activity
         ctx["user_rank"] = get_user_rank(user)
         ctx["display_name_form"] = form or DisplayNameForm(instance=user)
         ctx["account_public_identity"] = get_public_identity(user)
