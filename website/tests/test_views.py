@@ -229,3 +229,42 @@ def test_theme_toggle_rejects_external_redirects(client):
 
     assert response.status_code == 302
     assert response.url == reverse("matches:dashboard")
+
+
+@pytest.mark.django_db
+def test_theme_toggle_without_theme_param_toggles_current_theme(client):
+    session = client.session
+    session["theme_preference"] = "dark"
+    session.save()
+
+    response = client.post(
+        reverse("website:theme_toggle"),
+        data={"next": reverse("website:login")},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("website:login")
+    assert client.session["theme_preference"] == "light"
+
+
+@pytest.mark.django_db
+def test_theme_toggle_uses_referrer_when_next_is_missing(client):
+    response = client.post(
+        reverse("website:theme_toggle"),
+        data={"theme": "light"},
+        HTTP_REFERER="http://testserver/how-it-works/",
+    )
+
+    assert response.status_code == 302
+    assert response.url == "http://testserver/how-it-works/"
+
+
+@pytest.mark.django_db
+def test_theme_toggle_falls_back_when_referrer_is_missing(client):
+    response = client.post(
+        reverse("website:theme_toggle"),
+        data={"theme": "light"},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("matches:dashboard")

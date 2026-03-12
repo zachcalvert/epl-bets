@@ -65,6 +65,27 @@ def test_disconnect_discards_all_joined_groups(monkeypatch):
     assert consumer.groups_joined == []
 
 
+def test_disconnect_noops_when_no_groups_joined(monkeypatch):
+    consumer = build_consumer("dashboard")
+    layer = SimpleLayer()
+    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+
+    consumer.disconnect(1000)
+
+    assert layer.discarded == []
+
+
+def test_join_group_adds_group_and_tracks_membership(monkeypatch):
+    consumer = build_consumer("dashboard")
+    layer = SimpleLayer()
+    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+
+    consumer._join_group("live_scores")
+
+    assert layer.added == [("live_scores", "test-channel")]
+    assert consumer.groups_joined == ["live_scores"]
+
+
 def test_score_update_renders_and_sends_html(monkeypatch):
     match = MatchFactory()
     consumer = build_consumer("dashboard")
@@ -144,7 +165,11 @@ def test_match_score_update_swallow_render_errors(monkeypatch):
 
 class SimpleLayer:
     def __init__(self):
+        self.added = []
         self.discarded = []
+
+    async def group_add(self, group, channel):
+        self.added.append((group, channel))
 
     async def group_discard(self, group, channel):
         self.discarded.append((group, channel))
