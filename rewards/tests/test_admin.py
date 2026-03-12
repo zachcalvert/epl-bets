@@ -57,6 +57,55 @@ class TestRewardAdmin:
         reward = Reward.objects.get(name="Test Reward")
         assert reward.created_by is not None
 
+    def test_create_reward_with_selected_users_creates_distributions(self, admin_client):
+        users = UserFactory.create_batch(3)
+        for user in users:
+            UserBalance.objects.create(user=user, balance=Decimal("100.00"))
+
+        add_url = reverse("admin:rewards_reward_add")
+        response = admin_client.post(
+            add_url,
+            {
+                "name": "Targeted Reward",
+                "amount": "25.00",
+                "description": "Only for selected users",
+                "distribute_to": [u.pk for u in users[:2]],
+                "distributions-TOTAL_FORMS": "0",
+                "distributions-INITIAL_FORMS": "0",
+                "distributions-MIN_NUM_FORMS": "0",
+                "distributions-MAX_NUM_FORMS": "1000",
+            },
+            follow=True,
+        )
+
+        assert response.status_code == 200
+        reward = Reward.objects.get(name="Targeted Reward")
+        assert RewardDistribution.objects.filter(reward=reward).count() == 2
+        assert UserBalance.objects.get(user=users[0]).balance == Decimal("125.00")
+        assert UserBalance.objects.get(user=users[1]).balance == Decimal("125.00")
+        # Third user was not selected – balance unchanged
+        assert UserBalance.objects.get(user=users[2]).balance == Decimal("100.00")
+
+    def test_create_reward_without_selected_users_creates_no_distributions(self, admin_client):
+        add_url = reverse("admin:rewards_reward_add")
+        response = admin_client.post(
+            add_url,
+            {
+                "name": "No Distribution Reward",
+                "amount": "10.00",
+                "description": "No one selected",
+                "distributions-TOTAL_FORMS": "0",
+                "distributions-INITIAL_FORMS": "0",
+                "distributions-MIN_NUM_FORMS": "0",
+                "distributions-MAX_NUM_FORMS": "1000",
+            },
+            follow=True,
+        )
+
+        assert response.status_code == 200
+        reward = Reward.objects.get(name="No Distribution Reward")
+        assert RewardDistribution.objects.filter(reward=reward).count() == 0
+
 
 class TestUserAdminGrantReward:
     def test_grant_latest_reward_action(self, admin_client):
