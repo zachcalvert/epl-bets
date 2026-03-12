@@ -177,16 +177,17 @@ Phase 10 should answer a few operational questions before implementation:
 5. What should the minimum safe Fly memory be for each process group now that interactive management commands have already triggered an OOM in production?
 
 ## Phase 12: Transparency & Portfolio Depth
-Status: Backlog
+Status: Complete
 
-- Preserve the original transparency-focused Phase 11 direction as the next roadmap candidate
-- Revisit the "Under the Hood" panel, richer architecture storytelling, and demo-oriented insights after the leaderboard ships
+- Shipped the first Under the Hood rollout across Dashboard, Match Detail, and Odds Board
+- Added real event plumbing for HTMX, websocket, Celery, and betting lifecycle activity
+- Left deeper architecture storytelling and demo-insight expansion as optional future follow-on work
 
 ## Phase 12 Planning Notes
 
-Phase 12 now has a concrete direction captured in `docs/0012-PHASE_12.md`:
+Phase 12 is now documented in its shipped form in `docs/0012-PHASE_12.md`:
 
-1. Build a page-specific, collapsed-by-default "Under the Hood" panel on the flagship pages
-2. Back the panel with real short-lived events from HTMX, websocket, Celery, and betting flows
-3. Expand `/how-it-works/` to explain the same runtime paths the panel exposes in-product
-4. Add one or two demo-friendly insight surfaces after the event plumbing and storytelling are in place
+1. Dashboard, Match Detail, and Odds Board now have page-scoped Under the Hood panels
+2. The panels are backed by real short-lived events from HTMX, websocket, Celery, and betting flows
+3. The initial rollout is complete without introducing a SPA-style frontend layer
+4. Further architecture storytelling and insight surfaces can be planned separately if desired
