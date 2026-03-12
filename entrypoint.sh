@@ -24,4 +24,7 @@ except Exception:
 done
 echo "PostgreSQL is ready."
 
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
 exec "$@"
