@@ -29,6 +29,18 @@ def test_odds_board_view_lists_upcoming_matches_with_best_odds(client):
     assert matches[0].best_away_odds == Decimal("3.30")
 
 
+def test_odds_board_view_excludes_upcoming_matches_without_odds(client):
+    match_with_odds = MatchFactory(status=Match.Status.SCHEDULED)
+    MatchFactory(status=Match.Status.SCHEDULED)
+    OddsFactory(match=match_with_odds, home_win="2.25", draw="3.20", away_win="3.60")
+
+    response = client.get(reverse("betting:odds"))
+
+    matches = list(response.context["matches"])
+    assert response.status_code == 200
+    assert matches == [match_with_odds]
+
+
 def test_odds_board_view_renders_under_the_hood_summary_from_recent_events(client):
     record_event(
         scope=page_scope("odds_board"),

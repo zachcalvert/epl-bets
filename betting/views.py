@@ -85,7 +85,15 @@ class OddsBoardView(TemplateView):
             match.best_home_odds = odds.get("best_home")
             match.best_draw_odds = odds.get("best_draw")
             match.best_away_odds = odds.get("best_away")
-            matches_with_odds.append(match)
+            if any(
+                odd is not None
+                for odd in (
+                    match.best_home_odds,
+                    match.best_draw_odds,
+                    match.best_away_odds,
+                )
+            ):
+                matches_with_odds.append(match)
 
         ctx["matches"] = matches_with_odds
         ctx.update(_get_odds_board_transparency_context())
