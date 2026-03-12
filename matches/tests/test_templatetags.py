@@ -1,10 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
 
-from matches.templatetags.match_tags import format_odds, score_display, status_badge
+from matches.templatetags.match_tags import (
+    format_odds,
+    relative_time,
+    score_display,
+    status_badge,
+)
 
 
 def test_status_badge_for_scheduled_match_formats_local_kickoff(settings):
@@ -48,3 +53,21 @@ def test_score_display_renders_vs_when_scores_missing():
 )
 def test_format_odds_handles_supported_values(value, expected):
     assert format_odds(value) == expected
+
+
+def test_relative_time_formats_recent_past():
+    ts = timezone.now() - timedelta(seconds=32)
+
+    assert relative_time(ts) == "32 seconds ago"
+
+
+def test_relative_time_formats_iso_timestamp():
+    ts = (timezone.now() - timedelta(minutes=3)).isoformat()
+
+    assert relative_time(ts) == "3 minutes ago"
+
+
+def test_relative_time_formats_future_values():
+    ts = timezone.now() + timedelta(minutes=5)
+
+    assert relative_time(ts) == "in 5 minutes"

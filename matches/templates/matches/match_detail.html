@@ -6,9 +6,14 @@
 <!-- Match header (WebSocket for live score updates) -->
 <div class="bg-surface rounded-lg border border-gray-700 p-6 mb-6"
      hx-ext="ws" ws-connect="/ws/live/{{ match.pk }}/">
-    <div class="flex items-center justify-between mb-4">
-        <span id="match-status">{% status_badge match %}</span>
-        <span class="text-sm text-muted">Matchday {{ match.matchday }}</span>
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center justify-between gap-3">
+            <span id="match-status">{% status_badge match %}</span>
+            <span class="text-sm text-muted">Matchday {{ match.matchday }}</span>
+        </div>
+        <div class="rounded-full border border-gray-700 bg-dark/60 px-3 py-1.5 text-xs text-muted">
+            Match data synced {{ match_updated_at|relative_time }}
+        </div>
     </div>
 
     <div class="flex items-center justify-center gap-8 md:gap-16">
@@ -44,7 +49,25 @@
 
 <!-- Odds comparison -->
 <div class="mb-6">
-    <h3 class="text-xl font-bold text-white mb-3">Odds Comparison</h3>
+    <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h3 class="text-xl font-bold text-white">Odds Comparison</h3>
+            <p class="mt-1 text-xs text-muted">
+                {% if latest_odds_refresh %}
+                    Best prices synced {{ latest_odds_refresh|relative_time }}
+                {% else %}
+                    Waiting for bookmakers to publish this market
+                {% endif %}
+            </p>
+        </div>
+        <div class="text-xs text-muted">
+            {% if latest_odds_refresh %}
+                Table refreshed {{ latest_odds_refresh|relative_time }}
+            {% else %}
+                Match state updated {{ match_updated_at|relative_time }}
+            {% endif %}
+        </div>
+    </div>
 
     <div class="overflow-x-auto" id="odds-table"
          hx-get="{% url 'matches:match_odds_partial' match.pk %}"

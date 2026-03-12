@@ -1,3 +1,4 @@
+{% load match_tags %}
 <section
     id="leaderboard"
     class="bg-surface rounded-lg border border-gray-700 p-5"
@@ -8,7 +9,7 @@
     <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="text-lg font-bold text-white">Top Balances</h2>
-            <p class="text-xs text-muted">Refreshes every 30 seconds</p>
+            <p class="text-xs text-muted">Updated {{ leaderboard_rendered_at|relative_time }}</p>
         </div>
         <span class="text-accent text-xs font-semibold uppercase tracking-wider">Live</span>
     </div>

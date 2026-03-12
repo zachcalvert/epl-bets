@@ -112,6 +112,7 @@ class DashboardView(TemplateView):
         ctx["current_matchday"] = match_list[0].matchday if match_list else None
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        ctx["leaderboard_rendered_at"] = timezone.now()
         ctx.update(_get_dashboard_transparency_context())
         return ctx
 
@@ -132,6 +133,7 @@ class LeaderboardPartialView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        ctx["leaderboard_rendered_at"] = timezone.now()
         record_event(
             scope=page_scope("dashboard"),
             scopes=[GLOBAL_SCOPE],
@@ -243,13 +245,17 @@ class MatchDetailView(DetailView):
             best_home = min(o.home_win for o in odds_list)
             best_draw = min(o.draw for o in odds_list)
             best_away = min(o.away_win for o in odds_list)
+            latest_odds_refresh = max(o.fetched_at for o in odds_list)
         else:
             best_home = best_draw = best_away = None
+            latest_odds_refresh = None
 
         ctx["odds"] = odds_list
         ctx["best_home"] = best_home
         ctx["best_draw"] = best_draw
         ctx["best_away"] = best_away
+        ctx["latest_odds_refresh"] = latest_odds_refresh
+        ctx["match_updated_at"] = match.updated_at
 
         # Bet form for authenticated users
         if self.request.user.is_authenticated:
@@ -272,6 +278,7 @@ class MatchUnderTheHoodPartialView(DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_get_match_transparency_context(self.object.pk))
+        ctx["rendered_at"] = timezone.now()
         return ctx
 
 

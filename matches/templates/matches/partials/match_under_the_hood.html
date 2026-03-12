@@ -1,10 +1,11 @@
+{% load match_tags %}
 <div class="space-y-4">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div class="rounded-lg border border-gray-700 bg-dark/60 p-3">
             <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted">Latest Match Signal</p>
             {% if under_the_hood_latest %}
                 <p class="mt-2 text-sm font-semibold text-white">{{ under_the_hood_latest.summary }}</p>
-                <p class="mt-1 text-xs text-muted">{{ under_the_hood_latest.category|upper }} via {{ under_the_hood_latest.source }}</p>
+                <p class="mt-1 text-xs text-muted">{{ under_the_hood_latest.category|upper }} via {{ under_the_hood_latest.source }} · {{ under_the_hood_latest.occurred_at|relative_time }}</p>
             {% else %}
                 <p class="mt-2 text-sm text-muted">No match-specific activity has been recorded yet.</p>
             {% endif %}
@@ -83,6 +84,7 @@
                                         {{ event.category }}
                                     </span>
                                     <span class="text-[11px] uppercase tracking-[0.18em] text-muted">{{ event.source }}</span>
+                                    <span class="text-[11px] text-muted">{{ event.occurred_at|relative_time }}</span>
                                 </div>
                                 <p class="mt-2 text-sm font-semibold text-white">{{ event.summary }}</p>
                                 {% if event.detail %}

@@ -4,8 +4,9 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Min, Sum
+from django.db.models import Max, Min, Sum
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -48,6 +49,14 @@ def _get_odds_board_transparency_context():
         "under_the_hood_counts": counts,
         "under_the_hood_tracked_categories": tracked_categories,
     }
+
+
+def _get_latest_odds_refresh(match_ids):
+    if not match_ids:
+        return None
+    return Odds.objects.filter(match_id__in=match_ids).aggregate(
+        latest_refresh=Max("fetched_at")
+    )["latest_refresh"]
 
 
 class OddsBoardView(TemplateView):
@@ -96,6 +105,8 @@ class OddsBoardView(TemplateView):
                 matches_with_odds.append(match)
 
         ctx["matches"] = matches_with_odds
+        ctx["last_odds_refresh"] = _get_latest_odds_refresh(match_ids)
+        ctx["rendered_at"] = timezone.now()
         ctx.update(_get_odds_board_transparency_context())
         return ctx
 
@@ -106,6 +117,7 @@ class OddsBoardUnderTheHoodPartialView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_get_odds_board_transparency_context())
+        ctx["rendered_at"] = timezone.now()
         return ctx
 
 
