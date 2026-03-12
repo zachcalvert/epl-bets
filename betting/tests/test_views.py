@@ -243,9 +243,114 @@ def test_quick_bet_form_view_returns_initial_selection(client):
 
     response = client.get(
         reverse("betting:quick_bet_form", args=[match.pk]),
-        data={"selection": BetSlip.Selection.AWAY_WIN},
+        data={"selection": BetSlip.Selection.AWAY_WIN, "container": f"quick-bet-{match.pk}"},
     )
 
     assert response.status_code == 200
     assert response.context["selection"] == BetSlip.Selection.AWAY_WIN
     assert response.context["form"].initial["selection"] == BetSlip.Selection.AWAY_WIN
+    assert response.context["container_id"] == f"quick-bet-{match.pk}"
+
+
+def test_quick_bet_form_view_passes_container_id_to_template(client):
+    user = UserFactory()
+    match = MatchFactory()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("betting:quick_bet_form", args=[match.pk]),
+        data={"selection": BetSlip.Selection.HOME_WIN, "container": f"quick-bet-mobile-{match.pk}"},
+    )
+
+    assert response.status_code == 200
+    assert response.context["container_id"] == f"quick-bet-mobile-{match.pk}"
+    assert f'hx-target="#quick-bet-mobile-{match.pk}"' in response.content.decode()
+
+
+def test_place_bet_from_odds_board_returns_quick_bet_form_on_error(client):
+    user = UserFactory()
+    match = MatchFactory()
+    container_id = f"quick-bet-{match.pk}"
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:place_bet", args=[match.pk]),
+        data={
+            "selection": BetSlip.Selection.HOME_WIN,
+            "stake": "0.10",
+            "container_id": container_id,
+        },
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "betting/partials/quick_bet_form.html"
+        for template in response.templates
+    )
+    assert response.context["container_id"] == container_id
+
+
+def test_place_bet_from_odds_board_returns_quick_bet_form_on_no_odds(client):
+    user = UserFactory()
+    match = MatchFactory()
+    container_id = f"quick-bet-{match.pk}"
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:place_bet", args=[match.pk]),
+        data={
+            "selection": BetSlip.Selection.HOME_WIN,
+            "stake": "10.00",
+            "container_id": container_id,
+        },
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "betting/partials/quick_bet_form.html"
+        for template in response.templates
+    )
+    assert "No odds available for this match." in response.content.decode()
+    assert f'hx-target="#{container_id}"' in response.content.decode()
+
+
+def test_place_bet_from_odds_board_returns_quick_bet_form_on_insufficient_balance(client):
+    user = UserFactory()
+    UserBalanceFactory(user=user, balance="5.00")
+    match = MatchFactory()
+    OddsFactory(match=match, home_win="2.25")
+    container_id = f"quick-bet-{match.pk}"
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:place_bet", args=[match.pk]),
+        data={
+            "selection": BetSlip.Selection.HOME_WIN,
+            "stake": "10.00",
+            "container_id": container_id,
+        },
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "betting/partials/quick_bet_form.html"
+        for template in response.templates
+    )
+    assert "Insufficient balance" in response.content.decode()
+
+
+def test_place_bet_without_container_id_returns_bet_form_on_error(client):
+    user = UserFactory()
+    match = MatchFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:place_bet", args=[match.pk]),
+        data={"selection": BetSlip.Selection.HOME_WIN, "stake": "0.10"},
+    )
+
+    assert response.status_code == 200
+    assert any(
+        template.name == "betting/partials/bet_form.html"
+        for template in response.templates
+    )

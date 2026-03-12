@@ -125,26 +125,45 @@ class OddsBoardPartialView(OddsBoardView):
 class PlaceBetView(LoginRequiredMixin, View):
     """Handle bet placement via HTMX POST."""
 
+    def _error_template(self, container_id):
+        """Return the appropriate error template based on context."""
+        if container_id:
+            return "betting/partials/quick_bet_form.html"
+        return "betting/partials/bet_form.html"
+
     def post(self, request, match_pk):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team"),
             pk=match_pk,
         )
+        container_id = request.POST.get("container_id", "")
 
         # Only allow bets on upcoming matches
         if match.status not in (Match.Status.SCHEDULED, Match.Status.TIMED):
             return render(
                 request,
-                "betting/partials/bet_form.html",
-                {"match": match, "form": PlaceBetForm(), "error": "This match is no longer accepting bets."},
+                self._error_template(container_id),
+                {
+                    "match": match,
+                    "form": PlaceBetForm(),
+                    "selection": request.POST.get("selection", ""),
+                    "container_id": container_id,
+                    "error": "This match is no longer accepting bets.",
+                },
             )
 
         form = PlaceBetForm(request.POST)
         if not form.is_valid():
             return render(
                 request,
-                "betting/partials/bet_form.html",
-                {"match": match, "form": form, "error": None},
+                self._error_template(container_id),
+                {
+                    "match": match,
+                    "form": form,
+                    "selection": request.POST.get("selection", ""),
+                    "container_id": container_id,
+                    "error": None,
+                },
             )
 
         selection = form.cleaned_data["selection"]
@@ -165,8 +184,14 @@ class PlaceBetView(LoginRequiredMixin, View):
         if not best_odds_val:
             return render(
                 request,
-                "betting/partials/bet_form.html",
-                {"match": match, "form": form, "error": "No odds available for this match."},
+                self._error_template(container_id),
+                {
+                    "match": match,
+                    "form": form,
+                    "selection": selection,
+                    "container_id": container_id,
+                    "error": "No odds available for this match.",
+                },
             )
 
         # Atomic: deduct balance + create bet
@@ -177,8 +202,14 @@ class PlaceBetView(LoginRequiredMixin, View):
                 if balance.balance < stake:
                     return render(
                         request,
-                        "betting/partials/bet_form.html",
-                        {"match": match, "form": form, "error": f"Insufficient balance. You have {balance.balance:.2f} credits."},
+                        self._error_template(container_id),
+                        {
+                            "match": match,
+                            "form": form,
+                            "selection": selection,
+                            "container_id": container_id,
+                            "error": f"Insufficient balance. You have {balance.balance:.2f} credits.",
+                        },
                     )
 
                 balance.balance -= stake
@@ -262,9 +293,10 @@ class QuickBetFormView(LoginRequiredMixin, View):
             pk=match_pk,
         )
         selection = request.GET.get("selection", "")
+        container_id = request.GET.get("container", "")
         form = PlaceBetForm(initial={"selection": selection})
         return render(
             request,
             "betting/partials/quick_bet_form.html",
-            {"match": match, "form": form, "selection": selection},
+            {"match": match, "form": form, "selection": selection, "container_id": container_id},
         )

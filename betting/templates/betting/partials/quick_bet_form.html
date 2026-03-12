@@ -1,11 +1,17 @@
 <div class="bg-dark rounded-md border border-gray-600 p-3 my-1">
+    {% if error %}
+    <div class="bg-danger/10 border border-danger/30 rounded-md p-2 mb-2">
+        <p class="text-danger text-xs">{{ error }}</p>
+    </div>
+    {% endif %}
     <form hx-post="{% url 'betting:place_bet' match.pk %}"
-          hx-target="closest td"
+          hx-target="#{{ container_id }}"
           hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']"
           class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {% csrf_token %}
         <input type="hidden" name="selection" value="{{ selection }}">
+        <input type="hidden" name="container_id" value="{{ container_id }}">
 
         <span class="text-sm text-gray-300">
             <span class="text-white font-medium">
@@ -29,7 +35,7 @@
 
         <button type="button"
                 class="text-muted hover:text-white text-sm px-2 transition-colors"
-                onclick="this.closest('td').innerHTML = ''">
+                onclick="document.getElementById('{{ container_id }}').innerHTML = ''">
             Cancel
         </button>
     </form>
