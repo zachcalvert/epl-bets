@@ -24,7 +24,7 @@ def test_www_host_redirects_to_canonical_apex(client):
 )
 def test_apex_host_does_not_redirect(client):
     response = client.get(
-        "/fixtures/",
+        "/how-it-works/",
         HTTP_HOST="eplbets.net",
         secure=True,
     )
@@ -39,7 +39,7 @@ def test_apex_host_does_not_redirect(client):
 )
 def test_canonical_redirect_is_disabled_in_debug(client):
     response = client.get(
-        "/fixtures/",
+        "/how-it-works/",
         HTTP_HOST="www.eplbets.net",
     )
 

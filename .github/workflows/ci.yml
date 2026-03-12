@@ -39,7 +39,7 @@ jobs:
 
     env:
       SECRET_KEY: ci-secret-key
-      DEBUG: "False"
+      DEBUG: "True"
       ALLOWED_HOSTS: localhost,127.0.0.1
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/epl_bets_test
       REDIS_URL: redis://localhost:6379/0
