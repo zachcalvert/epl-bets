@@ -18,7 +18,7 @@
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
-    <div>
+    <div class="order-2 xl:order-1">
         {% if matches %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="match-grid"
              hx-ext="ws" ws-connect="/ws/live/dashboard/">
@@ -31,7 +31,7 @@
         {% endif %}
     </div>
 
-    <div class="space-y-6">
+    <div class="order-1 xl:order-2 space-y-6">
         {% include "matches/partials/leaderboard.html" %}
     </div>
 </div>
