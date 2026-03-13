@@ -2,6 +2,7 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db import transaction
 from django.utils.translation import ngettext
+from django.utils import timezone
 
 from betting.models import BetSlip, UserBalance
 from rewards.models import Reward
@@ -48,10 +49,17 @@ class UserAdmin(BaseUserAdmin):
                 # Settle all pending bets as losses
                 BetSlip.objects.filter(
                     user=user, status=BetSlip.Status.PENDING
-                ).update(status=BetSlip.Status.LOST, payout=0)
+                ).update(
+                    status=BetSlip.Status.LOST,
+                    payout=0,
+                    updated_at=timezone.now(),
+                )
 
                 # Zero out balance
-                UserBalance.objects.filter(user=user).update(balance=0)
+                UserBalance.objects.filter(user=user).update(
+                    balance=0,
+                    updated_at=timezone.now(),
+                )
 
             count += 1
 

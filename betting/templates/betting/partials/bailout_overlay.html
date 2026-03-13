@@ -98,15 +98,25 @@
                 'Content-Type': 'application/json',
             },
         })
-        .then(function(res) { return res.json(); })
+        .then(function(res) {
+            if (!res.ok) {
+                // Treat non-2xx responses as errors so the UI doesn't get stuck
+                throw new Error('Bailout request failed with status ' + res.status);
+            }
+            return res.json();
+        })
         .then(function(data) {
-            if (data.success) {
+            if (data && data.success) {
                 countdownEl.classList.add('hidden');
                 resultEl.classList.remove('hidden');
                 amountEl.textContent = '+ ' + Number(data.amount).toLocaleString() + ' cr';
                 setTimeout(function() {
                     window.location.reload();
                 }, 2000);
+            } else {
+                // Handle cases like "already bailed out" or other logical failures
+                alert('Bailout could not be completed. The page will be reloaded.');
+                window.location.reload();
             }
         })
         .catch(function() {

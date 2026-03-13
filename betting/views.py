@@ -435,15 +435,15 @@ class BailoutView(LoginRequiredMixin, View):
     MIN_BET = Decimal("0.50")
 
     def post(self, request):
-        pending_count = BetSlip.objects.filter(
-            user=request.user, status=BetSlip.Status.PENDING
-        ).count()
-
         with transaction.atomic():
             try:
                 balance = UserBalance.objects.select_for_update().get(user=request.user)
             except UserBalance.DoesNotExist:
                 return JsonResponse({"error": "No balance found."}, status=400)
+
+            pending_count = BetSlip.objects.filter(
+                user=request.user, status=BetSlip.Status.PENDING
+            ).count()
 
             if balance.balance >= self.MIN_BET or pending_count > 0:
                 return JsonResponse({"error": "You are not bankrupt."}, status=400)

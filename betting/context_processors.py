@@ -17,11 +17,11 @@ def bankruptcy(request):
     if balance.balance >= MIN_BET:
         return {}
 
-    pending_count = BetSlip.objects.filter(
+    has_pending_bets = BetSlip.objects.filter(
         user=request.user, status=BetSlip.Status.PENDING
-    ).count()
+    ).exists()
 
-    if pending_count > 0:
+    if has_pending_bets:
         return {}
 
     bankruptcy_count = Bankruptcy.objects.filter(user=request.user).count()
