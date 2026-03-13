@@ -30,7 +30,7 @@
             {% for match in matches %}
             <tr class="border-b border-gray-700/50 hover:bg-surface/50">
                 <td class="px-3 py-3 text-sm text-muted whitespace-nowrap">
-                    {{ match.kickoff|date:"D d M, H:i" }}
+                    <time datetime="{{ match.kickoff|date:'c' }}" data-format="short">{{ match.kickoff|date:"D d M, H:i" }}</time>
                 </td>
                 <td class="px-3 py-3">
                     <a href="{% url 'matches:match_detail' match.pk %}" class="flex items-center gap-2 hover:text-accent transition-colors">
@@ -109,7 +109,7 @@
     {% for match in matches %}
     <div class="overflow-hidden rounded-2xl border border-gray-700/60 bg-gradient-to-br from-surface to-dark shadow-[0_16px_40px_rgba(0,0,0,0.2)]">
         <div class="flex items-center justify-between border-b border-gray-700/60 px-4 py-3">
-            <div class="text-xs font-medium text-muted">{{ match.kickoff|date:"D d M, H:i" }}</div>
+            <div class="text-xs font-medium text-muted"><time datetime="{{ match.kickoff|date:'c' }}" data-format="short">{{ match.kickoff|date:"D d M, H:i" }}</time></div>
             <div class="rounded-full bg-dark/70 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-muted">Tap for details</div>
         </div>
         <a href="{% url 'matches:match_detail' match.pk %}" class="block px-4 py-4 hover:text-accent transition-colors">

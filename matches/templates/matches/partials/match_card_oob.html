@@ -46,7 +46,7 @@
         </div>
     {% elif match.status == 'SCHEDULED' or match.status == 'TIMED' %}
         <div class="text-xs text-center text-muted border-t border-gray-700 pt-2">
-            {{ match.kickoff|date:"D d M, H:i" }}
+            <time datetime="{{ match.kickoff|date:'c' }}" data-format="short">{{ match.kickoff|date:"D d M, H:i" }}</time>
         </div>
     {% endif %}
 

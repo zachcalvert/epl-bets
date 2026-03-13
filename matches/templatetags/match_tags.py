@@ -65,8 +65,9 @@ def status_badge(match):
     _, classes, label = STATUS_BADGE_MAP.get(status, ("gray", "text-gray-400 bg-gray-400/10", status))
 
     if status in ("SCHEDULED", "TIMED"):
+        iso = match.kickoff.isoformat()
         local_kickoff = timezone.localtime(match.kickoff)
-        label = local_kickoff.strftime("%a %H:%M")
+        label = f'<time datetime="{iso}" data-format="badge">{local_kickoff.strftime("%a %H:%M")}</time>'
 
     return mark_safe(
         f'<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {classes}">'

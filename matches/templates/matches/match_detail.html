@@ -47,7 +47,7 @@
     </div>
 
     <div class="text-center mt-4 text-sm text-muted">
-        {{ match.kickoff|date:"l, d F Y — H:i" }}
+        <time datetime="{{ match.kickoff|date:'c' }}" data-format="long">{{ match.kickoff|date:"l, d F Y — H:i" }}</time>
         {% if match.home_team.venue %}
             &middot; {{ match.home_team.venue }}
         {% endif %}
