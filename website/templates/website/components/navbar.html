@@ -71,7 +71,7 @@
                     </button>
                 </form>
                 {% if user.is_authenticated %}
-                <span class="text-sm font-mono text-accent font-semibold" title="Demo balance">
+                <span id="user-balance" class="text-sm font-mono text-accent font-semibold" title="Demo balance">
                     {{ user.balance.balance|floatformat:2 }} cr
                 </span>
                 <form method="post" action="{% url 'website:logout' %}">
@@ -139,7 +139,7 @@
             </form>
             {% if user.is_authenticated %}
             <a href="{% url 'betting:my_bets' %}" class="mobile-nav-link {% if url_name == 'my_bets' %}nav-link-active{% endif %}">My Stuff</a>
-            <div class="px-3 py-2 text-sm font-mono text-accent">{{ user.balance.balance|floatformat:2 }} credits</div>
+            <div id="user-balance-mobile" class="px-3 py-2 text-sm font-mono text-accent">{{ user.balance.balance|floatformat:2 }} credits</div>
             <form method="post" action="{% url 'website:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="mobile-nav-link w-full text-left">Log Out</button>

@@ -3,6 +3,7 @@ import logging
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 
+from betting.models import UserBalance
 from rewards.models import RewardDistribution
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,14 @@ class NotificationConsumer(WebsocketConsumer):
                 "rewards/partials/reward_toast_oob.html",
                 {"distribution": distribution},
             )
+            try:
+                current_balance = UserBalance.objects.get(user=user).balance
+                html += render_to_string(
+                    "website/components/balance_oob.html",
+                    {"balance": f"{current_balance:.2f}"},
+                )
+            except UserBalance.DoesNotExist:
+                pass
             self.send(text_data=html)
         except Exception:
             logger.exception(

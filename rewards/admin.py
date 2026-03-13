@@ -6,7 +6,7 @@ from django.db import models, transaction
 from django.utils.translation import ngettext
 
 from betting.models import UserBalance
-from rewards.models import Reward, RewardDistribution
+from rewards.models import Reward, RewardDistribution, RewardRule
 from users.models import User
 
 
@@ -102,3 +102,21 @@ class RewardDistributionAdmin(admin.ModelAdmin):
                 UserBalance.objects.filter(pk=balance.pk).update(
                     balance=models.F("balance") + obj.reward.amount
                 )
+
+
+@admin.register(RewardRule)
+class RewardRuleAdmin(admin.ModelAdmin):
+    list_display = ["rule_type", "threshold", "reward", "is_active", "distribution_count"]
+    list_filter = ["rule_type", "is_active"]
+    list_editable = ["is_active"]
+    raw_id_fields = ["reward"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            _distribution_count=models.Count("reward__distributions")
+        )
+
+    def distribution_count(self, obj):
+        return obj._distribution_count
+
+    distribution_count.short_description = "Times awarded"

@@ -255,6 +255,7 @@ class PlaceBetView(LoginRequiredMixin, View):
             )
 
         potential_payout = stake * best_odds_val
+        updated_balance = UserBalance.objects.get(user=request.user).balance
         record_event(
             scope=match_scope(match.pk),
             scopes=[GLOBAL_SCOPE, page_scope("match_detail")],
@@ -270,7 +271,12 @@ class PlaceBetView(LoginRequiredMixin, View):
         return render(
             request,
             "betting/partials/bet_confirmation.html",
-            {"bet": bet, "match": match, "potential_payout": potential_payout},
+            {
+                "bet": bet,
+                "match": match,
+                "potential_payout": potential_payout,
+                "balance": f"{updated_balance:.2f}",
+            },
         )
 
 
