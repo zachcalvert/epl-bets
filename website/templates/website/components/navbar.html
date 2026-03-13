@@ -114,7 +114,6 @@
             <a href="{% url 'matches:fixtures' %}" class="mobile-nav-link {% if url_name == 'fixtures' %}nav-link-active{% endif %}">Fixtures</a>
             <a href="{% url 'matches:table' %}" class="mobile-nav-link {% if url_name == 'table' %}nav-link-active{% endif %}">Table</a>
             <a href="{% url 'betting:odds' %}" class="mobile-nav-link {% if url_name == 'odds' %}nav-link-active{% endif %}">Odds</a>
-            <a href="{% url 'website:how_it_works' %}" class="mobile-nav-link {% if url_name == 'how_it_works' %}nav-link-active{% endif %}">How It Works</a>
             <form method="post" action="{% url 'website:theme_toggle' %}" class="pt-2">
                 {% csrf_token %}
                 <input type="hidden" name="theme" value="{{ ui_theme_toggle_value }}">
@@ -138,7 +137,7 @@
                 </button>
             </form>
             {% if user.is_authenticated %}
-            <a href="{% url 'betting:my_bets' %}" class="mobile-nav-link {% if url_name == 'my_bets' %}nav-link-active{% endif %}">My Stuff</a>
+            <a href="{% url 'betting:my_bets' %}" class="mobile-nav-link {% if url_name == 'my_bets' %}nav-link-active{% endif %}">My Bets</a>
             <div id="user-balance-mobile" class="px-3 py-2 text-sm font-mono text-accent">{{ user.balance.balance|floatformat:2 }} credits</div>
             <form method="post" action="{% url 'website:logout' %}">
                 {% csrf_token %}
