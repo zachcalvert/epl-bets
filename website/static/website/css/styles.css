@@ -601,6 +601,61 @@
     100% { opacity: 0; transform: translateY(64px) rotate(260deg); }
 }
 
+/* Bailout overlay */
+.bailout-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: bailout-fade-in 0.4s ease-out;
+}
+
+.bailout-card {
+    text-align: center;
+    padding: 3rem 2.5rem;
+    border-radius: 1rem;
+    background: rgb(var(--color-surface));
+    border: 1px solid var(--theme-border-strong);
+    box-shadow: var(--theme-shadow-xl);
+    max-width: 400px;
+    width: 90%;
+}
+
+.bailout-state.hidden {
+    display: none;
+}
+
+.bailout-timer {
+    font-size: 5rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--color-accent));
+    line-height: 1;
+}
+
+.bailout-tick {
+    animation: bailout-pulse 0.3s ease-out;
+}
+
+@keyframes bailout-pulse {
+    0%   { transform: scale(1.3); opacity: 0.7; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes bailout-fade-in {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+#bailout-flavor {
+    transition: opacity 0.2s ease;
+}
+
 *, *::before, *::after {
   transition: background-color 0.6s ease, color 0.5s ease, border-color 0.7s ease;
 }

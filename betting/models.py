@@ -77,6 +77,53 @@ class BetSlip(BaseModel):
         return f"{self.user} — {self.get_selection_display()} on {self.match} @ {self.odds_at_placement}"
 
 
+class Bankruptcy(BaseModel):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bankruptcies",
+        verbose_name=_("user"),
+    )
+    balance_at_bankruptcy = models.DecimalField(
+        _("balance at bankruptcy"),
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "bankruptcies"
+
+    def __str__(self):
+        return f"{self.user} — bankruptcy #{self.pk} ({self.balance_at_bankruptcy} cr)"
+
+
+class Bailout(BaseModel):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bailouts",
+        verbose_name=_("user"),
+    )
+    bankruptcy = models.OneToOneField(
+        Bankruptcy,
+        on_delete=models.CASCADE,
+        related_name="bailout",
+        verbose_name=_("bankruptcy"),
+    )
+    amount = models.DecimalField(
+        _("amount"),
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} — bailout of {self.amount} cr"
+
+
 class UserBalance(BaseModel):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

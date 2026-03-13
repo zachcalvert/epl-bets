@@ -71,6 +71,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "website.context_processors.theme",
                 "rewards.context_processors.unseen_rewards",
+                "betting.context_processors.bankruptcy",
             ],
         },
     },
