@@ -1,9 +1,10 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
 
-from betting.models import BetSlip, UserBalance
+from betting.models import Bailout, Bankruptcy, BetSlip, UserBalance
 from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
 from matches.models import Match
 from matches.tests.factories import MatchFactory
@@ -444,3 +445,72 @@ def test_place_bet_without_container_id_returns_bet_form_on_error(client):
         template.name == "betting/partials/bet_form.html"
         for template in response.templates
     )
+
+
+# --- Bailout view tests ---
+
+
+def test_bailout_redirects_anonymous_user(client):
+    response = client.post(reverse("betting:bailout"))
+
+    assert response.status_code == 302
+    assert reverse("website:login") in response.url
+
+
+def test_bailout_returns_error_when_not_bankrupt(client):
+    user = UserFactory()
+    UserBalanceFactory(user=user, balance="500.00")
+    client.force_login(user)
+
+    response = client.post(reverse("betting:bailout"))
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "You are not bankrupt."
+    assert Bankruptcy.objects.count() == 0
+
+
+def test_bailout_returns_error_when_pending_bets_exist(client):
+    user = UserFactory()
+    UserBalanceFactory(user=user, balance="0.00")
+    BetSlipFactory(user=user, status=BetSlip.Status.PENDING)
+    client.force_login(user)
+
+    response = client.post(reverse("betting:bailout"))
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "You are not bankrupt."
+
+
+def test_bailout_returns_error_when_no_balance_exists(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(reverse("betting:bailout"))
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "No balance found."
+
+
+@patch("betting.views.random.randint", return_value=2000)
+def test_bailout_creates_records_and_credits_balance(mock_randint, client):
+    user = UserFactory()
+    balance = UserBalanceFactory(user=user, balance="0.25")
+    client.force_login(user)
+
+    response = client.post(reverse("betting:bailout"))
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["amount"] == 2000
+    assert data["new_balance"] == "2000.25"
+
+    balance.refresh_from_db()
+    assert balance.balance == Decimal("2000.25")
+
+    bankruptcy = Bankruptcy.objects.get(user=user)
+    assert bankruptcy.balance_at_bankruptcy == Decimal("0.25")
+
+    bailout = Bailout.objects.get(user=user)
+    assert bailout.bankruptcy == bankruptcy
+    assert bailout.amount == 2000

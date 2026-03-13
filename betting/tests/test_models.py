@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 import pytest
 
-from betting.models import BetSlip
+from betting.models import Bailout, Bankruptcy, BetSlip
 from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory, TeamFactory
+from users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -28,3 +31,19 @@ def test_user_balance_str_formats_credits():
     balance = UserBalanceFactory(balance="875.50")
 
     assert str(balance) == f"{balance.user}: 875.50 credits"
+
+
+def test_bankruptcy_str_includes_user_pk_and_balance():
+    user = UserFactory()
+    bankruptcy = Bankruptcy.objects.create(user=user, balance_at_bankruptcy=Decimal("0.25"))
+
+    assert f"bankruptcy #{bankruptcy.pk}" in str(bankruptcy)
+    assert "0.25 cr" in str(bankruptcy)
+
+
+def test_bailout_str_includes_user_and_amount():
+    user = UserFactory()
+    bankruptcy = Bankruptcy.objects.create(user=user, balance_at_bankruptcy=Decimal("0.00"))
+    bailout = Bailout.objects.create(user=user, bankruptcy=bankruptcy, amount=Decimal("2500.00"))
+
+    assert "bailout of 2500.00 cr" in str(bailout)
