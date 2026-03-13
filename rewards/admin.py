@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django import forms
 from django.contrib import admin, messages
 from django.db import models, transaction
 from django.utils.translation import ngettext
@@ -7,6 +8,19 @@ from django.utils.translation import ngettext
 from betting.models import UserBalance
 from rewards.models import Reward, RewardDistribution
 from users.models import User
+
+
+class RewardAdminForm(forms.ModelForm):
+    distribute_to = forms.ModelMultipleChoiceField(
+        queryset=User.objects.filter(is_active=True).order_by("email"),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"size": "10"}),
+        help_text="Select users to receive this reward upon creation.",
+    )
+
+    class Meta:
+        model = Reward
+        fields = ["name", "amount", "description"]
 
 
 class RewardDistributionInline(admin.TabularInline):
@@ -21,6 +35,7 @@ class RewardDistributionInline(admin.TabularInline):
 
 @admin.register(Reward)
 class RewardAdmin(admin.ModelAdmin):
+    form = RewardAdminForm
     list_display = ["name", "amount", "recipient_count", "created_by", "created_at"]
     search_fields = ["name"]
     readonly_fields = ["created_by", "created_at"]
@@ -39,9 +54,14 @@ class RewardAdmin(admin.ModelAdmin):
     recipient_count.admin_order_field = "_recipient_count"
 
     def save_model(self, request, obj, form, change):
-        if not change:
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
+        with transaction.atomic():
+            if not change:
+                obj.created_by = request.user
+            super().save_model(request, obj, form, change)
+            if not change:
+                users = form.cleaned_data.get("distribute_to")
+                if users:
+                    obj.distribute_to_users(users)
 
     @admin.action(description="Distribute to all users")
     def distribute_to_all_users(self, request, queryset):
