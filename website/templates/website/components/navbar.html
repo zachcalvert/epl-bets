@@ -34,14 +34,10 @@
                    class="nav-link {% if url_name == 'odds' %}nav-link-active{% endif %}">
                     Odds
                 </a>
-                <a href="{% url 'website:how_it_works' %}"
-                   class="nav-link {% if url_name == 'how_it_works' %}nav-link-active{% endif %}">
-                    How It Works
-                </a>
                 {% if user.is_authenticated %}
                 <a href="{% url 'betting:my_bets' %}"
                    class="nav-link {% if url_name == 'my_bets' %}nav-link-active{% endif %}">
-                    My Stuff
+                    My Bets
                 </a>
                 {% endif %}
                 {% endwith %}
