@@ -33,6 +33,22 @@ def test_apex_host_does_not_redirect(client):
 
 
 @override_settings(
+    DEBUG=False,
+    ALLOWED_HOSTS=["www.eplbets.net", "eplbets.net", "testserver"],
+    CANONICAL_HOST="eplbets.net",
+)
+def test_www_post_redirects_with_302_not_301(client):
+    response = client.post(
+        "/signup/",
+        HTTP_HOST="www.eplbets.net",
+        secure=True,
+    )
+
+    assert response.status_code == 302
+    assert response["Location"] == "https://eplbets.net/signup/"
+
+
+@override_settings(
     DEBUG=True,
     ALLOWED_HOSTS=["www.eplbets.net", "eplbets.net", "testserver"],
     CANONICAL_HOST="eplbets.net",

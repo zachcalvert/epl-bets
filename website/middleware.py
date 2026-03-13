@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.http import HttpResponsePermanentRedirect
+from django.http import HttpResponsePermanentRedirect, HttpResponseRedirect
 
 
 class CanonicalHostMiddleware:
@@ -12,8 +12,9 @@ class CanonicalHostMiddleware:
         if not settings.DEBUG and canonical_host:
             request_host = request.get_host().split(":", 1)[0]
             if request_host == f"www.{canonical_host}":
-                return HttpResponsePermanentRedirect(
-                    f"https://{canonical_host}{request.get_full_path()}"
-                )
+                url = f"https://{canonical_host}{request.get_full_path()}"
+                if request.method in ("GET", "HEAD"):
+                    return HttpResponsePermanentRedirect(url)
+                return HttpResponseRedirect(url)
 
         return self.get_response(request)
