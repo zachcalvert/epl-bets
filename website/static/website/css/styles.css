@@ -1,3 +1,8 @@
+/* Cross-document view transitions (page navigation crossfade) */
+@view-transition {
+    navigation: auto;
+}
+
 /* Custom styles beyond Tailwind */
 
 :root {
@@ -478,6 +483,12 @@
 }
 
 .animate-slide-out {
+    animation: slide-out 300ms ease-in forwards;
+}
+
+/* HTMX adds .htmx-swapping during swap delay — animate out */
+.reward-toast.htmx-swapping,
+.toast-shell.htmx-swapping {
     animation: slide-out 300ms ease-in forwards;
 }
 
