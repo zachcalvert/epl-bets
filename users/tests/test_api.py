@@ -5,18 +5,13 @@ from rest_framework.test import APIClient, APIRequestFactory
 from users.serializers import RegisterSerializer
 from users.tests.factories import UserFactory
 from users.views import MeView
+from website.models import SiteSettings
 
 pytestmark = pytest.mark.django_db
 
 
-def test_register_serializer_create_uses_create_user(monkeypatch):
-    called = {}
-
-    def fake_create_user(**kwargs):
-        called.update(kwargs)
-        return object()
-
-    monkeypatch.setattr("users.serializers.User.objects.create_user", fake_create_user)
+def test_register_serializer_create_uses_create_user():
+    SiteSettings.load()
 
     serializer = RegisterSerializer()
     result = serializer.create(
@@ -30,8 +25,7 @@ def test_register_serializer_create_uses_create_user(monkeypatch):
     )
 
     assert result is not None
-    assert called["email"] == "new@example.com"
-    assert called["password"] == "password123"
+    assert result.email == "new@example.com"
 
 
 def test_register_api_creates_user(client):
@@ -49,6 +43,27 @@ def test_register_api_creates_user(client):
 
     assert response.status_code == 201
     assert response.json()["email"] == "apiuser@example.com"
+
+
+def test_register_api_blocked_when_cap_reached(client):
+    site = SiteSettings.load()
+    site.max_users = 1
+    site.save()
+    UserFactory()
+
+    response = client.post(
+        reverse("users:register"),
+        data={
+            "email": "capped@example.com",
+            "password": "password123",
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    from django.contrib.auth import get_user_model
+
+    assert not get_user_model().objects.filter(email="capped@example.com").exists()
 
 
 def test_me_view_get_object_returns_authenticated_user():
