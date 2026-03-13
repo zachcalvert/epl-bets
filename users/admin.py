@@ -1,8 +1,8 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db import transaction
-from django.utils.translation import ngettext
 from django.utils import timezone
+from django.utils.translation import ngettext
 
 from betting.models import BetSlip, UserBalance
 from rewards.models import Reward
