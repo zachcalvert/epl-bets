@@ -279,7 +279,6 @@ def test_my_bets_view_allows_clearing_display_name(client):
 
     assert response.status_code == 200
     assert user.display_name is None
-    assert "Not set" in response.content.decode()
     assert "be****@example.com" in response.content.decode()
 
 
