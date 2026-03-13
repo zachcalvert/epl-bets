@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -132,11 +133,15 @@ class SignupView(View):
             return render(request, "website/signup.html", {"form": form})
 
         User = get_user_model()
-        user = User.objects.create_user(
-            email=form.cleaned_data["email"],
-            password=form.cleaned_data["password"],
-        )
-        UserBalance.objects.create(user=user)
+        with transaction.atomic():
+            site = SiteSettings.load_for_update()
+            if site.max_users and User.objects.count() >= site.max_users:
+                return render(request, "website/signup.html", self._closed_context())
+            user = User.objects.create_user(
+                email=form.cleaned_data["email"],
+                password=form.cleaned_data["password"],
+            )
+            UserBalance.objects.create(user=user)
         login(request, user)
         return redirect("matches:dashboard")
 

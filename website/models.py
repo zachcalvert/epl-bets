@@ -27,3 +27,9 @@ class SiteSettings(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+    @classmethod
+    def load_for_update(cls):
+        """Load with a row-level lock for use inside transaction.atomic()."""
+        obj, _ = cls.objects.select_for_update().get_or_create(pk=1)
+        return obj

@@ -3,6 +3,7 @@ from django.urls import reverse
 
 from betting.models import UserBalance
 from users.tests.factories import UserFactory
+from website.models import SiteSettings
 from website.views import ARCHITECTURE_COMPONENTS, FLOW_PATHS
 
 
@@ -75,6 +76,61 @@ def test_signup_post_returns_errors_for_password_mismatch(client):
 
     assert response.status_code == 200
     assert "Passwords do not match." in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_signup_get_shows_closed_when_cap_reached(client):
+    site = SiteSettings.load()
+    site.max_users = 1
+    site.save()
+    UserFactory()
+
+    response = client.get(reverse("website:signup"))
+
+    assert response.status_code == 200
+    assert response.context["registration_closed"] is True
+    assert response.context["closed_message"] == site.registration_closed_message
+
+
+@pytest.mark.django_db
+def test_signup_post_blocked_when_cap_reached(client, django_user_model):
+    site = SiteSettings.load()
+    site.max_users = 1
+    site.save()
+    UserFactory()
+
+    response = client.post(
+        reverse("website:signup"),
+        data={
+            "email": "new@example.com",
+            "password": "password123",
+            "password_confirm": "password123",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.context["registration_closed"] is True
+    assert not django_user_model.objects.filter(email="new@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_signup_allowed_when_max_users_is_zero(client, django_user_model):
+    site = SiteSettings.load()
+    site.max_users = 0
+    site.save()
+    UserFactory()
+
+    response = client.post(
+        reverse("website:signup"),
+        data={
+            "email": "unlimited@example.com",
+            "password": "password123",
+            "password_confirm": "password123",
+        },
+    )
+
+    assert response.status_code == 302
+    assert django_user_model.objects.filter(email="unlimited@example.com").exists()
 
 
 @pytest.mark.django_db
