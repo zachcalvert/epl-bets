@@ -245,7 +245,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                 )
         except UserBalance.DoesNotExist:
             # Auto-create balance if missing (shouldn't happen with signup flow)
-            UserBalance.objects.create(user=request.user, balance=Decimal("1000.00") - stake)
+            balance = UserBalance.objects.create(user=request.user, balance=Decimal("1000.00") - stake)
             bet = BetSlip.objects.create(
                 user=request.user,
                 match=match,
@@ -255,7 +255,6 @@ class PlaceBetView(LoginRequiredMixin, View):
             )
 
         potential_payout = stake * best_odds_val
-        updated_balance = UserBalance.objects.get(user=request.user).balance
         record_event(
             scope=match_scope(match.pk),
             scopes=[GLOBAL_SCOPE, page_scope("match_detail")],
@@ -275,7 +274,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                 "bet": bet,
                 "match": match,
                 "potential_payout": potential_payout,
-                "balance": f"{updated_balance:.2f}",
+                "balance": f"{balance.balance:.2f}",
             },
         )
 

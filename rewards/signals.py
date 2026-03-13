@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -18,21 +19,21 @@ def check_reward_rules(sender, instance, created, **kwargs):
 
     active_rules = RewardRule.objects.filter(is_active=True).select_related("reward")
 
+    bet_count_rules = []
+    stake_rules = []
     for rule in active_rules:
         if rule.rule_type == RewardRule.RuleType.BET_COUNT:
-            _check_bet_count_rule(rule, instance.user)
+            bet_count_rules.append(rule)
         elif rule.rule_type == RewardRule.RuleType.STAKE_AMOUNT:
-            _check_stake_amount_rule(rule, instance)
+            stake_rules.append(rule)
 
+    if bet_count_rules:
+        bet_count = BetSlip.objects.filter(user=instance.user).count()
+        for rule in bet_count_rules:
+            if bet_count == int(rule.threshold):
+                rule.reward.distribute_to_users([instance.user])
 
-def _check_bet_count_rule(rule, user):
-    """Distribute reward if user just hit the bet count milestone."""
-    bet_count = BetSlip.objects.filter(user=user).count()
-    if bet_count == int(rule.threshold):
-        rule.reward.distribute_to_users([user])
-
-
-def _check_stake_amount_rule(rule, bet):
-    """Distribute reward if this bet's stake meets the threshold."""
-    if bet.stake >= rule.threshold:
-        rule.reward.distribute_to_users([bet.user])
+    stake = Decimal(str(instance.stake))
+    for rule in stake_rules:
+        if stake >= rule.threshold:
+            rule.reward.distribute_to_users([instance.user])

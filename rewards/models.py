@@ -2,6 +2,7 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
@@ -114,6 +115,14 @@ class RewardRule(BaseModel):
     class Meta:
         ordering = ["rule_type", "threshold"]
         unique_together = [("rule_type", "threshold")]
+
+    def clean(self):
+        if self.rule_type == self.RuleType.BET_COUNT and self.threshold is not None:
+            threshold = Decimal(str(self.threshold))
+            if threshold != threshold.to_integral_value():
+                raise ValidationError(
+                    {"threshold": _("Bet count milestones must be whole numbers.")}
+                )
 
     def __str__(self):
         if self.rule_type == self.RuleType.BET_COUNT:
