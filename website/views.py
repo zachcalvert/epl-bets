@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -8,6 +8,7 @@ from django.views.generic import TemplateView
 
 from betting.models import UserBalance
 from website.forms import LoginForm, SignupForm
+from website.models import SiteSettings
 from website.theme import THEME_SESSION_KEY, get_theme, normalize_theme
 
 ARCHITECTURE_COMPONENTS = {
@@ -101,17 +102,34 @@ class ComponentDetailView(View):
 
 
 class SignupView(View):
+    def _registration_closed(self):
+        site = SiteSettings.load()
+        if site.max_users == 0:
+            return False
+        User = get_user_model()
+        return User.objects.count() >= site.max_users
+
+    def _closed_context(self):
+        site = SiteSettings.load()
+        return {
+            "registration_closed": True,
+            "closed_message": site.registration_closed_message,
+        }
+
     def get(self, request):
         if request.user.is_authenticated:
             return redirect("matches:dashboard")
+        if self._registration_closed():
+            return render(request, "website/signup.html", self._closed_context())
         return render(request, "website/signup.html", {"form": SignupForm()})
 
     def post(self, request):
+        if self._registration_closed():
+            return render(request, "website/signup.html", self._closed_context())
+
         form = SignupForm(request.POST)
         if not form.is_valid():
             return render(request, "website/signup.html", {"form": form})
-
-        from django.contrib.auth import get_user_model
 
         User = get_user_model()
         user = User.objects.create_user(

@@ -4,6 +4,16 @@
 {% block content %}
 <div class="max-w-md mx-auto mt-12">
     <div class="themed-panel p-8">
+        {% if registration_closed %}
+        <h1 class="themed-title text-2xl mb-2 text-center">Registration Closed</h1>
+        <p class="text-center text-sm text-muted mb-6">
+            {{ closed_message }}
+        </p>
+        <p class="text-center text-sm text-muted mt-4">
+            Already have an account?
+            <a href="{% url 'website:login' %}" class="text-accent hover:underline">Log in</a>
+        </p>
+        {% else %}
         <h1 class="themed-title text-2xl mb-2 text-center">Create Account</h1>
         <p class="text-center text-sm text-muted mb-6">Start with 1,000 demo credits</p>
 
@@ -52,6 +62,7 @@
             Already have an account?
             <a href="{% url 'website:login' %}" class="text-accent hover:underline">Log in</a>
         </p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
