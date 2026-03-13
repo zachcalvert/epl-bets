@@ -341,3 +341,46 @@ def test_leaderboard_partial_shows_empty_state_when_no_balances_exist(client):
 
     assert response.status_code == 200
     assert "No leaderboard data yet" in response.content.decode()
+
+
+def test_leaderboard_view_renders_all_users_in_balance_order(client):
+    for index in range(12):
+        UserBalanceFactory(
+            user__email=f"player{index}@example.com",
+            balance=Decimal("1000.00") + Decimal(index),
+        )
+
+    response = client.get(reverse("matches:leaderboard"))
+
+    leaderboard = list(response.context["leaderboard"])
+    assert response.status_code == 200
+    assert len(leaderboard) == 12
+    assert leaderboard[0].user.email == "player11@example.com"
+    assert leaderboard[-1].user.email == "player0@example.com"
+
+
+def test_leaderboard_view_shows_signed_in_user_rank_when_outside_top_10(client):
+    for index in range(10):
+        UserBalanceFactory(
+            user__email=f"top{index}@example.com",
+            balance=Decimal("2000.00") - Decimal(index),
+        )
+    user = UserFactory(email="latecomer@example.com")
+    UserBalanceFactory(user=user, balance="1500.00")
+    client.force_login(user)
+
+    response = client.get(reverse("matches:leaderboard"))
+
+    # All 11 users are visible in the full leaderboard, so the user is in it and
+    # the separate "Your rank" card is not shown (user_rank is None)
+    assert response.status_code == 200
+    assert len(list(response.context["leaderboard"])) == 11
+    assert response.context["user_rank"] is None
+
+
+def test_leaderboard_view_shows_empty_state_when_no_balances_exist(client):
+    response = client.get(reverse("matches:leaderboard"))
+
+    assert response.status_code == 200
+    assert "No leaderboard data yet" in response.content.decode()
+

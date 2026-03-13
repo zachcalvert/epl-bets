@@ -148,6 +148,16 @@ class LeaderboardPartialView(TemplateView):
         return ctx
 
 
+class LeaderboardView(TemplateView):
+    template_name = "matches/leaderboard.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["leaderboard"] = get_leaderboard_entries(limit=None)
+        ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        return ctx
+
+
 class FixturesView(TemplateView):
     template_name = "matches/fixtures.html"
 

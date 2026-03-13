@@ -69,10 +69,10 @@ def get_public_identity(user):
 
 
 def get_leaderboard_entries(limit=10):
-    leaderboard = list(
-        UserBalance.objects.select_related("user")
-        .order_by("-balance", "user_id")[:limit]
-    )
+    qs = UserBalance.objects.select_related("user").order_by("-balance", "user_id")
+    if limit is not None:
+        qs = qs[:limit]
+    leaderboard = list(qs)
     for entry in leaderboard:
         entry.display_identity = get_public_identity(entry.user)
     return leaderboard
