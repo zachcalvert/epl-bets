@@ -1,6 +1,6 @@
 import factory
 
-from rewards.models import Reward, RewardDistribution
+from rewards.models import Reward, RewardDistribution, RewardRule
 from users.tests.factories import UserFactory
 
 
@@ -20,3 +20,13 @@ class RewardDistributionFactory(factory.django.DjangoModelFactory):
 
     reward = factory.SubFactory(RewardFactory)
     user = factory.SubFactory(UserFactory)
+
+
+class RewardRuleFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = RewardRule
+
+    reward = factory.SubFactory(RewardFactory)
+    rule_type = RewardRule.RuleType.BET_COUNT
+    threshold = "1.00"
+    is_active = True

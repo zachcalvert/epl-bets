@@ -2,6 +2,7 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
@@ -85,6 +86,48 @@ class RewardDistribution(BaseModel):
 
     def __str__(self):
         return f"{self.reward.name} → {self.user}"
+
+
+class RewardRule(BaseModel):
+    class RuleType(models.TextChoices):
+        BET_COUNT = "BET_COUNT", _("Bet count milestone")
+        STAKE_AMOUNT = "STAKE_AMOUNT", _("Stake amount threshold")
+
+    reward = models.OneToOneField(
+        Reward,
+        on_delete=models.CASCADE,
+        related_name="rule",
+        verbose_name=_("reward"),
+    )
+    rule_type = models.CharField(
+        _("rule type"),
+        max_length=20,
+        choices=RuleType.choices,
+    )
+    threshold = models.DecimalField(
+        _("threshold"),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Bet count (e.g. 10) or stake amount (e.g. 100.00)"),
+    )
+    is_active = models.BooleanField(_("active"), default=True)
+
+    class Meta:
+        ordering = ["rule_type", "threshold"]
+        unique_together = [("rule_type", "threshold")]
+
+    def clean(self):
+        if self.rule_type == self.RuleType.BET_COUNT and self.threshold is not None:
+            threshold = Decimal(str(self.threshold))
+            if threshold != threshold.to_integral_value():
+                raise ValidationError(
+                    {"threshold": _("Bet count milestones must be whole numbers.")}
+                )
+
+    def __str__(self):
+        if self.rule_type == self.RuleType.BET_COUNT:
+            return f"Bet #{int(self.threshold)} → {self.reward.name}"
+        return f"Stake ≥ {self.threshold} → {self.reward.name}"
 
 
 def _broadcast_rewards(distributions):
