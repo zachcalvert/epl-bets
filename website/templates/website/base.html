@@ -61,6 +61,10 @@
         {% include "website/components/footer.html" %}
     </div>
 
+    {% if is_bankrupt %}
+        {% include "betting/partials/bailout_overlay.html" %}
+    {% endif %}
+
     <!-- Notifications container for real-time toasts (bet settlements, etc.) -->
     <div id="notifications" class="fixed top-20 right-4 z-50 space-y-2 max-w-sm"></div>
 

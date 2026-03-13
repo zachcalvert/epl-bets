@@ -1,7 +1,10 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db import transaction
+from django.utils import timezone
 from django.utils.translation import ngettext
 
+from betting.models import BetSlip, UserBalance
 from rewards.models import Reward
 
 from .models import User
@@ -13,7 +16,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ("is_staff", "is_superuser", "is_active")
     search_fields = ("email", "display_name", "first_name", "last_name")
     ordering = ("email",)
-    actions = ["grant_latest_reward"]
+    actions = ["grant_latest_reward", "simulate_bankruptcy"]
 
     @admin.action(description="Grant latest reward to selected users")
     def grant_latest_reward(self, request, queryset):
@@ -35,6 +38,39 @@ class UserAdmin(BaseUserAdmin):
                 len(distributions),
             )
             % {"count": len(distributions), "name": reward.name, "amount": reward.amount},
+            messages.SUCCESS,
+        )
+
+    @admin.action(description="Simulate bankruptcy for selected users")
+    def simulate_bankruptcy(self, request, queryset):
+        count = 0
+        for user in queryset:
+            with transaction.atomic():
+                # Settle all pending bets as losses
+                BetSlip.objects.filter(
+                    user=user, status=BetSlip.Status.PENDING
+                ).update(
+                    status=BetSlip.Status.LOST,
+                    payout=0,
+                    updated_at=timezone.now(),
+                )
+
+                # Zero out balance
+                UserBalance.objects.filter(user=user).update(
+                    balance=0,
+                    updated_at=timezone.now(),
+                )
+
+            count += 1
+
+        self.message_user(
+            request,
+            ngettext(
+                "%(count)d user is now bankrupt.",
+                "%(count)d users are now bankrupt.",
+                count,
+            )
+            % {"count": count},
             messages.SUCCESS,
         )
 

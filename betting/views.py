@@ -1,17 +1,19 @@
 import logging
+import random
 from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Max, Min, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
 from betting.forms import DisplayNameForm, PlaceBetForm
-from betting.models import BetSlip, Odds, UserBalance
+from betting.models import Bailout, Bankruptcy, BetSlip, Odds, UserBalance
 from betting.services import get_public_identity, get_user_rank, mask_email
 from matches.models import Match
 from rewards.models import RewardDistribution
@@ -425,3 +427,45 @@ class QuickBetFormView(LoginRequiredMixin, View):
                 "selected_odds": selected_odds,
             },
         )
+
+
+class BailoutView(LoginRequiredMixin, View):
+    """Process a bailout request for a bankrupt user."""
+
+    MIN_BET = Decimal("0.50")
+
+    def post(self, request):
+        with transaction.atomic():
+            try:
+                balance = UserBalance.objects.select_for_update().get(user=request.user)
+            except UserBalance.DoesNotExist:
+                return JsonResponse({"error": "No balance found."}, status=400)
+
+            pending_count = BetSlip.objects.filter(
+                user=request.user, status=BetSlip.Status.PENDING
+            ).count()
+
+            if balance.balance >= self.MIN_BET or pending_count > 0:
+                return JsonResponse({"error": "You are not bankrupt."}, status=400)
+
+            bankruptcy = Bankruptcy.objects.create(
+                user=request.user,
+                balance_at_bankruptcy=balance.balance,
+            )
+
+            amount = random.randint(1000, 3000)
+
+            Bailout.objects.create(
+                user=request.user,
+                bankruptcy=bankruptcy,
+                amount=amount,
+            )
+
+            balance.balance += amount
+            balance.save(update_fields=["balance"])
+
+        return JsonResponse({
+            "success": True,
+            "amount": amount,
+            "new_balance": str(balance.balance),
+        })
