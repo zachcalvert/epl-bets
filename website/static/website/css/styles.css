@@ -585,3 +585,7 @@
     0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
     100% { opacity: 0; transform: translateY(64px) rotate(260deg); }
 }
+
+*, *::before, *::after {
+  transition: background-color 0.6s ease, color 0.5s ease, border-color 0.7s ease;
+}
