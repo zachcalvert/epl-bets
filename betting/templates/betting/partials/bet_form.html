@@ -27,14 +27,14 @@
                            class="hidden peer"
                            {% if form.selection.value == value %}checked{% endif %}>
                     <div class="peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent
-                                border border-gray-600 rounded-md py-3 text-center text-sm font-medium
+                                border border-gray-600 rounded-md py-3 text-center font-medium
                                 text-gray-300 hover:border-gray-400 transition-colors">
                         {% if value == "HOME_WIN" %}
-                            {{ match.home_team.short_name|default:match.home_team.name }}
+                            <span class="block text-sm">{{ match.home_team.short_name|default:match.home_team.name }}</span>
                         {% elif value == "DRAW" %}
-                            Draw
+                            <span class="block text-sm">Draw</span>
                         {% else %}
-                            {{ match.away_team.short_name|default:match.away_team.name }}
+                            <span class="block text-sm">{{ match.away_team.short_name|default:match.away_team.name }}</span>
                         {% endif %}
                     </div>
                 </label>
