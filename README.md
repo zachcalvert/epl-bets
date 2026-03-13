@@ -4,8 +4,6 @@
 [![codecov](https://codecov.io/gh/zachcalvert/epl-bets/branch/main/graph/badge.svg)](https://codecov.io/gh/zachcalvert/epl-bets)
 ![tests](https://img.shields.io/badge/tests-192%20passing-2ea44f)
 ![coverage gate](https://img.shields.io/badge/coverage%20gate-98%25-2ea44f)
-![local suite](https://img.shields.io/badge/local%20suite-%3C5s-2ea44f)
-[![live demo](https://img.shields.io/badge/live%20demo-eplbets.net-0a66c2)](https://eplbets.net)
 
 EPL betting demo built with Django, HTMX, Redis, and Celery. Live scores via WebSocket, real bookmaker odds, and simulated bet placement — all server-rendered with zero JavaScript frameworks.
 
