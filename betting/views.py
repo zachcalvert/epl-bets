@@ -245,7 +245,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                 )
         except UserBalance.DoesNotExist:
             # Auto-create balance if missing (shouldn't happen with signup flow)
-            UserBalance.objects.create(user=request.user, balance=Decimal("1000.00") - stake)
+            balance = UserBalance.objects.create(user=request.user, balance=Decimal("1000.00") - stake)
             bet = BetSlip.objects.create(
                 user=request.user,
                 match=match,
@@ -270,7 +270,12 @@ class PlaceBetView(LoginRequiredMixin, View):
         return render(
             request,
             "betting/partials/bet_confirmation.html",
-            {"bet": bet, "match": match, "potential_payout": potential_payout},
+            {
+                "bet": bet,
+                "match": match,
+                "potential_payout": potential_payout,
+                "balance": f"{balance.balance:.2f}",
+            },
         )
 
 
