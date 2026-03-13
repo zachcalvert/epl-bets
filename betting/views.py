@@ -152,6 +152,22 @@ class PlaceBetView(LoginRequiredMixin, View):
             return "betting/partials/quick_bet_form.html"
         return "betting/partials/bet_form.html"
 
+    def _get_odds_context(self, match, selection="", container_id=""):
+        """Return odds context for payout preview on error re-renders."""
+        if container_id:
+            # Quick bet form: pass selected_odds for the chosen outcome
+            odds_field_map = {"HOME_WIN": "home_win", "DRAW": "draw", "AWAY_WIN": "away_win"}
+            odds_field = odds_field_map.get(selection)
+            if odds_field:
+                result = Odds.objects.filter(match=match).aggregate(best=Min(odds_field))
+                return {"selected_odds": result.get("best")}
+            return {}
+        # Full bet form: pass all three best odds
+        result = Odds.objects.filter(match=match).aggregate(
+            best_home=Min("home_win"), best_draw=Min("draw"), best_away=Min("away_win"),
+        )
+        return {"best_home": result["best_home"], "best_draw": result["best_draw"], "best_away": result["best_away"]}
+
     def post(self, request, match_pk):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team"),
@@ -161,29 +177,33 @@ class PlaceBetView(LoginRequiredMixin, View):
 
         # Only allow bets on upcoming matches
         if match.status not in (Match.Status.SCHEDULED, Match.Status.TIMED):
+            selection_val = request.POST.get("selection", "")
             return render(
                 request,
                 self._error_template(container_id),
                 {
                     "match": match,
                     "form": PlaceBetForm(),
-                    "selection": request.POST.get("selection", ""),
+                    "selection": selection_val,
                     "container_id": container_id,
                     "error": "This match is no longer accepting bets.",
+                    **self._get_odds_context(match, selection_val, container_id),
                 },
             )
 
         form = PlaceBetForm(request.POST)
         if not form.is_valid():
+            selection_val = request.POST.get("selection", "")
             return render(
                 request,
                 self._error_template(container_id),
                 {
                     "match": match,
                     "form": form,
-                    "selection": request.POST.get("selection", ""),
+                    "selection": selection_val,
                     "container_id": container_id,
                     "error": None,
+                    **self._get_odds_context(match, selection_val, container_id),
                 },
             )
 
@@ -212,6 +232,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                     "selection": selection,
                     "container_id": container_id,
                     "error": "No odds available for this match.",
+                    **self._get_odds_context(match, selection, container_id),
                 },
             )
 
@@ -230,6 +251,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                             "selection": selection,
                             "container_id": container_id,
                             "error": f"Insufficient balance. You have {balance.balance:.2f} credits.",
+                            **self._get_odds_context(match, selection, container_id),
                         },
                     )
 
@@ -371,6 +393,12 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
 class QuickBetFormView(LoginRequiredMixin, View):
     """Return an inline bet form for the odds board."""
 
+    ODDS_FIELD_MAP = {
+        "HOME_WIN": "home_win",
+        "DRAW": "draw",
+        "AWAY_WIN": "away_win",
+    }
+
     def get(self, request, match_pk):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team"),
@@ -379,8 +407,21 @@ class QuickBetFormView(LoginRequiredMixin, View):
         selection = request.GET.get("selection", "")
         container_id = request.GET.get("container", "")
         form = PlaceBetForm(initial={"selection": selection})
+
+        selected_odds = None
+        odds_field = self.ODDS_FIELD_MAP.get(selection)
+        if odds_field:
+            result = Odds.objects.filter(match=match).aggregate(best=Min(odds_field))
+            selected_odds = result.get("best")
+
         return render(
             request,
             "betting/partials/quick_bet_form.html",
-            {"match": match, "form": form, "selection": selection, "container_id": container_id},
+            {
+                "match": match,
+                "form": form,
+                "selection": selection,
+                "container_id": container_id,
+                "selected_odds": selected_odds,
+            },
         )

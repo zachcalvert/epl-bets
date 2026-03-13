@@ -11,6 +11,9 @@
           hx-target="#bet-form-container"
           hx-swap="outerHTML"
           hx-disabled-elt="find button[type='submit']"
+          data-odds-home="{{ best_home|default:'' }}"
+          data-odds-draw="{{ best_draw|default:'' }}"
+          data-odds-away="{{ best_away|default:'' }}"
           class="space-y-4">
         {% csrf_token %}
 
@@ -49,6 +52,10 @@
             {% if form.stake.errors %}
             <p class="text-danger text-xs mt-1">{{ form.stake.errors.0 }}</p>
             {% endif %}
+        </div>
+
+        <div class="hidden text-sm text-accent font-mono font-semibold text-right" data-payout-display>
+            Potential Payout: <span data-payout-value>0.00</span> credits
         </div>
 
         <button type="submit"
