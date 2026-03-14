@@ -11,30 +11,30 @@
           data-odds-home="{% if selection == 'HOME_WIN' %}{{ selected_odds|default:'' }}{% endif %}"
           data-odds-draw="{% if selection == 'DRAW' %}{{ selected_odds|default:'' }}{% endif %}"
           data-odds-away="{% if selection == 'AWAY_WIN' %}{{ selected_odds|default:'' }}{% endif %}"
-          class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          class="space-y-2">
         {% csrf_token %}
         <input type="hidden" name="selection" value="{{ selection }}">
         <input type="hidden" name="container_id" value="{{ container_id }}">
 
-        <span class="text-sm text-gray-300">
-            {{ match.home_team.short_name|default:match.home_team.tla }} vs {{ match.away_team.short_name|default:match.away_team.tla }}
-            &mdash;
-            <span class="text-accent font-semibold">
-                {% if selection == "HOME_WIN" %}{{ match.home_team.short_name|default:match.home_team.name }} Win{% elif selection == "DRAW" %}Draw{% else %}{{ match.away_team.short_name|default:match.away_team.name }} Win{% endif %}
+        <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-300">
+                <span class="text-accent font-semibold">
+                    {% if selection == "HOME_WIN" %}{{ match.home_team.short_name|default:match.home_team.name }} Win{% elif selection == "DRAW" %}Draw{% else %}{{ match.away_team.short_name|default:match.away_team.name }} Win{% endif %}
+                </span>
+                <span class="text-gray-400 font-mono text-xs">@ {{ selected_odds }}</span>
             </span>
-            <span class="text-gray-400 font-mono text-xs">@ {{ selected_odds }}</span>
-        </span>
+        </div>
 
-        <div class="flex items-center gap-3 sm:ml-auto">
-            <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 flex-1">
                 <label class="text-xs text-muted">Stake:</label>
                 <input type="number" name="stake"
-                       class="w-24 bg-surface border border-gray-600 rounded px-2 py-1 text-white font-mono text-base sm:text-sm text-right focus:outline-none focus:border-accent"
+                       class="w-full bg-surface border border-gray-600 rounded px-2 py-1 text-white font-mono text-base sm:text-sm text-right focus:outline-none focus:border-accent"
                        placeholder="0.00" step="0.50" min="0.50" max="500.00" required>
             </div>
 
             <div class="hidden text-xs text-accent font-mono font-semibold whitespace-nowrap" data-payout-display>
-                Payout: <span data-payout-value>0.00</span>
+                <span data-payout-value>0.00</span>
             </div>
 
             <button type="submit"
@@ -45,7 +45,7 @@
             <button type="button"
                     class="text-muted hover:text-white text-sm px-2 transition-colors"
                     onclick="document.getElementById('{{ container_id }}').innerHTML = ''">
-                Cancel
+                &times;
             </button>
         </div>
     </form>
