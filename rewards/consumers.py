@@ -1,6 +1,7 @@
 import logging
 
 from channels.generic.websocket import WebsocketConsumer
+from django.db import close_old_connections
 from django.template.loader import render_to_string
 
 from betting.models import UserBalance
@@ -54,6 +55,7 @@ class NotificationConsumer(WebsocketConsumer):
 
     def reward_notification(self, event):
         """Push a reward toast to the connected user via OOB swap."""
+        close_old_connections()
         distribution_id = event["distribution_id"]
         try:
             user = self.scope.get("user")

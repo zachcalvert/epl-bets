@@ -1,6 +1,7 @@
 import logging
 
 from channels.generic.websocket import WebsocketConsumer
+from django.db import close_old_connections
 from django.db.models import Min
 from django.template.loader import render_to_string
 
@@ -58,6 +59,7 @@ class LiveUpdatesConsumer(WebsocketConsumer):
 
     def score_update(self, event):
         """Handle score updates for the dashboard (match card OOB swap)."""
+        close_old_connections()
         match_id = event["match_id"]
         try:
             match = (
@@ -92,6 +94,7 @@ class LiveUpdatesConsumer(WebsocketConsumer):
 
     def match_score_update(self, event):
         """Handle score updates for the match detail page (score display OOB swap)."""
+        close_old_connections()
         match_id = event["match_id"]
         try:
             match = (

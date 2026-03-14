@@ -33,5 +33,5 @@ primary_region = "sjc"
 
 [processes]
   app = "daphne -b 0.0.0.0 -p 8000 --application-close-timeout 10 -t 60 config.asgi:application"
-  worker = "celery -A config worker -l info"
+  worker = "celery -A config worker -l info --concurrency 2"
   beat = "celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"

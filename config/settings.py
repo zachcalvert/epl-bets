@@ -81,7 +81,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {
-    "default": env.db(),
+    "default": {
+        **env.db(),
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
