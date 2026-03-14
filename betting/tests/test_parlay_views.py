@@ -3,8 +3,11 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 
-from betting.models import BetSlip, Parlay, ParlayLeg, UserBalance
-from betting.tests.factories import OddsFactory, ParlayFactory, ParlayLegFactory, UserBalanceFactory
+from betting.models import Parlay
+from betting.tests.factories import (
+    OddsFactory,
+    UserBalanceFactory,
+)
 from matches.models import Match
 from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
@@ -31,7 +34,7 @@ def _slip(client):
 
 class TestAddToParlayView:
     def test_add_leg_to_empty_slip(self, client):
-        user = _login(client)
+        _login(client)
         match = MatchFactory(status=Match.Status.SCHEDULED)
 
         resp = client.post(reverse("betting:parlay_add"), {

@@ -14,13 +14,13 @@ from django.views.generic import TemplateView
 
 from betting.forms import DisplayNameForm, PlaceBetForm, PlaceParlayForm
 from betting.models import (
+    PARLAY_MAX_LEGS,
+    PARLAY_MAX_PAYOUT,
+    PARLAY_MIN_LEGS,
     Bailout,
     Bankruptcy,
     BetSlip,
     Odds,
-    PARLAY_MAX_LEGS,
-    PARLAY_MAX_PAYOUT,
-    PARLAY_MIN_LEGS,
     Parlay,
     ParlayLeg,
     UserBalance,

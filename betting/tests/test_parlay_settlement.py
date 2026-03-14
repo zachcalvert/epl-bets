@@ -2,8 +2,8 @@ from decimal import Decimal
 
 import pytest
 
-from betting.models import BetSlip, Parlay, ParlayLeg, UserBalance
-from betting.tasks import settle_match_bets, settle_parlay_legs, _evaluate_parlay
+from betting.models import BetSlip, Parlay, ParlayLeg
+from betting.tasks import _evaluate_parlay, settle_match_bets, settle_parlay_legs
 from betting.tests.factories import (
     ParlayFactory,
     ParlayLegFactory,

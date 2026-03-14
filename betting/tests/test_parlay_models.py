@@ -2,7 +2,14 @@ from decimal import Decimal
 
 import pytest
 
-from betting.models import BetSlip, PARLAY_MAX_LEGS, PARLAY_MAX_PAYOUT, PARLAY_MIN_LEGS, Parlay, ParlayLeg
+from betting.models import (
+    PARLAY_MAX_LEGS,
+    PARLAY_MAX_PAYOUT,
+    PARLAY_MIN_LEGS,
+    BetSlip,
+    Parlay,
+    ParlayLeg,
+)
 from betting.tests.factories import ParlayFactory, ParlayLegFactory, UserBalanceFactory
 from matches.tests.factories import MatchFactory
 
@@ -29,7 +36,7 @@ class TestParlayModel:
 
     def test_parlay_ordered_by_created_at_desc(self):
         user = UserBalanceFactory().user
-        p1 = ParlayFactory(user=user)
+        ParlayFactory(user=user)
         p2 = ParlayFactory(user=user)
         parlays = list(Parlay.objects.filter(user=user))
         assert parlays[0].pk == p2.pk  # newest first
@@ -64,6 +71,6 @@ class TestParlayLegModel:
     def test_legs_ordered_by_created_at(self):
         parlay = ParlayFactory()
         leg1 = ParlayLegFactory(parlay=parlay, match=MatchFactory())
-        leg2 = ParlayLegFactory(parlay=parlay, match=MatchFactory())
+        ParlayLegFactory(parlay=parlay, match=MatchFactory())
         legs = list(parlay.legs.all())
         assert legs[0].pk == leg1.pk  # oldest first

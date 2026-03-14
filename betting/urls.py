@@ -8,9 +8,9 @@ from betting.views import (
     OddsBoardPartialView,
     OddsBoardUnderTheHoodPartialView,
     OddsBoardView,
+    ParlaySlipPartialView,
     PlaceBetView,
     PlaceParlayView,
-    ParlaySlipPartialView,
     QuickBetFormView,
     RemoveFromParlayView,
 )

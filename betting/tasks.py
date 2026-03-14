@@ -18,9 +18,8 @@ def settle_parlay_legs(match, winning_selection):
 
     After settling legs, evaluate each affected parlay.
     """
-    from django.db import transaction
 
-    from betting.models import Parlay, ParlayLeg
+    from betting.models import ParlayLeg
 
     pending_legs = ParlayLeg.objects.filter(
         match=match, status=ParlayLeg.Status.PENDING
@@ -54,7 +53,7 @@ def _recalculate_combined_odds(parlay, legs):
     """Recalculate combined_odds using only non-VOID legs. Updates parlay in place."""
     from betting.models import ParlayLeg
 
-    active_legs = [l for l in legs if l.status != ParlayLeg.Status.VOID]
+    active_legs = [leg for leg in legs if leg.status != ParlayLeg.Status.VOID]
     if not active_legs:
         parlay.combined_odds = Decimal("1.00")
     else:
