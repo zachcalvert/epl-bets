@@ -21,4 +21,4 @@ RUN chmod +x /release.sh
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "--application-close-timeout", "10", "--request-timeout", "60", "config.asgi:application"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "--application-close-timeout", "10", "-t", "60", "config.asgi:application"]

@@ -442,6 +442,30 @@
 }
 
 /* ================================================
+   Live Match Card — Pulsing Border
+   ================================================ */
+@keyframes live-border-pulse {
+    0%, 100% {
+        border-color: rgba(0, 230, 118, 0.5);
+        box-shadow: 0 0 8px rgba(0, 230, 118, 0.08);
+    }
+    50% {
+        border-color: rgba(0, 230, 118, 0.2);
+        box-shadow: 0 0 16px rgba(0, 230, 118, 0.15);
+    }
+}
+
+[data-theme="light"] .live-match-card {
+    --live-border-from: rgba(0, 158, 96, 0.5);
+    --live-border-to: rgba(0, 158, 96, 0.2);
+}
+
+.live-match-card {
+    border-color: rgba(0, 230, 118, 0.5) !important;
+    animation: live-border-pulse 2s ease-in-out infinite;
+}
+
+/* ================================================
    WebSocket Connection Status
    ================================================ */
 @keyframes pulse-dot {
