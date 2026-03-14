@@ -3,7 +3,12 @@ import logging
 from celery import shared_task
 from django.conf import settings
 
-from matches.services import sync_matches, sync_standings, sync_teams
+from matches.services import (
+    FootballDataClient,
+    sync_matches,
+    sync_standings,
+    sync_teams,
+)
 from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 logger = logging.getLogger(__name__)
@@ -59,6 +64,21 @@ def fetch_live_scores(self):
 
         created, updated = sync_matches(settings.CURRENT_SEASON, status="LIVE")
         logger.info("fetch_live_scores: done created=%d updated=%d", created, updated)
+
+        # Matches that we still think are live but the API didn't return
+        # (i.e. they finished between syncs) — fetch them individually.
+        still_live_pks = Match.objects.filter(
+            status__in=["IN_PLAY", "PAUSED"],
+            season=settings.CURRENT_SEASON,
+        ).values_list("pk", "external_id")
+
+        stale_matches = [
+            (pk, ext_id) for pk, ext_id in still_live_pks if pk in pre_sync
+        ]
+        if stale_matches:
+            stale_updated = _refresh_stale_matches(stale_matches)
+            updated += stale_updated
+
         record_event(
             scope=page_scope("dashboard"),
             scopes=[GLOBAL_SCOPE],
@@ -77,6 +97,31 @@ def fetch_live_scores(self):
     except Exception as exc:
         logger.exception("fetch_live_scores failed")
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+
+
+def _refresh_stale_matches(stale_matches):
+    """Fetch current status for matches our DB thinks are live but the LIVE
+    API didn't return (they likely just finished)."""
+    from matches.models import Match
+
+    updated = 0
+    with FootballDataClient() as client:
+        for pk, ext_id in stale_matches:
+            try:
+                data = client.get_match(ext_id)
+                Match.objects.filter(pk=pk).update(
+                    status=data["status"],
+                    home_score=data["home_score"],
+                    away_score=data["away_score"],
+                )
+                logger.info(
+                    "Refreshed stale match %d (ext %d): status=%s",
+                    pk, ext_id, data["status"],
+                )
+                updated += 1
+            except Exception:
+                logger.exception("Failed to refresh stale match %d", pk)
+    return updated
 
 
 def _broadcast_score_changes(pre_sync):

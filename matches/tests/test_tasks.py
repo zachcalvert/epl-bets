@@ -261,6 +261,112 @@ def test_broadcast_score_changes_triggers_settlement_for_terminal_statuses(
     delay.assert_called_once_with(match.pk)
 
 
+def test_fetch_live_scores_refreshes_stale_matches(monkeypatch, settings):
+    """Matches that finished between syncs (still IN_PLAY in our DB but absent
+    from the LIVE API response) should be individually fetched and updated."""
+    stale_match = MatchFactory(
+        status=Match.Status.IN_PLAY,
+        season=settings.CURRENT_SEASON,
+        home_score=1,
+        away_score=0,
+    )
+
+    # sync_matches returns (0, 0) — the LIVE API didn't include the stale match,
+    # so our DB still has it as IN_PLAY after sync.
+    monkeypatch.setattr("matches.tasks.sync_matches", lambda season, status=None: (0, 0))
+
+    # _refresh_stale_matches will call get_match for the stale one
+    monkeypatch.setattr(
+        "matches.tasks._refresh_stale_matches",
+        lambda stale: Match.objects.filter(
+            pk__in=[pk for pk, _ in stale],
+        ).update(status=Match.Status.FINISHED, home_score=2, away_score=1)
+    )
+    monkeypatch.setattr("matches.tasks._broadcast_score_changes", Mock())
+
+    fetch_live_scores.run()
+
+    stale_match.refresh_from_db()
+    assert stale_match.status == Match.Status.FINISHED
+    assert stale_match.home_score == 2
+    assert stale_match.away_score == 1
+
+
+def test_refresh_stale_matches_updates_match_from_api(monkeypatch, settings):
+    """_refresh_stale_matches fetches each match individually and updates the DB."""
+    from matches.tasks import _refresh_stale_matches
+
+    match = MatchFactory(
+        status=Match.Status.IN_PLAY,
+        season=settings.CURRENT_SEASON,
+        home_score=1,
+        away_score=1,
+    )
+
+    class FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def get_match(self, ext_id):
+            return {"status": "FINISHED", "home_score": 2, "away_score": 1}
+
+    monkeypatch.setattr("matches.tasks.FootballDataClient", FakeClient)
+
+    updated = _refresh_stale_matches([(match.pk, match.external_id)])
+
+    assert updated == 1
+    match.refresh_from_db()
+    assert match.status == Match.Status.FINISHED
+    assert match.home_score == 2
+    assert match.away_score == 1
+
+
+def test_refresh_stale_matches_continues_on_individual_failure(monkeypatch, settings):
+    """If one match fails to refresh, others should still be processed."""
+    from matches.tasks import _refresh_stale_matches
+
+    match_ok = MatchFactory(
+        status=Match.Status.IN_PLAY,
+        season=settings.CURRENT_SEASON,
+        home_score=0,
+        away_score=0,
+    )
+    match_fail = MatchFactory(
+        status=Match.Status.IN_PLAY,
+        season=settings.CURRENT_SEASON,
+        home_score=0,
+        away_score=0,
+    )
+
+    class FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def get_match(self, ext_id):
+            if ext_id == match_fail.external_id:
+                raise ConnectionError("API timeout")
+            return {"status": "FINISHED", "home_score": 3, "away_score": 0}
+
+    monkeypatch.setattr("matches.tasks.FootballDataClient", FakeClient)
+
+    updated = _refresh_stale_matches([
+        (match_fail.pk, match_fail.external_id),
+        (match_ok.pk, match_ok.external_id),
+    ])
+
+    assert updated == 1
+    match_ok.refresh_from_db()
+    assert match_ok.status == Match.Status.FINISHED
+    match_fail.refresh_from_db()
+    assert match_fail.status == Match.Status.IN_PLAY
+
+
 class SimpleChannelLayer:
     def __init__(self, sent):
         self.sent = sent
