@@ -79,6 +79,7 @@ class TestNotificationConsumerEvents:
         dist = RewardDistributionFactory()
         consumer = build_consumer(dist.user)
         consumer.send = Mock()
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
         monkeypatch.setattr(
             "rewards.consumers.render_to_string",
             lambda template, context: f"{template}:{context['distribution'].pk}",
@@ -103,6 +104,7 @@ class TestNotificationConsumerEvents:
         dist = RewardDistributionFactory()
         consumer = build_consumer(dist.user)
         consumer.send = Mock(side_effect=RuntimeError("send failed"))
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
         monkeypatch.setattr(
             "rewards.consumers.render_to_string",
             lambda template, context: "payload",

@@ -90,6 +90,7 @@ def test_score_update_renders_and_sends_html(monkeypatch):
     match = MatchFactory()
     consumer = build_consumer("dashboard")
     consumer.send = Mock()
+    monkeypatch.setattr("matches.consumers.close_old_connections", lambda: None)
     monkeypatch.setattr(
         "matches.consumers.render_to_string",
         lambda template, context: f"{template}:{context['match'].pk}:{context['match'].best_home_odds}",
@@ -114,6 +115,7 @@ def test_score_update_swallow_render_errors(monkeypatch):
     match = MatchFactory()
     consumer = build_consumer("dashboard")
     consumer.send = Mock(side_effect=RuntimeError("send failed"))
+    monkeypatch.setattr("matches.consumers.close_old_connections", lambda: None)
     monkeypatch.setattr(
         "matches.consumers.render_to_string",
         lambda template, context: "payload",
@@ -128,6 +130,7 @@ def test_match_score_update_renders_and_sends_html(monkeypatch):
     match = MatchFactory()
     consumer = build_consumer(str(match.pk))
     consumer.send = Mock()
+    monkeypatch.setattr("matches.consumers.close_old_connections", lambda: None)
     monkeypatch.setattr(
         "matches.consumers.render_to_string",
         lambda template, context: f"{template}:{context['match'].pk}",
@@ -153,6 +156,7 @@ def test_match_score_update_swallow_render_errors(monkeypatch):
     match = MatchFactory()
     consumer = build_consumer(str(match.pk))
     consumer.send = Mock(side_effect=RuntimeError("send failed"))
+    monkeypatch.setattr("matches.consumers.close_old_connections", lambda: None)
     monkeypatch.setattr(
         "matches.consumers.render_to_string",
         lambda template, context: "payload",
