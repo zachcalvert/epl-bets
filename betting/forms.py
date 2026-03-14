@@ -32,6 +32,25 @@ class PlaceBetForm(forms.Form):
     )
 
 
+class PlaceParlayForm(forms.Form):
+    stake = forms.DecimalField(
+        min_value=Decimal("0.50"),
+        max_value=Decimal("1000.00"),
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "themed-input themed-input-mono themed-input-right",
+                "placeholder": "0.00",
+                "step": "0.50",
+                "min": "0.50",
+                "max": "1000.00",
+                "id": "parlay-stake-input",
+            }
+        ),
+    )
+
+
 class DisplayNameForm(forms.ModelForm):
     class Meta:
         model = User

@@ -1,4 +1,6 @@
 {% load match_tags %}
+{# Hidden CSRF token for HTMX parlay add buttons (hx-include targets this) #}
+{% if user.is_authenticated %}<div hidden>{% csrf_token %}</div>{% endif %}
 {% if matches %}
 <!-- Desktop table -->
 <div class="hidden md:block">
@@ -42,36 +44,75 @@
                 </td>
                 <td class="px-3 py-3 text-center">
                     {% if match.best_home_odds %}
-                    <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN&container=quick-bet-{{ match.pk }}"
-                            hx-target="#quick-bet-{{ match.pk }}"
-                            hx-swap="innerHTML">
-                        {{ match.best_home_odds|format_odds }}
-                    </button>
+                    <div class="flex flex-col items-center gap-0.5">
+                        <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                                hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN&container=quick-bet-{{ match.pk }}"
+                                hx-target="#quick-bet-{{ match.pk }}"
+                                hx-swap="innerHTML">
+                            {{ match.best_home_odds|format_odds }}
+                        </button>
+                        {% if user.is_authenticated %}
+                        <button class="text-[0.6rem] text-muted hover:text-accent transition-colors leading-none px-1"
+                                title="Add to parlay"
+                                hx-post="{% url 'betting:parlay_add' %}"
+                                hx-target="#parlay-slip-panel"
+                                hx-swap="outerHTML"
+                                hx-vals='{"match_id": "{{ match.pk }}", "selection": "HOME_WIN"}'
+                                hx-include="[name='csrfmiddlewaretoken']">
+                            + parlay
+                        </button>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <span class="text-sm font-mono text-muted">&mdash;</span>
                     {% endif %}
                 </td>
                 <td class="px-3 py-3 text-center">
                     {% if match.best_draw_odds %}
-                    <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW&container=quick-bet-{{ match.pk }}"
-                            hx-target="#quick-bet-{{ match.pk }}"
-                            hx-swap="innerHTML">
-                        {{ match.best_draw_odds|format_odds }}
-                    </button>
+                    <div class="flex flex-col items-center gap-0.5">
+                        <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                                hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW&container=quick-bet-{{ match.pk }}"
+                                hx-target="#quick-bet-{{ match.pk }}"
+                                hx-swap="innerHTML">
+                            {{ match.best_draw_odds|format_odds }}
+                        </button>
+                        {% if user.is_authenticated %}
+                        <button class="text-[0.6rem] text-muted hover:text-accent transition-colors leading-none px-1"
+                                title="Add to parlay"
+                                hx-post="{% url 'betting:parlay_add' %}"
+                                hx-target="#parlay-slip-panel"
+                                hx-swap="outerHTML"
+                                hx-vals='{"match_id": "{{ match.pk }}", "selection": "DRAW"}'
+                                hx-include="[name='csrfmiddlewaretoken']">
+                            + parlay
+                        </button>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <span class="text-sm font-mono text-muted">&mdash;</span>
                     {% endif %}
                 </td>
                 <td class="px-3 py-3 text-center">
                     {% if match.best_away_odds %}
-                    <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                            hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN&container=quick-bet-{{ match.pk }}"
-                            hx-target="#quick-bet-{{ match.pk }}"
-                            hx-swap="innerHTML">
-                        {{ match.best_away_odds|format_odds }}
-                    </button>
+                    <div class="flex flex-col items-center gap-0.5">
+                        <button class="font-mono text-sm text-accent font-bold px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                                hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN&container=quick-bet-{{ match.pk }}"
+                                hx-target="#quick-bet-{{ match.pk }}"
+                                hx-swap="innerHTML">
+                            {{ match.best_away_odds|format_odds }}
+                        </button>
+                        {% if user.is_authenticated %}
+                        <button class="text-[0.6rem] text-muted hover:text-accent transition-colors leading-none px-1"
+                                title="Add to parlay"
+                                hx-post="{% url 'betting:parlay_add' %}"
+                                hx-target="#parlay-slip-panel"
+                                hx-swap="outerHTML"
+                                hx-vals='{"match_id": "{{ match.pk }}", "selection": "AWAY_WIN"}'
+                                hx-include="[name='csrfmiddlewaretoken']">
+                            + parlay
+                        </button>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <span class="text-sm font-mono text-muted">&mdash;</span>
                     {% endif %}
@@ -144,6 +185,16 @@
                     {{ match.best_home_odds|format_odds }}
                 </button>
                 <div class="text-xs text-muted mt-1">Home</div>
+                {% if user.is_authenticated %}
+                <button class="text-[0.6rem] text-muted hover:text-accent transition-colors mt-1"
+                        hx-post="{% url 'betting:parlay_add' %}"
+                        hx-target="#parlay-slip-panel"
+                        hx-swap="outerHTML"
+                        hx-vals='{"match_id": "{{ match.pk }}", "selection": "HOME_WIN"}'
+                        hx-include="[name='csrfmiddlewaretoken']">
+                    + parlay
+                </button>
+                {% endif %}
                 {% else %}
                 <span class="text-sm font-mono text-muted">&mdash;</span>
                 {% endif %}
@@ -157,6 +208,16 @@
                     {{ match.best_draw_odds|format_odds }}
                 </button>
                 <div class="text-xs text-muted mt-1">Draw</div>
+                {% if user.is_authenticated %}
+                <button class="text-[0.6rem] text-muted hover:text-accent transition-colors mt-1"
+                        hx-post="{% url 'betting:parlay_add' %}"
+                        hx-target="#parlay-slip-panel"
+                        hx-swap="outerHTML"
+                        hx-vals='{"match_id": "{{ match.pk }}", "selection": "DRAW"}'
+                        hx-include="[name='csrfmiddlewaretoken']">
+                    + parlay
+                </button>
+                {% endif %}
                 {% else %}
                 <span class="text-sm font-mono text-muted">&mdash;</span>
                 {% endif %}
@@ -170,6 +231,16 @@
                     {{ match.best_away_odds|format_odds }}
                 </button>
                 <div class="text-xs text-muted mt-1">Away</div>
+                {% if user.is_authenticated %}
+                <button class="text-[0.6rem] text-muted hover:text-accent transition-colors mt-1"
+                        hx-post="{% url 'betting:parlay_add' %}"
+                        hx-target="#parlay-slip-panel"
+                        hx-swap="outerHTML"
+                        hx-vals='{"match_id": "{{ match.pk }}", "selection": "AWAY_WIN"}'
+                        hx-include="[name='csrfmiddlewaretoken']">
+                    + parlay
+                </button>
+                {% endif %}
                 {% else %}
                 <span class="text-sm font-mono text-muted">&mdash;</span>
                 {% endif %}

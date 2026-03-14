@@ -12,8 +12,19 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
-from betting.forms import DisplayNameForm, PlaceBetForm
-from betting.models import Bailout, Bankruptcy, BetSlip, Odds, UserBalance
+from betting.forms import DisplayNameForm, PlaceBetForm, PlaceParlayForm
+from betting.models import (
+    Bailout,
+    Bankruptcy,
+    BetSlip,
+    Odds,
+    PARLAY_MAX_LEGS,
+    PARLAY_MAX_PAYOUT,
+    PARLAY_MIN_LEGS,
+    Parlay,
+    ParlayLeg,
+    UserBalance,
+)
 from betting.services import get_public_identity, get_user_rank, mask_email
 from matches.models import Match
 from rewards.models import RewardDistribution
@@ -315,12 +326,21 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
             .select_related("match__home_team", "match__away_team")
         )
 
-        totals = bets.aggregate(
+        parlays = (
+            Parlay.objects.filter(user=user)
+            .prefetch_related("legs__match__home_team", "legs__match__away_team")
+        )
+
+        bet_totals = bets.aggregate(
             total_staked=Sum("stake"),
             total_payout=Sum("payout"),
         )
-        total_staked = totals["total_staked"] or Decimal("0")
-        total_payout = totals["total_payout"] or Decimal("0")
+        parlay_totals = parlays.aggregate(
+            parlay_staked=Sum("stake"),
+            parlay_payout=Sum("payout"),
+        )
+        total_staked = (bet_totals["total_staked"] or Decimal("0")) + (parlay_totals["parlay_staked"] or Decimal("0"))
+        total_payout = (bet_totals["total_payout"] or Decimal("0")) + (parlay_totals["parlay_payout"] or Decimal("0"))
 
         balance = getattr(user, "balance", None)
         current_balance = balance.balance if balance else Decimal("1000.00")
@@ -340,6 +360,8 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
         activity = []
         for bet in bets:
             activity.append({"type": "bet", "date": bet.created_at, "item": bet})
+        for parlay in parlays:
+            activity.append({"type": "parlay", "date": parlay.created_at, "item": parlay})
         for dist in reward_distributions:
             activity.append({"type": "reward", "date": dist.created_at, "item": dist})
         activity.sort(key=lambda a: a["date"], reverse=True)
@@ -444,8 +466,11 @@ class BailoutView(LoginRequiredMixin, View):
             pending_count = BetSlip.objects.filter(
                 user=request.user, status=BetSlip.Status.PENDING
             ).count()
+            pending_parlays = Parlay.objects.filter(
+                user=request.user, status=Parlay.Status.PENDING
+            ).count()
 
-            if balance.balance >= self.MIN_BET or pending_count > 0:
+            if balance.balance >= self.MIN_BET or pending_count > 0 or pending_parlays > 0:
                 return JsonResponse({"error": "You are not bankrupt."}, status=400)
 
             bankruptcy = Bankruptcy.objects.create(
@@ -469,3 +494,309 @@ class BailoutView(LoginRequiredMixin, View):
             "amount": amount,
             "new_balance": str(balance.balance),
         })
+
+
+# ── Parlay helpers ────────────────────────────────────────────────────────────
+
+PARLAY_SESSION_KEY = "parlay_slip"
+ODDS_FIELD_MAP = {
+    BetSlip.Selection.HOME_WIN: "home_win",
+    BetSlip.Selection.DRAW: "draw",
+    BetSlip.Selection.AWAY_WIN: "away_win",
+}
+
+
+def _get_slip(request):
+    """Return the current parlay slip from the session (list of dicts)."""
+    return list(request.session.get(PARLAY_SESSION_KEY, []))
+
+
+def _save_slip(request, slip):
+    request.session[PARLAY_SESSION_KEY] = slip
+    request.session.modified = True
+
+
+def _build_slip_context(request):
+    """Build the template context for the parlay slip panel."""
+    raw = _get_slip(request)
+    legs = []
+    combined_odds = Decimal("1.00")
+    match_ids_in_slip = {entry["match_id"] for entry in raw}
+
+    matches_by_id = {
+        m.pk: m
+        for m in Match.objects.filter(pk__in=match_ids_in_slip).select_related(
+            "home_team", "away_team"
+        )
+    } if match_ids_in_slip else {}
+
+    for entry in raw:
+        match = matches_by_id.get(entry["match_id"])
+        if not match:
+            continue
+        selection = entry["selection"]
+        odds_field = ODDS_FIELD_MAP.get(selection)
+        best_odds = None
+        if odds_field:
+            best_odds = (
+                Odds.objects.filter(match=match)
+                .aggregate(best=Min(odds_field))
+                .get("best")
+            )
+        legs.append({
+            "match": match,
+            "selection": selection,
+            "selection_display": dict(BetSlip.Selection.choices).get(selection, selection),
+            "odds": best_odds,
+        })
+        if best_odds:
+            combined_odds *= best_odds
+
+    if not legs:
+        combined_odds = Decimal("1.00")
+
+    return {
+        "parlay_legs": legs,
+        "parlay_combined_odds": combined_odds if legs else None,
+        "parlay_leg_count": len(legs),
+        "parlay_min_legs": PARLAY_MIN_LEGS,
+        "parlay_max_legs": PARLAY_MAX_LEGS,
+        "parlay_max_payout": PARLAY_MAX_PAYOUT,
+        "parlay_form": PlaceParlayForm(),
+    }
+
+
+# ── Parlay slip management views ──────────────────────────────────────────────
+
+class AddToParlayView(LoginRequiredMixin, View):
+    """Add a selection to the session parlay slip."""
+
+    def post(self, request):
+        try:
+            match_id = int(request.POST.get("match_id", 0))
+        except (ValueError, TypeError):
+            match_id = 0
+        selection = request.POST.get("selection", "")
+
+        if not match_id or selection not in dict(BetSlip.Selection.choices):
+            return render(
+                request,
+                "betting/partials/parlay_slip.html",
+                {**_build_slip_context(request), "parlay_error": "Invalid selection."},
+            )
+
+        slip = _get_slip(request)
+
+        # Enforce max legs
+        if len(slip) >= PARLAY_MAX_LEGS:
+            return render(
+                request,
+                "betting/partials/parlay_slip.html",
+                {
+                    **_build_slip_context(request),
+                    "parlay_error": f"Maximum {PARLAY_MAX_LEGS} legs allowed.",
+                },
+            )
+
+        # Check for duplicate match
+        if any(entry["match_id"] == match_id for entry in slip):
+            return render(
+                request,
+                "betting/partials/parlay_slip.html",
+                {
+                    **_build_slip_context(request),
+                    "parlay_error": "This match is already in your parlay.",
+                },
+            )
+
+        # Verify the match exists and is bettable
+        try:
+            match = Match.objects.get(
+                pk=match_id,
+                status__in=[Match.Status.SCHEDULED, Match.Status.TIMED],
+            )
+        except Match.DoesNotExist:
+            return render(
+                request,
+                "betting/partials/parlay_slip.html",
+                {**_build_slip_context(request), "parlay_error": "Match not available for betting."},
+            )
+
+        slip.append({"match_id": match.pk, "selection": selection})
+        _save_slip(request, slip)
+
+        return render(
+            request,
+            "betting/partials/parlay_slip.html",
+            _build_slip_context(request),
+        )
+
+
+class RemoveFromParlayView(LoginRequiredMixin, View):
+    """Remove a leg from the session parlay slip."""
+
+    def post(self, request):
+        try:
+            match_id = int(request.POST.get("match_id", 0))
+        except (ValueError, TypeError):
+            match_id = 0
+
+        slip = [entry for entry in _get_slip(request) if entry["match_id"] != match_id]
+        _save_slip(request, slip)
+
+        return render(
+            request,
+            "betting/partials/parlay_slip.html",
+            _build_slip_context(request),
+        )
+
+
+class ClearParlayView(LoginRequiredMixin, View):
+    """Clear the entire parlay slip."""
+
+    def post(self, request):
+        _save_slip(request, [])
+        return render(
+            request,
+            "betting/partials/parlay_slip.html",
+            _build_slip_context(request),
+        )
+
+
+class ParlaySlipPartialView(LoginRequiredMixin, View):
+    """Return the current parlay slip panel (GET, for initial page load)."""
+
+    def get(self, request):
+        return render(
+            request,
+            "betting/partials/parlay_slip.html",
+            _build_slip_context(request),
+        )
+
+
+class PlaceParlayView(LoginRequiredMixin, View):
+    """Validate and place a parlay bet atomically."""
+
+    def post(self, request):
+        slip = _get_slip(request)
+
+        def _error(msg):
+            ctx = _build_slip_context(request)
+            ctx["parlay_error"] = msg
+            return render(request, "betting/partials/parlay_slip.html", ctx)
+
+        # Leg count validation
+        if len(slip) < PARLAY_MIN_LEGS:
+            return _error(f"A parlay requires at least {PARLAY_MIN_LEGS} selections.")
+        if len(slip) > PARLAY_MAX_LEGS:
+            return _error(f"Maximum {PARLAY_MAX_LEGS} legs allowed.")
+
+        form = PlaceParlayForm(request.POST)
+        if not form.is_valid():
+            ctx = _build_slip_context(request)
+            ctx["parlay_form"] = form
+            ctx["parlay_error"] = "Please enter a valid stake."
+            return render(request, "betting/partials/parlay_slip.html", ctx)
+
+        stake = form.cleaned_data["stake"]
+
+        # Validate every match and collect odds
+        leg_data = []  # [{"match": ..., "selection": ..., "odds": ...}]
+        match_ids = [entry["match_id"] for entry in slip]
+        matches_by_id = {
+            m.pk: m
+            for m in Match.objects.filter(pk__in=match_ids).select_related(
+                "home_team", "away_team"
+            )
+        }
+
+        for entry in slip:
+            match = matches_by_id.get(entry["match_id"])
+            if not match:
+                return _error("One or more matches could not be found.")
+            if match.status not in (Match.Status.SCHEDULED, Match.Status.TIMED):
+                return _error(
+                    f"{match.home_team.short_name or match.home_team.name} vs "
+                    f"{match.away_team.short_name or match.away_team.name} is no longer accepting bets."
+                )
+            selection = entry["selection"]
+            odds_field = ODDS_FIELD_MAP.get(selection)
+            if not odds_field:
+                return _error("Invalid selection in parlay.")
+            best_odds = (
+                Odds.objects.filter(match=match)
+                .aggregate(best=Min(odds_field))
+                .get("best")
+            )
+            if not best_odds:
+                return _error(
+                    f"No odds available for "
+                    f"{match.home_team.short_name or match.home_team.name} vs "
+                    f"{match.away_team.short_name or match.away_team.name}."
+                )
+            leg_data.append({"match": match, "selection": selection, "odds": best_odds})
+
+        # Compute combined odds
+        combined_odds = Decimal("1.00")
+        for ld in leg_data:
+            combined_odds *= ld["odds"]
+        combined_odds = combined_odds.quantize(Decimal("0.01"))
+
+        potential_payout = min(stake * combined_odds, PARLAY_MAX_PAYOUT)
+
+        # Atomic: deduct balance + create Parlay + ParlayLegs
+        try:
+            with transaction.atomic():
+                balance = UserBalance.objects.select_for_update().get(user=request.user)
+
+                if balance.balance < stake:
+                    return _error(f"Insufficient balance. You have {balance.balance:.2f} credits.")
+
+                balance.balance -= stake
+                balance.save(update_fields=["balance"])
+
+                parlay = Parlay.objects.create(
+                    user=request.user,
+                    stake=stake,
+                    combined_odds=combined_odds,
+                    max_payout=PARLAY_MAX_PAYOUT,
+                )
+                ParlayLeg.objects.bulk_create([
+                    ParlayLeg(
+                        parlay=parlay,
+                        match=ld["match"],
+                        selection=ld["selection"],
+                        odds_at_placement=ld["odds"],
+                    )
+                    for ld in leg_data
+                ])
+        except UserBalance.DoesNotExist:
+            return _error("Balance not found. Please refresh and try again.")
+
+        # Clear session slip
+        _save_slip(request, [])
+
+        record_event(
+            scope=page_scope("odds_board"),
+            scopes=[GLOBAL_SCOPE],
+            category="betting",
+            source="place_parlay",
+            action="parlay_placed",
+            summary=f"Parlay placed with {len(leg_data)} legs @ {combined_odds}x.",
+            detail=f"Stake: {stake} credits. Potential payout: {potential_payout:.2f} credits.",
+            status="success",
+            route=request.path,
+        )
+
+        return render(
+            request,
+            "betting/partials/parlay_confirmation.html",
+            {
+                "parlay": parlay,
+                "leg_data": leg_data,
+                "combined_odds": combined_odds,
+                "potential_payout": potential_payout,
+                "stake": stake,
+                "balance": f"{balance.balance:.2f}",
+            },
+        )

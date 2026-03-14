@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 from celery import shared_task
 
@@ -6,6 +7,132 @@ from betting.services import sync_odds
 from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 logger = logging.getLogger(__name__)
+
+
+def settle_parlay_legs(match, winning_selection):
+    """
+    Settle all pending ParlayLeg records for a given match.
+
+    `winning_selection` is a BetSlip.Selection value, or None if the match
+    was cancelled/postponed (all legs voided).
+
+    After settling legs, evaluate each affected parlay.
+    """
+    from django.db import transaction
+
+    from betting.models import Parlay, ParlayLeg
+
+    pending_legs = ParlayLeg.objects.filter(
+        match=match, status=ParlayLeg.Status.PENDING
+    ).select_related("parlay")
+
+    if not pending_legs.exists():
+        return
+
+    affected_parlay_ids = set()
+
+    for leg in pending_legs:
+        if winning_selection is None:
+            # Cancelled / postponed — void this leg
+            leg.status = ParlayLeg.Status.VOID
+        elif leg.selection == winning_selection:
+            leg.status = ParlayLeg.Status.WON
+        else:
+            leg.status = ParlayLeg.Status.LOST
+        leg.save(update_fields=["status"])
+        affected_parlay_ids.add(leg.parlay_id)
+
+    # Evaluate each affected parlay now that legs have been updated
+    for parlay_id in affected_parlay_ids:
+        try:
+            _evaluate_parlay(parlay_id)
+        except Exception:
+            logger.exception("settle_parlay_legs: error evaluating parlay %d", parlay_id)
+
+
+def _recalculate_combined_odds(parlay, legs):
+    """Recalculate combined_odds using only non-VOID legs. Updates parlay in place."""
+    from betting.models import ParlayLeg
+
+    active_legs = [l for l in legs if l.status != ParlayLeg.Status.VOID]
+    if not active_legs:
+        parlay.combined_odds = Decimal("1.00")
+    else:
+        combined = Decimal("1.00")
+        for leg in active_legs:
+            combined *= leg.odds_at_placement
+        parlay.combined_odds = combined.quantize(Decimal("0.01"))
+
+
+def _evaluate_parlay(parlay_id):
+    """
+    Inspect all legs of a parlay and settle it if all legs are resolved.
+
+    States:
+      - any LOST  → parlay LOST
+      - any PENDING → still waiting (recalc odds if voids exist)
+      - all VOID  → parlay VOID, refund stake
+      - all settled, no LOST, some WON → parlay WON
+    """
+    from django.db import transaction
+
+    from betting.models import Parlay, ParlayLeg, UserBalance
+
+    try:
+        with transaction.atomic():
+            parlay = Parlay.objects.select_for_update().get(pk=parlay_id)
+            if parlay.status != Parlay.Status.PENDING:
+                return
+
+            legs = list(parlay.legs.all())
+            statuses = {leg.status for leg in legs}
+
+            if ParlayLeg.Status.LOST in statuses:
+                parlay.status = Parlay.Status.LOST
+                parlay.payout = Decimal("0")
+                parlay.save(update_fields=["status", "payout"])
+                logger.info("_evaluate_parlay: parlay %d LOST", parlay_id)
+                return
+
+            if ParlayLeg.Status.PENDING in statuses:
+                # Still waiting — recalc odds if any voids have appeared
+                if ParlayLeg.Status.VOID in statuses:
+                    _recalculate_combined_odds(parlay, legs)
+                    parlay.save(update_fields=["combined_odds"])
+                return
+
+            # All legs settled (WON and/or VOID, no PENDING, no LOST)
+            if all(leg.status == ParlayLeg.Status.VOID for leg in legs):
+                # Every leg voided — refund full stake
+                parlay.status = Parlay.Status.VOID
+                parlay.payout = parlay.stake
+                parlay.save(update_fields=["status", "payout"])
+
+                balance = UserBalance.objects.select_for_update().get(user=parlay.user)
+                balance.balance += parlay.stake
+                balance.save(update_fields=["balance"])
+                logger.info("_evaluate_parlay: parlay %d VOID — refunded %s", parlay_id, parlay.stake)
+                return
+
+            # Mix of WON and VOID — recalculate odds on active legs and pay out
+            _recalculate_combined_odds(parlay, legs)
+            payout = min(parlay.stake * parlay.combined_odds, parlay.max_payout)
+            parlay.status = Parlay.Status.WON
+            parlay.payout = payout
+            parlay.save(update_fields=["status", "payout", "combined_odds"])
+
+            balance = UserBalance.objects.select_for_update().get(user=parlay.user)
+            balance.balance += payout
+            balance.save(update_fields=["balance"])
+            logger.info(
+                "_evaluate_parlay: parlay %d WON — payout %s (combined odds %s)",
+                parlay_id,
+                payout,
+                parlay.combined_odds,
+            )
+
+    except Parlay.DoesNotExist:
+        logger.error("_evaluate_parlay: parlay %d not found", parlay_id)
 
 
 @shared_task(bind=True, max_retries=3)
@@ -50,8 +177,10 @@ def settle_match_bets(self, match_id):
         return
 
     pending_bets = BetSlip.objects.filter(match=match, status=BetSlip.Status.PENDING)
-    if not pending_bets.exists():
-        logger.info("settle_match_bets: no pending bets for match %d", match_id)
+    from betting.models import ParlayLeg as _ParlayLeg
+    pending_parlay_legs = _ParlayLeg.objects.filter(match=match, status=_ParlayLeg.Status.PENDING)
+    if not pending_bets.exists() and not pending_parlay_legs.exists():
+        logger.info("settle_match_bets: no pending bets or parlay legs for match %d", match_id)
         return
 
     # Handle void scenarios (cancelled/postponed)
@@ -83,6 +212,8 @@ def settle_match_bets(self, match_id):
             status="warning",
             entity_ref=match_id,
         )
+        # Settle parlay legs for this voided match
+        settle_parlay_legs(match, winning_selection=None)
         return
 
     # Match must be finished to settle
@@ -144,3 +275,5 @@ def settle_match_bets(self, match_id):
         status="success",
         entity_ref=match_id,
     )
+    # Settle parlay legs for this match
+    settle_parlay_legs(match, winning_selection)
