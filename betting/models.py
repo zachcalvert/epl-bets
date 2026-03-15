@@ -279,8 +279,8 @@ class Badge(BaseModel):
     description = models.CharField(_("description"), max_length=255)
     icon = models.CharField(
         _("icon"),
-        max_length=10,
-        help_text=_("Emoji used as badge icon"),
+        max_length=50,
+        help_text=_("Phosphor icon name"),
     )
     rarity = models.CharField(
         _("rarity"),

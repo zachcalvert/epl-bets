@@ -27,7 +27,7 @@ class ChallengeTemplate(BaseModel):
     slug = models.SlugField(max_length=50, unique=True)
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=500)
-    icon = models.CharField(max_length=10, help_text=_("Emoji icon"))
+    icon = models.CharField(max_length=50, help_text=_("Phosphor icon name"))
     challenge_type = models.CharField(
         max_length=10, choices=ChallengeType.choices
     )

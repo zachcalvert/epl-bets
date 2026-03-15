@@ -67,7 +67,7 @@
         {% for badge in all_badges %}
         {% with earned=badge.earned %}
         <div class="badge-card badge-card--{{ badge.rarity }} {% if earned %}badge-card--earned{% else %}badge-card--locked{% endif %}">
-            <div class="badge-card-icon">{{ badge.icon }}</div>
+            <i class="ph-duotone ph-{{ badge.icon }} badge-card-icon"></i>
             <div class="badge-card-name">{{ badge.name }}</div>
             <div class="badge-card-desc">{{ badge.description }}</div>
             <span class="badge-rarity-pill badge-rarity-pill--{{ badge.rarity }}">{{ badge.get_rarity_display }}</span>
