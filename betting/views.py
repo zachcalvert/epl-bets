@@ -19,12 +19,14 @@ from betting.models import (
     PARLAY_MAX_LEGS,
     PARLAY_MAX_PAYOUT,
     PARLAY_MIN_LEGS,
+    Badge,
     Bailout,
     Bankruptcy,
     BetSlip,
     Odds,
     Parlay,
     ParlayLeg,
+    UserBadge,
     UserBalance,
     UserStats,
 )
@@ -464,6 +466,17 @@ class ProfileView(TemplateView):
             .order_by("-created_at")[:10]
         )
         ctx["recent_parlays"] = recent_parlays
+
+        # Badge grid — all badges with earned date (or None if locked)
+        earned_map = {
+            ub.badge_id: ub.earned_at
+            for ub in UserBadge.objects.filter(user=profile_user).select_related("badge")
+        }
+        all_badges = []
+        for badge in Badge.objects.all():
+            badge.earned = earned_map.get(badge.pk)
+            all_badges.append(badge)
+        ctx["all_badges"] = all_badges
 
         return ctx
 

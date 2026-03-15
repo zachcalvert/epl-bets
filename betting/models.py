@@ -265,3 +265,55 @@ class UserStats(BaseModel):
         return (Decimal(self.total_wins) / Decimal(self.total_bets) * 100).quantize(
             Decimal("0.1")
         )
+
+
+class Badge(BaseModel):
+    class Rarity(models.TextChoices):
+        COMMON = "common", _("Common")
+        UNCOMMON = "uncommon", _("Uncommon")
+        RARE = "rare", _("Rare")
+        EPIC = "epic", _("Epic")
+
+    slug = models.SlugField(_("slug"), max_length=50, unique=True)
+    name = models.CharField(_("name"), max_length=100)
+    description = models.CharField(_("description"), max_length=255)
+    icon = models.CharField(
+        _("icon"),
+        max_length=10,
+        help_text=_("Emoji used as badge icon"),
+    )
+    rarity = models.CharField(
+        _("rarity"),
+        max_length=10,
+        choices=Rarity.choices,
+        default=Rarity.COMMON,
+    )
+
+    class Meta:
+        ordering = ["rarity", "name"]
+
+    def __str__(self):
+        return f"{self.icon} {self.name} ({self.rarity})"
+
+
+class UserBadge(BaseModel):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="badges",
+        verbose_name=_("user"),
+    )
+    badge = models.ForeignKey(
+        Badge,
+        on_delete=models.CASCADE,
+        related_name="user_badges",
+        verbose_name=_("badge"),
+    )
+    earned_at = models.DateTimeField(_("earned at"), auto_now_add=True)
+
+    class Meta:
+        ordering = ["-earned_at"]
+        unique_together = [("user", "badge")]
+
+    def __str__(self):
+        return f"{self.user} — {self.badge.name}"

@@ -6,7 +6,7 @@ from channels.layers import get_channel_layer
 from django.db import close_old_connections
 from django.template.loader import render_to_string
 
-from betting.models import UserBalance
+from betting.models import UserBadge, UserBalance
 from rewards.models import RewardDistribution
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,31 @@ class NotificationConsumer(WebsocketConsumer):
         async_to_sync(channel_layer.group_add)(group_name, self.channel_name)
 
     # ── Channel layer event handlers ──
+
+    def badge_notification(self, event):
+        """Push a badge-earned toast to the connected user via OOB swap."""
+        close_old_connections()
+        user_badge_id = event["user_badge_id"]
+        try:
+            user = self.scope.get("user")
+            user_badge = (
+                UserBadge.objects.filter(pk=user_badge_id, user=user)
+                .select_related("badge")
+                .first()
+            )
+            if not user_badge:
+                return
+
+            html = render_to_string(
+                "betting/partials/badge_toast_oob.html",
+                {"user_badge": user_badge},
+            )
+            self.send(text_data=html)
+        except Exception:
+            logger.exception(
+                "Error rendering badge_notification for user_badge %s",
+                user_badge_id,
+            )
 
     def reward_notification(self, event):
         """Push a reward toast to the connected user via OOB swap."""
