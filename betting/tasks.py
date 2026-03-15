@@ -84,6 +84,13 @@ def _evaluate_parlay(parlay_id):
                 return
 
             legs = list(parlay.legs.all())
+            if not legs:
+                logger.error("_evaluate_parlay: parlay %d has no legs — marking LOST", parlay_id)
+                parlay.status = Parlay.Status.LOST
+                parlay.payout = Decimal("0")
+                parlay.save(update_fields=["status", "payout"])
+                return
+
             statuses = {leg.status for leg in legs}
 
             if ParlayLeg.Status.LOST in statuses:

@@ -72,6 +72,7 @@ TEMPLATES = [
                 "website.context_processors.theme",
                 "rewards.context_processors.unseen_rewards",
                 "betting.context_processors.bankruptcy",
+                "betting.context_processors.parlay_slip",
             ],
         },
     },

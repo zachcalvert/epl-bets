@@ -164,7 +164,7 @@ class Parlay(BaseModel):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.user} — parlay #{self.id_hash} ({self.legs.count()} legs @ {self.combined_odds}x)"
+        return f"{self.user} — parlay #{self.id_hash} @ {self.combined_odds}x"
 
 
 class ParlayLeg(BaseModel):

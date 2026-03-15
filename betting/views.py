@@ -498,8 +498,8 @@ class BailoutView(LoginRequiredMixin, View):
 
 # ── Parlay helpers ────────────────────────────────────────────────────────────
 
-PARLAY_SESSION_KEY = "parlay_slip"
-ODDS_FIELD_MAP = {
+_PARLAY_SESSION_KEY = "parlay_slip"
+_ODDS_FIELD_MAP = {
     BetSlip.Selection.HOME_WIN: "home_win",
     BetSlip.Selection.DRAW: "draw",
     BetSlip.Selection.AWAY_WIN: "away_win",
@@ -508,62 +508,18 @@ ODDS_FIELD_MAP = {
 
 def _get_slip(request):
     """Return the current parlay slip from the session (list of dicts)."""
-    return list(request.session.get(PARLAY_SESSION_KEY, []))
+    return list(request.session.get(_PARLAY_SESSION_KEY, []))
 
 
 def _save_slip(request, slip):
-    request.session[PARLAY_SESSION_KEY] = slip
+    request.session[_PARLAY_SESSION_KEY] = slip
     request.session.modified = True
 
 
 def _build_slip_context(request):
-    """Build the template context for the parlay slip panel."""
-    raw = _get_slip(request)
-    legs = []
-    combined_odds = Decimal("1.00")
-    match_ids_in_slip = {entry["match_id"] for entry in raw}
-
-    matches_by_id = {
-        m.pk: m
-        for m in Match.objects.filter(pk__in=match_ids_in_slip).select_related(
-            "home_team", "away_team"
-        )
-    } if match_ids_in_slip else {}
-
-    for entry in raw:
-        match = matches_by_id.get(entry["match_id"])
-        if not match:
-            continue
-        selection = entry["selection"]
-        odds_field = ODDS_FIELD_MAP.get(selection)
-        best_odds = None
-        if odds_field:
-            best_odds = (
-                Odds.objects.filter(match=match)
-                .aggregate(best=Min(odds_field))
-                .get("best")
-            )
-        legs.append({
-            "match": match,
-            "selection": selection,
-            "selection_display": dict(BetSlip.Selection.choices).get(selection, selection),
-            "odds": best_odds,
-        })
-        if best_odds:
-            combined_odds *= best_odds
-
-    if not legs:
-        combined_odds = Decimal("1.00")
-
-    return {
-        "parlay_legs": legs,
-        "parlay_combined_odds": combined_odds if legs else None,
-        "parlay_leg_count": len(legs),
-        "parlay_min_legs": PARLAY_MIN_LEGS,
-        "parlay_max_legs": PARLAY_MAX_LEGS,
-        "parlay_max_payout": PARLAY_MAX_PAYOUT,
-        "parlay_form": PlaceParlayForm(),
-    }
+    """Build the template context for the parlay slip panel (used by HTMX views)."""
+    from betting.context_processors import parlay_slip as _parlay_slip_ctx
+    return _parlay_slip_ctx(request)
 
 
 # ── Parlay slip management views ──────────────────────────────────────────────
@@ -702,7 +658,7 @@ class PlaceParlayView(LoginRequiredMixin, View):
 
         # Validate every match and collect odds
         leg_data = []  # [{"match": ..., "selection": ..., "odds": ...}]
-        match_ids = [entry["match_id"] for entry in slip]
+        match_ids = [entry.get("match_id") for entry in slip if entry.get("match_id")]
         matches_by_id = {
             m.pk: m
             for m in Match.objects.filter(pk__in=match_ids).select_related(
@@ -711,7 +667,7 @@ class PlaceParlayView(LoginRequiredMixin, View):
         }
 
         for entry in slip:
-            match = matches_by_id.get(entry["match_id"])
+            match = matches_by_id.get(entry.get("match_id"))
             if not match:
                 return _error("One or more matches could not be found.")
             if match.status not in (Match.Status.SCHEDULED, Match.Status.TIMED):
@@ -719,8 +675,8 @@ class PlaceParlayView(LoginRequiredMixin, View):
                     f"{match.home_team.short_name or match.home_team.name} vs "
                     f"{match.away_team.short_name or match.away_team.name} is no longer accepting bets."
                 )
-            selection = entry["selection"]
-            odds_field = ODDS_FIELD_MAP.get(selection)
+            selection = entry.get("selection", "")
+            odds_field = _ODDS_FIELD_MAP.get(selection)
             if not odds_field:
                 return _error("Invalid selection in parlay.")
             best_odds = (
@@ -744,7 +700,17 @@ class PlaceParlayView(LoginRequiredMixin, View):
 
         potential_payout = min(stake * combined_odds, PARLAY_MAX_PAYOUT)
 
+        # Deduplicate leg_data by match (defensive against concurrent add requests)
+        seen_match_ids = set()
+        unique_leg_data = []
+        for ld in leg_data:
+            if ld["match"].pk not in seen_match_ids:
+                seen_match_ids.add(ld["match"].pk)
+                unique_leg_data.append(ld)
+        leg_data = unique_leg_data
+
         # Atomic: deduct balance + create Parlay + ParlayLegs
+        from django.db import IntegrityError
         try:
             with transaction.atomic():
                 balance = UserBalance.objects.select_for_update().get(user=request.user)
@@ -772,6 +738,8 @@ class PlaceParlayView(LoginRequiredMixin, View):
                 ])
         except UserBalance.DoesNotExist:
             return _error("Balance not found. Please refresh and try again.")
+        except IntegrityError:
+            return _error("Duplicate match detected in parlay. Please clear and rebuild your slip.")
 
         # Clear session slip
         _save_slip(request, [])

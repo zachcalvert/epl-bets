@@ -34,7 +34,7 @@
         {% if parlay_error %}
         <div class="bg-danger/10 border-b border-danger/30 px-4 py-2 flex items-center justify-between gap-2">
             <p class="text-danger text-xs">{{ parlay_error }}</p>
-            <button onclick="this.closest('[id=parlay-slip-panel]').remove()" class="text-muted hover:text-white text-sm shrink-0">&times;</button>
+            <button onclick="this.closest('div.bg-danger\\/10').classList.add('hidden')" class="text-muted hover:text-white text-sm shrink-0">&times;</button>
         </div>
         {% endif %}
 
@@ -110,7 +110,9 @@
         </form>
         {% else %}
         <div class="px-4 py-3 border-t border-gray-700/40">
-            <p class="text-xs text-muted text-center">Add {{ parlay_min_legs|add:"-1"|add:"1" }} more leg{{ parlay_leg_count|add:"-1" }} to place</p>
+            <p class="text-xs text-muted text-center">
+                Add {{ parlay_legs_needed }} more leg{{ parlay_legs_needed|pluralize }} to place
+            </p>
         </div>
         {% endif %}
         {% endif %}{# end if parlay_leg_count > 0 #}
@@ -124,12 +126,11 @@
 
     <!-- Toggle button (always visible) -->
     <button id="parlay-slip-toggle"
-            {% if parlay_leg_count > 0 %}class="hidden"{% else %}class=""{% endif %}
             onclick="document.getElementById('parlay-slip-body').classList.toggle('hidden');this.classList.toggle('hidden')"
             aria-label="Open parlay slip"
             title="Parlay slip"
             style="width:3rem;height:3rem;"
-            class="relative bg-accent text-dark rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors font-bold text-lg leading-none">
+            class="relative bg-accent text-dark rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors font-bold text-lg leading-none{% if parlay_leg_count > 0 %} hidden{% endif %}">
         +
         {% if parlay_leg_count > 0 %}
         <span class="absolute -top-1 -right-1 bg-danger text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ parlay_leg_count }}</span>

@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 def _evaluate_rules_for_user(user, stake):
     """Shared reward rule evaluation used by both single bet and parlay signals."""
-    from betting.models import BetSlip, Parlay
     from rewards.models import RewardRule
 
     active_rules = RewardRule.objects.filter(is_active=True).select_related("reward")
