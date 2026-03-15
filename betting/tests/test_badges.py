@@ -144,16 +144,20 @@ class TestStreakMaster:
 
 
 class TestHighRoller:
-    def test_true_when_won_at_max_stake(self):
-        ctx = make_ctx(won=True, stake=Decimal("100.00"), max_stake=Decimal("100.00"))
+    def test_true_when_won_single_at_max_stake(self):
+        ctx = make_ctx(won=True, is_parlay=False, stake=Decimal("1000.00"), max_stake=Decimal("1000.00"))
         assert _high_roller(make_stats(), ctx) is True
 
     def test_false_when_lost_at_max_stake(self):
-        ctx = make_ctx(won=False, stake=Decimal("100.00"), max_stake=Decimal("100.00"))
+        ctx = make_ctx(won=False, is_parlay=False, stake=Decimal("1000.00"), max_stake=Decimal("1000.00"))
         assert _high_roller(make_stats(), ctx) is False
 
     def test_false_when_below_max_stake(self):
-        ctx = make_ctx(won=True, stake=Decimal("50.00"), max_stake=Decimal("100.00"))
+        ctx = make_ctx(won=True, is_parlay=False, stake=Decimal("50.00"), max_stake=Decimal("1000.00"))
+        assert _high_roller(make_stats(), ctx) is False
+
+    def test_false_when_parlay_at_max_stake(self):
+        ctx = make_ctx(won=True, is_parlay=True, stake=Decimal("1000.00"), max_stake=Decimal("1000.00"))
         assert _high_roller(make_stats(), ctx) is False
 
 

@@ -10,8 +10,8 @@ from betting.models import UserStats
 
 logger = logging.getLogger(__name__)
 
-# Maximum stake for a single bet (mirrors form validation)
-MAX_SINGLE_STAKE = Decimal("100.00")
+# Maximum stake for a single bet (mirrors PlaceBetForm.stake max_value)
+MAX_SINGLE_STAKE = Decimal("1000.00")
 
 
 def record_bet_result(user, *, won, stake, payout, odds=None, is_parlay=False, leg_count=0):

@@ -60,7 +60,7 @@ BADGE_DEFINITIONS = [
     {
         "slug": "underdog_hunter",
         "name": "Underdog Hunter",
-        "description": "Win 10 or more upset bets (odds > 4.00) in a season.",
+        "description": "Win 10 or more upset bets (odds > 4.00) all time.",
         "icon": "🐺",
         "rarity": "rare",
     },
@@ -165,7 +165,7 @@ def _streak_master(stats, ctx):
 
 
 def _high_roller(stats, ctx):
-    return ctx.won and ctx.stake >= ctx.max_stake
+    return ctx.won and not ctx.is_parlay and ctx.stake >= ctx.max_stake
 
 
 def _sharp_eye(stats, ctx):
@@ -227,8 +227,11 @@ def check_and_award_badges(user, stats, ctx: BetContext):
             continue
 
         if earned:
-            user_badge = UserBadge.objects.create(user=user, badge=badge_map[slug])
-            newly_earned.append(user_badge)
-            logger.info("Badge awarded: %s → %s", slug, user.pk)
+            user_badge, created = UserBadge.objects.get_or_create(
+                user=user, badge=badge_map[slug]
+            )
+            if created:
+                newly_earned.append(user_badge)
+                logger.info("Badge awarded: %s → %s", slug, user.pk)
 
     return newly_earned
