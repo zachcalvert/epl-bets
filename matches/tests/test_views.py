@@ -157,10 +157,10 @@ def test_dashboard_under_the_hood_partial_renders_recent_events(client):
     assert "See Architecture" in response.content.decode()
 
 
-def test_fixtures_view_renders_active_matchday_id_for_auto_scroll(client):
+def test_dashboard_renders_matchday_tabs_with_active_id(client):
     MatchFactory(kickoff=timezone.now() + timedelta(days=1), matchday=15)
 
-    response = client.get(reverse("matches:fixtures"), data={"matchday": "15"})
+    response = client.get(reverse("matches:dashboard"), data={"matchday": "15"})
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -169,12 +169,12 @@ def test_fixtures_view_renders_active_matchday_id_for_auto_scroll(client):
     assert 'scrollIntoView' in content
 
 
-def test_fixtures_view_returns_partial_for_htmx_and_invalid_matchday_falls_back(client):
+def test_dashboard_returns_partial_for_htmx_and_invalid_matchday_falls_back(client):
     upcoming = MatchFactory(kickoff=timezone.now() + timedelta(days=1), matchday=9)
     OddsFactory(match=upcoming, home_win="1.95", draw="3.20", away_win="4.30")
 
     response = client.get(
-        reverse("matches:fixtures"),
+        reverse("matches:dashboard"),
         data={"matchday": "not-a-number"},
         HTTP_HX_REQUEST="true",
     )
