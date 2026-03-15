@@ -222,3 +222,46 @@ class UserBalance(BaseModel):
 
     def __str__(self):
         return f"{self.user}: {self.balance} credits"
+
+
+class UserStats(BaseModel):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="stats",
+        verbose_name=_("user"),
+    )
+    total_bets = models.PositiveIntegerField(_("total bets"), default=0)
+    total_wins = models.PositiveIntegerField(_("total wins"), default=0)
+    total_losses = models.PositiveIntegerField(_("total losses"), default=0)
+    total_staked = models.DecimalField(
+        _("total staked"), max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    total_payout = models.DecimalField(
+        _("total payout"), max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    net_profit = models.DecimalField(
+        _("net profit"), max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    current_streak = models.IntegerField(
+        _("current streak"),
+        default=0,
+        help_text=_("Positive = win streak, negative = loss streak"),
+    )
+    best_streak = models.PositiveIntegerField(_("best win streak"), default=0)
+
+    class Meta:
+        verbose_name_plural = "user stats"
+
+    def __str__(self):
+        profit = Decimal(str(self.net_profit))
+        sign = "+" if profit >= 0 else ""
+        return f"{self.user}: {self.total_wins}W-{self.total_losses}L ({sign}{profit})"
+
+    @property
+    def win_rate(self):
+        if self.total_bets == 0:
+            return Decimal("0.00")
+        return (Decimal(self.total_wins) / Decimal(self.total_bets) * 100).quantize(
+            Decimal("0.1")
+        )

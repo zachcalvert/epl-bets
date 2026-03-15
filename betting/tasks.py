@@ -6,10 +6,18 @@ from django.db import transaction
 
 from betting.models import BetSlip, Parlay, ParlayLeg, UserBalance
 from betting.services import sync_odds
+from betting.stats import record_bet_result
 from matches.models import Match
 from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 logger = logging.getLogger(__name__)
+
+
+def _schedule_stat_update(user, won, stake, payout):
+    """Schedule a stat update to run after the current transaction commits."""
+    transaction.on_commit(
+        lambda: record_bet_result(user, won=won, stake=stake, payout=payout)
+    )
 
 
 def settle_parlay_legs(match, winning_selection):
@@ -84,6 +92,7 @@ def _evaluate_parlay(parlay_id):
                 parlay.status = Parlay.Status.LOST
                 parlay.payout = Decimal("0")
                 parlay.save(update_fields=["status", "payout"])
+                _schedule_stat_update(parlay.user, False, parlay.stake, Decimal("0"))
                 return
 
             statuses = {leg.status for leg in legs}
@@ -93,6 +102,7 @@ def _evaluate_parlay(parlay_id):
                 parlay.payout = Decimal("0")
                 parlay.save(update_fields=["status", "payout"])
                 logger.info("_evaluate_parlay: parlay %d LOST", parlay_id)
+                _schedule_stat_update(parlay.user, False, parlay.stake, Decimal("0"))
                 return
 
             if ParlayLeg.Status.PENDING in statuses:
@@ -131,6 +141,7 @@ def _evaluate_parlay(parlay_id):
                 payout,
                 parlay.combined_odds,
             )
+            _schedule_stat_update(parlay.user, True, parlay.stake, payout)
 
     except Parlay.DoesNotExist:
         logger.error("_evaluate_parlay: parlay %d not found", parlay_id)
@@ -248,10 +259,18 @@ def settle_match_bets(self, match_id):
                 balance.save(update_fields=["balance"])
                 won_count += 1
             else:
+                payout = Decimal("0")
                 bet.status = BetSlip.Status.LOST
-                bet.payout = 0
+                bet.payout = payout
                 bet.save(update_fields=["status", "payout"])
                 lost_count += 1
+
+        record_bet_result(
+            bet.user,
+            won=(bet.status == BetSlip.Status.WON),
+            stake=bet.stake,
+            payout=bet.payout or Decimal("0"),
+        )
 
     logger.info(
         "settle_match_bets: match %d settled — %d won, %d lost",
