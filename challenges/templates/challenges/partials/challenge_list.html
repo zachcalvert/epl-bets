@@ -4,7 +4,7 @@
             {% for challenge in upcoming_challenges %}
             <div class="rounded-lg bg-dark/40 border border-gray-700 px-4 py-3">
                 <div class="flex items-start gap-3">
-                    <div class="text-2xl shrink-0 mt-0.5" aria-hidden="true">{{ challenge.template.icon }}</div>
+                    <i class="ph-duotone ph-{{ challenge.template.icon }} text-2xl shrink-0 mt-0.5 text-accent" aria-hidden="true"></i>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-0.5">
                             <h3 class="text-sm font-semibold text-white truncate">{{ challenge.template.title }}</h3>
