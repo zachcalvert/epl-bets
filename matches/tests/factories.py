@@ -3,7 +3,7 @@ from datetime import timedelta
 import factory
 from django.utils import timezone
 
-from matches.models import Match, Standing, Team
+from matches.models import Match, MatchStats, Standing, Team
 
 
 class TeamFactory(factory.django.DjangoModelFactory):
@@ -31,6 +31,18 @@ class MatchFactory(factory.django.DjangoModelFactory):
     matchday = 1
     kickoff = factory.LazyFunction(lambda: timezone.now() + timedelta(days=1))
     season = "2025"
+
+
+class MatchStatsFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = MatchStats
+
+    match = factory.SubFactory(MatchFactory)
+    h2h_json = factory.LazyFunction(list)
+    h2h_summary_json = factory.LazyFunction(dict)
+    home_form_json = factory.LazyFunction(list)
+    away_form_json = factory.LazyFunction(list)
+    fetched_at = factory.LazyFunction(timezone.now)
 
 
 class StandingFactory(factory.django.DjangoModelFactory):

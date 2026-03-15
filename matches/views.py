@@ -1,12 +1,13 @@
 from django.conf import settings
-from django.db.models import Min
+from django.db.models import Count, Min
 from django.utils import timezone
 from django.views.generic import DetailView, TemplateView
 
 from betting.forms import PlaceBetForm
-from betting.models import Odds
+from betting.models import BetSlip, Odds
 from betting.services import BOARD_TYPES, get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
+from matches.services import fetch_match_hype_data
 from website.transparency import (
     GLOBAL_SCOPE,
     get_events,
@@ -247,6 +248,52 @@ class LeagueTableView(TemplateView):
         return ctx
 
 
+def _get_hype_context(match):
+    """Build community sentiment and standing data for the hype card."""
+    season = settings.CURRENT_SEASON
+
+    # Community sentiment — live aggregation from BetSlip
+    rows = (
+        BetSlip.objects.filter(match=match)
+        .values("selection")
+        .annotate(count=Count("id"))
+    )
+    counts = {r["selection"]: r["count"] for r in rows}
+    total = sum(counts.values())
+
+    sentiment = None
+    if total:
+        home_pct = round(counts.get(BetSlip.Selection.HOME_WIN, 0) / total * 100)
+        draw_pct = round(counts.get(BetSlip.Selection.DRAW, 0) / total * 100)
+        away_pct = 100 - home_pct - draw_pct  # avoids rounding drift
+        most_popular_count = max(counts.values())
+        most_popular_label = next(
+            label
+            for sel, label in BetSlip.Selection.choices
+            if counts.get(sel, 0) == most_popular_count
+        )
+        sentiment = {
+            "total": total,
+            "home_pct": home_pct,
+            "draw_pct": draw_pct,
+            "away_pct": away_pct,
+            "most_popular": most_popular_label,
+        }
+
+    # Standings for key stats
+    standings = Standing.objects.filter(
+        season=season,
+        team__in=[match.home_team, match.away_team],
+    ).select_related("team")
+    standing_map = {s.team_id: s for s in standings}
+
+    return {
+        "sentiment": sentiment,
+        "home_standing": standing_map.get(match.home_team_id),
+        "away_standing": standing_map.get(match.away_team_id),
+    }
+
+
 class MatchDetailView(DetailView):
     model = Match
     template_name = "matches/match_detail.html"
@@ -282,6 +329,11 @@ class MatchDetailView(DetailView):
         # Bet form for authenticated users
         if self.request.user.is_authenticated:
             ctx["form"] = PlaceBetForm()
+
+        # Hype card data (only for pre-match)
+        if match.status in (Match.Status.SCHEDULED, Match.Status.TIMED):
+            ctx["match_stats"] = fetch_match_hype_data(match)
+            ctx.update(_get_hype_context(match))
 
         ctx.update(_get_match_transparency_context(match.pk))
         return ctx

@@ -5,8 +5,10 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
-from betting.tests.factories import OddsFactory, UserBalanceFactory
-from matches.tests.factories import MatchFactory, StandingFactory
+from betting.models import BetSlip
+from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
+from matches.models import Match
+from matches.tests.factories import MatchFactory, MatchStatsFactory, StandingFactory
 from users.tests.factories import UserFactory
 from website.transparency import get_events, match_scope, page_scope, record_event
 
@@ -383,4 +385,131 @@ def test_leaderboard_view_shows_empty_state_when_no_balances_exist(client):
 
     assert response.status_code == 200
     assert "No leaderboard data yet" in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# Match Hype Card
+# ---------------------------------------------------------------------------
+
+
+def test_match_detail_includes_hype_context_for_scheduled_match(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.SCHEDULED)
+    stats = MatchStatsFactory(match=match)  # fresh — no API call needed
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert response.context["match_stats"] is stats
+
+
+def test_match_detail_includes_hype_context_for_timed_match(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.TIMED)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert "match_stats" in response.context
+
+
+def test_match_detail_omits_hype_context_for_finished_match(client):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=2, away_score=1)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert "match_stats" not in response.context
+
+
+def test_match_detail_omits_hype_context_for_in_play_match(client):
+    match = MatchFactory(status=Match.Status.IN_PLAY, home_score=0, away_score=0)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert "match_stats" not in response.context
+
+
+def test_match_detail_hype_card_renders_in_html_for_scheduled_match(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.SCHEDULED)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert "Match Preview" in response.content.decode()
+    assert any(
+        template.name == "matches/partials/hype_card.html"
+        for template in response.templates
+    )
+
+
+def test_match_detail_hype_card_absent_for_finished_match(client):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=1, away_score=0)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert "Match Preview" not in response.content.decode()
+
+
+def test_match_detail_hype_context_includes_standings(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.SCHEDULED)
+    home_standing = StandingFactory(team=match.home_team, season="2025", position=1, points=52)
+    away_standing = StandingFactory(team=match.away_team, season="2025", position=4, points=41)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.context["home_standing"] == home_standing
+    assert response.context["away_standing"] == away_standing
+
+
+def test_match_detail_hype_context_sentiment_none_when_no_bets(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.SCHEDULED)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.context["sentiment"] is None
+
+
+def test_match_detail_hype_context_computes_sentiment_from_betslips(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.SCHEDULED)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+    # 2 HOME_WIN, 1 DRAW, 1 AWAY_WIN = 50% / 25% / 25%
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.DRAW)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.AWAY_WIN)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    sentiment = response.context["sentiment"]
+    assert sentiment["total"] == 4
+    assert sentiment["home_pct"] == 50
+    assert sentiment["draw_pct"] == 25
+    assert sentiment["away_pct"] == 25
+    assert sentiment["most_popular"] == "Home Win"
+
+
+def test_match_detail_sentiment_percentages_sum_to_100(client, monkeypatch):
+    """away_pct is derived (100 - home - draw) so rounding never loses or gains a percent."""
+    match = MatchFactory(status=Match.Status.SCHEDULED)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+    # 1 of each → 33%/33%/34% (derived away avoids drift)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.DRAW)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.AWAY_WIN)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    sentiment = response.context["sentiment"]
+    assert sentiment["home_pct"] + sentiment["draw_pct"] + sentiment["away_pct"] == 100
 

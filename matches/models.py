@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from core.models import BaseModel
@@ -87,3 +90,40 @@ class Standing(BaseModel):
 
     def __str__(self):
         return f"{self.position}. {self.team.name} ({self.points} pts)"
+
+
+class MatchStats(models.Model):
+    """Cached hype data for a match: H2H history and recent form for each team.
+
+    Fetched from football-data.org on first match detail view and refreshed
+    every 24 hours. Community sentiment is computed live from BetSlip and is
+    not stored here.
+    """
+
+    match = models.OneToOneField(
+        Match,
+        on_delete=models.CASCADE,
+        related_name="hype_stats",
+        verbose_name=_("match"),
+    )
+    h2h_json = models.JSONField(_("H2H matches"), default=list)
+    h2h_summary_json = models.JSONField(_("H2H summary"), default=dict)
+    home_form_json = models.JSONField(_("home team form"), default=list)
+    away_form_json = models.JSONField(_("away team form"), default=list)
+    fetched_at = models.DateTimeField(_("fetched at"), null=True, blank=True)
+    last_attempt_at = models.DateTimeField(_("last attempt at"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = "match stats"
+        verbose_name_plural = "match stats"
+
+    def __str__(self):
+        return f"Stats for {self.match}"
+
+    def is_stale(self):
+        if not self.fetched_at:
+            # If we attempted recently but failed, back off for 15 minutes
+            if self.last_attempt_at:
+                return (timezone.now() - self.last_attempt_at) > timedelta(minutes=15)
+            return True
+        return (timezone.now() - self.fetched_at) > timedelta(hours=24)

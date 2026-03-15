@@ -4,9 +4,10 @@ from pathlib import Path
 
 import httpx
 from django.conf import settings
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from matches.models import Match, Standing, Team
+from matches.models import Match, MatchStats, Standing, Team
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,41 @@ class FootballDataClient:
         data = self._get(f"matches/{match_id}")
         return self._normalize_match(data, data.get("season", {}).get("id", ""))
 
+    def get_head_to_head(self, match_external_id, limit=5):
+        data = self._get(f"matches/{match_external_id}/head2head", params={"limit": limit})
+        matches = [self._normalize_h2h_match(m) for m in data.get("matches", [])]
+        aggregates = data.get("aggregates", {})
+        home_team = aggregates.get("homeTeam", {})
+        away_team = aggregates.get("awayTeam", {})
+        summary = {
+            "home_wins": home_team.get("wins", 0),
+            "away_wins": away_team.get("wins", 0),
+            "draws": aggregates.get("numberOfDraws", 0) or home_team.get("draws", 0),
+        }
+        return matches, summary
+
+    def get_team_form(self, team_external_id, limit=5):
+        data = self._get(
+            "matches",
+            params={"team": team_external_id, "status": "FINISHED", "limit": limit},
+        )
+        results = []
+        for m in data.get("matches", [])[-limit:]:
+            entry = self._normalize_h2h_match(m)
+            score = m.get("score", {}).get("fullTime", {})
+            home_id = m.get("homeTeam", {}).get("id")
+            hs = score.get("home")
+            as_ = score.get("away")
+            if hs is not None and as_ is not None:
+                if home_id == team_external_id:
+                    entry["result"] = "W" if hs > as_ else ("D" if hs == as_ else "L")
+                else:
+                    entry["result"] = "W" if as_ > hs else ("D" if as_ == hs else "L")
+            else:
+                entry["result"] = None
+            results.append(entry)
+        return results
+
     def get_standings(self, season):
         data = self._get("competitions/PL/standings", params={"season": season})
         standings = []
@@ -85,6 +121,17 @@ class FootballDataClient:
             "matchday": m.get("matchday", 0),
             "kickoff": parse_datetime(m["utcDate"]) if m.get("utcDate") else None,
             "season": str(season),
+        }
+
+    def _normalize_h2h_match(self, m):
+        score = m.get("score", {})
+        full_time = score.get("fullTime", {})
+        return {
+            "date": m.get("utcDate", "")[:10],
+            "home_team": m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", ""),
+            "away_team": m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", ""),
+            "home_score": full_time.get("home"),
+            "away_score": full_time.get("away"),
         }
 
     def _normalize_standing(self, entry, season):
@@ -231,3 +278,39 @@ def sync_standings(season, offline=False):
 
     logger.info("sync_standings: created=%d updated=%d", created, updated)
     return created, updated
+
+
+def fetch_match_hype_data(match):
+    """Fetch and cache H2H + form data for a match.
+
+    Returns the MatchStats instance (fresh or from cache). Never raises — on
+    any API error the existing (possibly stale) record is returned unchanged.
+    """
+    stats, _ = MatchStats.objects.get_or_create(match=match)
+    if not stats.is_stale():
+        return stats
+
+    try:
+        with FootballDataClient() as client:
+            h2h_matches, h2h_summary = client.get_head_to_head(match.external_id, limit=5)
+            home_form = client.get_team_form(match.home_team.external_id, limit=5)
+            away_form = client.get_team_form(match.away_team.external_id, limit=5)
+
+        stats.h2h_json = h2h_matches
+        stats.h2h_summary_json = h2h_summary
+        stats.home_form_json = home_form
+        stats.away_form_json = away_form
+        stats.fetched_at = timezone.now()
+        stats.last_attempt_at = timezone.now()
+        stats.save()
+        logger.info("fetch_match_hype_data: updated stats for match %d", match.pk)
+    except RateLimitError:
+        logger.warning("fetch_match_hype_data: rate limited for match %d", match.pk)
+        stats.last_attempt_at = timezone.now()
+        stats.save(update_fields=["last_attempt_at"])
+    except Exception:
+        logger.exception("fetch_match_hype_data: failed for match %d", match.pk)
+        stats.last_attempt_at = timezone.now()
+        stats.save(update_fields=["last_attempt_at"])
+
+    return stats
