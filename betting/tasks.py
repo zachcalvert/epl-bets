@@ -13,6 +13,13 @@ from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_e
 logger = logging.getLogger(__name__)
 
 
+def _schedule_stat_update(user, won, stake, payout):
+    """Schedule a stat update to run after the current transaction commits."""
+    transaction.on_commit(
+        lambda: record_bet_result(user, won=won, stake=stake, payout=payout)
+    )
+
+
 def settle_parlay_legs(match, winning_selection):
     """
     Settle all pending ParlayLeg records for a given match.
@@ -73,8 +80,6 @@ def _evaluate_parlay(parlay_id):
       - all VOID  → parlay VOID, refund stake
       - all settled, no LOST, some WON → parlay WON
     """
-    stat_result = None  # (user, won, stake, payout) — set when parlay resolves
-
     try:
         with transaction.atomic():
             parlay = Parlay.objects.select_for_update().get(pk=parlay_id)
@@ -87,7 +92,7 @@ def _evaluate_parlay(parlay_id):
                 parlay.status = Parlay.Status.LOST
                 parlay.payout = Decimal("0")
                 parlay.save(update_fields=["status", "payout"])
-                stat_result = (parlay.user, False, parlay.stake, Decimal("0"))
+                _schedule_stat_update(parlay.user, False, parlay.stake, Decimal("0"))
                 return
 
             statuses = {leg.status for leg in legs}
@@ -97,7 +102,7 @@ def _evaluate_parlay(parlay_id):
                 parlay.payout = Decimal("0")
                 parlay.save(update_fields=["status", "payout"])
                 logger.info("_evaluate_parlay: parlay %d LOST", parlay_id)
-                stat_result = (parlay.user, False, parlay.stake, Decimal("0"))
+                _schedule_stat_update(parlay.user, False, parlay.stake, Decimal("0"))
                 return
 
             if ParlayLeg.Status.PENDING in statuses:
@@ -136,14 +141,10 @@ def _evaluate_parlay(parlay_id):
                 payout,
                 parlay.combined_odds,
             )
-            stat_result = (parlay.user, True, parlay.stake, payout)
+            _schedule_stat_update(parlay.user, True, parlay.stake, payout)
 
     except Parlay.DoesNotExist:
         logger.error("_evaluate_parlay: parlay %d not found", parlay_id)
-    finally:
-        if stat_result:
-            user, won, stake, payout = stat_result
-            record_bet_result(user, won=won, stake=stake, payout=payout)
 
 
 @shared_task(bind=True, max_retries=3)

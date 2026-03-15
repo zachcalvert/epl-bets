@@ -18,7 +18,9 @@ def record_bet_result(user, *, won, stake, payout):
         payout: The payout amount (0 for losses).
     """
     with transaction.atomic():
-        stats, _ = UserStats.objects.select_for_update().get_or_create(user=user)
+        stats, _ = UserStats.objects.get_or_create(user=user)
+        # Re-fetch with row lock to prevent concurrent updates
+        stats = UserStats.objects.select_for_update().get(pk=stats.pk)
 
         stats.total_bets += 1
         stats.total_staked += stake

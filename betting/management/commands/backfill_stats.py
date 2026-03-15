@@ -84,25 +84,26 @@ class Command(BaseCommand):
 
     def _compute_streaks(self, user):
         """Replay bet history chronologically to compute current and best win streaks."""
-        # Merge settled singles and parlays into a single timeline
+        # Merge settled singles and parlays into a single timeline sorted by timestamp
         timeline = []
 
         for bet in BetSlip.objects.filter(
             user=user, status__in=[BetSlip.Status.WON, BetSlip.Status.LOST]
         ).order_by("updated_at"):
-            timeline.append(bet.status == BetSlip.Status.WON)
+            timeline.append((bet.updated_at, bet.status == BetSlip.Status.WON))
 
         for parlay in Parlay.objects.filter(
             user=user, status__in=[Parlay.Status.WON, Parlay.Status.LOST]
         ).order_by("updated_at"):
-            timeline.append(parlay.status == Parlay.Status.WON)
+            timeline.append((parlay.updated_at, parlay.status == Parlay.Status.WON))
 
-        # Sort by the order they were added (already ordered by updated_at per query)
-        # For a proper merge we'd need timestamps, but this is close enough for backfill
+        # Sort by timestamp so singles and parlays are properly interleaved
+        timeline.sort(key=lambda x: x[0])
+
         current_streak = 0
         best_streak = 0
 
-        for won in timeline:
+        for _, won in timeline:
             if won:
                 current_streak = max(current_streak, 0) + 1
                 best_streak = max(best_streak, current_streak)

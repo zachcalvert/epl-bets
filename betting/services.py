@@ -188,19 +188,26 @@ def _get_stats_rank(user, board_type):
     elif board_type == "win_rate":
         if stats.total_bets < WIN_RATE_MIN_BETS:
             return None
-        user_rate = stats.total_wins / stats.total_bets
+        # Use cross-multiplication to avoid float equality issues:
+        # their_wins/their_bets > user_wins/user_bets
+        # ⟺ their_wins * user_bets > user_wins * their_bets
+        user_wins = stats.total_wins
+        user_bets = stats.total_bets
         higher = (
             UserStats.objects.filter(total_bets__gte=WIN_RATE_MIN_BETS)
             .annotate(
-                _win_rate=Cast(F("total_wins"), models.FloatField())
-                / Cast(F("total_bets"), models.FloatField())
+                _cross_theirs=F("total_wins") * Value(user_bets),
+                _cross_user=Value(user_wins) * F("total_bets"),
             )
             .filter(
-                Q(_win_rate__gt=user_rate)
-                | Q(_win_rate=user_rate, total_bets__gt=stats.total_bets)
+                Q(_cross_theirs__gt=F("_cross_user"))
                 | Q(
-                    _win_rate=user_rate,
-                    total_bets=stats.total_bets,
+                    _cross_theirs=F("_cross_user"),
+                    total_bets__gt=user_bets,
+                )
+                | Q(
+                    _cross_theirs=F("_cross_user"),
+                    total_bets=user_bets,
                     user_id__lt=user.id,
                 )
             )
