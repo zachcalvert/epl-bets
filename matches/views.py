@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db.models import Count, Min
+from django.db.models import Count, Min, Q, Sum
 from django.utils import timezone
 from django.views.generic import DetailView, TemplateView
 
@@ -294,6 +294,89 @@ def _get_hype_context(match):
     }
 
 
+def _get_recap_context(match, home_standing, away_standing):
+    """Build result context and betting outcome data for the recap card."""
+    # Determine actual result
+    if match.home_score is not None and match.away_score is not None:
+        if match.home_score > match.away_score:
+            actual_result = "HOME_WIN"
+            actual_result_label = "Home Win"
+            winner = match.home_team
+            loser = match.away_team
+            winner_standing = home_standing
+            loser_standing = away_standing
+        elif match.home_score < match.away_score:
+            actual_result = "AWAY_WIN"
+            actual_result_label = "Away Win"
+            winner = match.away_team
+            loser = match.home_team
+            winner_standing = away_standing
+            loser_standing = home_standing
+        else:
+            actual_result = "DRAW"
+            actual_result_label = "Draw"
+            winner = None
+            loser = None
+            winner_standing = None
+            loser_standing = None
+    else:
+        return {}
+
+    # Build result context headline
+    home_name = match.home_team.short_name or match.home_team.name
+    away_name = match.away_team.short_name or match.away_team.name
+    score_line = f"{match.home_score}-{match.away_score}"
+
+    is_upset = False
+    if winner and winner_standing and loser_standing:
+        is_upset = winner_standing.position > loser_standing.position
+        winner_name = winner.short_name or winner.name
+        loser_name = loser.short_name or loser.name
+        if is_upset:
+            headline = f"{winner_name} pull off the upset against {loser_name} ({score_line})"
+        else:
+            headline = f"{winner_name} beat {loser_name} ({score_line})"
+    elif winner:
+        winner_name = winner.short_name or winner.name
+        loser_name = loser.short_name or loser.name
+        headline = f"{winner_name} beat {loser_name} ({score_line})"
+    else:
+        headline = f"Honours even between {home_name} and {away_name} ({score_line})"
+
+    result_context = {
+        "headline": headline,
+        "is_upset": is_upset,
+        "score_line": score_line,
+    }
+
+    # Betting outcome aggregates
+    agg = BetSlip.objects.filter(match=match).aggregate(
+        total_bets=Count("id"),
+        winners=Count("id", filter=Q(status=BetSlip.Status.WON)),
+        losers=Count("id", filter=Q(status=BetSlip.Status.LOST)),
+        voided=Count("id", filter=Q(status=BetSlip.Status.VOID)),
+        total_staked=Sum("stake"),
+        total_won_payout=Sum("payout", filter=Q(status=BetSlip.Status.WON)),
+    )
+    total = agg["total_bets"] or 0
+    betting_outcome = None
+    if total:
+        betting_outcome = {
+            "total_bets": total,
+            "winners": agg["winners"],
+            "win_pct": round(agg["winners"] / total * 100),
+            "total_staked": agg["total_staked"],
+            "total_won_payout": agg["total_won_payout"] or 0,
+        }
+
+    return {
+        "result_context": result_context,
+        "betting_outcome": betting_outcome,
+        "actual_result": actual_result,
+        "actual_result_label": actual_result_label,
+    }
+
+
 class MatchDetailView(DetailView):
     model = Match
     template_name = "matches/match_detail.html"
@@ -330,10 +413,32 @@ class MatchDetailView(DetailView):
         if self.request.user.is_authenticated:
             ctx["form"] = PlaceBetForm()
 
-        # Hype card data (only for pre-match)
-        if match.status in (Match.Status.SCHEDULED, Match.Status.TIMED):
+        # Status-specific card data
+        card_statuses = (
+            Match.Status.SCHEDULED,
+            Match.Status.TIMED,
+            Match.Status.IN_PLAY,
+            Match.Status.PAUSED,
+            Match.Status.FINISHED,
+        )
+        if match.status in card_statuses:
             ctx["match_stats"] = fetch_match_hype_data(match)
-            ctx.update(_get_hype_context(match))
+            hype_ctx = _get_hype_context(match)
+            ctx.update(hype_ctx)
+
+            if match.status in (Match.Status.SCHEDULED, Match.Status.TIMED):
+                ctx["status_card_template"] = "matches/partials/hype_card.html"
+            elif match.status in (Match.Status.IN_PLAY, Match.Status.PAUSED):
+                ctx["status_card_template"] = "matches/partials/live_card.html"
+            elif match.status == Match.Status.FINISHED:
+                ctx["status_card_template"] = "matches/partials/recap_card.html"
+                ctx.update(
+                    _get_recap_context(
+                        match,
+                        hype_ctx.get("home_standing"),
+                        hype_ctx.get("away_standing"),
+                    )
+                )
 
         ctx.update(_get_match_transparency_context(match.pk))
         return ctx
