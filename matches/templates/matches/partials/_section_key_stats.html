@@ -1,0 +1,59 @@
+{% comment %}
+Key Stats section — league position, record, goals from Standing model.
+Context: match, home_standing, away_standing
+{% endcomment %}
+{% if home_standing or away_standing %}
+<div class="px-5 py-4">
+    <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-3">Key Stats</p>
+    <div class="grid grid-cols-2 gap-4">
+        {% if home_standing %}
+        <div>
+            <p class="text-xs text-muted mb-1">
+                {{ match.home_team.short_name|default:match.home_team.name }}
+                <span class="text-white font-semibold">(Home)</span>
+            </p>
+            <div class="space-y-1 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-muted">Position</span>
+                    <span class="text-white font-semibold">{{ home_standing.position }}
+                        <span class="text-muted font-normal">({{ home_standing.points }} pts)</span>
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted">Record</span>
+                    <span class="text-white">{{ home_standing.won }}W {{ home_standing.drawn }}D {{ home_standing.lost }}L</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted">Goals</span>
+                    <span class="text-white">{{ home_standing.goals_for }} F / {{ home_standing.goals_against }} A</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if away_standing %}
+        <div>
+            <p class="text-xs text-muted mb-1">
+                {{ match.away_team.short_name|default:match.away_team.name }}
+                <span class="text-white font-semibold">(Away)</span>
+            </p>
+            <div class="space-y-1 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-muted">Position</span>
+                    <span class="text-white font-semibold">{{ away_standing.position }}
+                        <span class="text-muted font-normal">({{ away_standing.points }} pts)</span>
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted">Record</span>
+                    <span class="text-white">{{ away_standing.won }}W {{ away_standing.drawn }}D {{ away_standing.lost }}L</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted">Goals</span>
+                    <span class="text-white">{{ away_standing.goals_for }} F / {{ away_standing.goals_against }} A</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

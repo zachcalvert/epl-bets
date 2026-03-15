@@ -414,22 +414,13 @@ def test_match_detail_includes_hype_context_for_timed_match(client, monkeypatch)
     assert "match_stats" in response.context
 
 
-def test_match_detail_omits_hype_context_for_finished_match(client):
-    match = MatchFactory(status=Match.Status.FINISHED, home_score=2, away_score=1)
+def test_match_detail_omits_card_for_postponed_match(client):
+    match = MatchFactory(status=Match.Status.POSTPONED)
 
     response = client.get(reverse("matches:match_detail", args=[match.pk]))
 
     assert response.status_code == 200
-    assert "match_stats" not in response.context
-
-
-def test_match_detail_omits_hype_context_for_in_play_match(client):
-    match = MatchFactory(status=Match.Status.IN_PLAY, home_score=0, away_score=0)
-
-    response = client.get(reverse("matches:match_detail", args=[match.pk]))
-
-    assert response.status_code == 200
-    assert "match_stats" not in response.context
+    assert "status_card_template" not in response.context
 
 
 def test_match_detail_hype_card_renders_in_html_for_scheduled_match(client, monkeypatch):
@@ -447,12 +438,15 @@ def test_match_detail_hype_card_renders_in_html_for_scheduled_match(client, monk
     )
 
 
-def test_match_detail_hype_card_absent_for_finished_match(client):
+def test_match_detail_hype_card_absent_for_finished_match(client, monkeypatch):
     match = MatchFactory(status=Match.Status.FINISHED, home_score=1, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
 
     response = client.get(reverse("matches:match_detail", args=[match.pk]))
 
     assert "Match Preview" not in response.content.decode()
+    assert "Match Recap" in response.content.decode()
 
 
 def test_match_detail_hype_context_includes_standings(client, monkeypatch):
@@ -512,4 +506,158 @@ def test_match_detail_sentiment_percentages_sum_to_100(client, monkeypatch):
 
     sentiment = response.context["sentiment"]
     assert sentiment["home_pct"] + sentiment["draw_pct"] + sentiment["away_pct"] == 100
+
+
+# ---------------------------------------------------------------------------
+# Live Match Card
+# ---------------------------------------------------------------------------
+
+
+def test_match_detail_live_card_renders_for_in_play_match(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.IN_PLAY, home_score=1, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert response.context["status_card_template"] == "matches/partials/live_card.html"
+    assert "Match Centre" in response.content.decode()
+    assert any(
+        template.name == "matches/partials/live_card.html"
+        for template in response.templates
+    )
+
+
+def test_match_detail_live_card_renders_for_paused_match(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.PAUSED, home_score=0, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert response.context["status_card_template"] == "matches/partials/live_card.html"
+    content = response.content.decode()
+    assert "Match Centre" in content
+    assert "HT" in content
+
+
+def test_match_detail_live_card_includes_sentiment_and_standings(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.IN_PLAY, home_score=0, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    home_standing = StandingFactory(team=match.home_team, season="2025", position=3, points=45)
+    away_standing = StandingFactory(team=match.away_team, season="2025", position=7, points=32)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.context["home_standing"] == home_standing
+    assert response.context["away_standing"] == away_standing
+    assert response.context["sentiment"]["total"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Match Recap Card
+# ---------------------------------------------------------------------------
+
+
+def test_match_detail_recap_card_renders_for_finished_match(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=2, away_score=1)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.status_code == 200
+    assert response.context["status_card_template"] == "matches/partials/recap_card.html"
+    assert "Match Recap" in response.content.decode()
+    assert any(
+        template.name == "matches/partials/recap_card.html"
+        for template in response.templates
+    )
+
+
+def test_match_detail_recap_card_includes_result_context(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=3, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    result_context = response.context["result_context"]
+    assert "3-0" in result_context["score_line"]
+    assert result_context["is_upset"] is False
+
+
+def test_match_detail_recap_card_detects_upset(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=0, away_score=1)
+    stats = MatchStatsFactory(match=match)
+    # Away team in worse position wins → upset
+    StandingFactory(team=match.home_team, season="2025", position=2, points=50)
+    StandingFactory(team=match.away_team, season="2025", position=15, points=20)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    result_context = response.context["result_context"]
+    assert result_context["is_upset"] is True
+    assert "upset" in result_context["headline"].lower()
+
+
+def test_match_detail_recap_card_draw_headline(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=1, away_score=1)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    result_context = response.context["result_context"]
+    assert "Honours even" in result_context["headline"]
+    assert response.context["actual_result"] == "DRAW"
+
+
+def test_match_detail_recap_card_betting_outcome(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=2, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN, status=BetSlip.Status.WON, stake="10.00", payout="21.00")
+    BetSlipFactory(match=match, selection=BetSlip.Selection.DRAW, status=BetSlip.Status.LOST, stake="10.00")
+    BetSlipFactory(match=match, selection=BetSlip.Selection.AWAY_WIN, status=BetSlip.Status.LOST, stake="5.00")
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    outcome = response.context["betting_outcome"]
+    assert outcome["total_bets"] == 3
+    assert outcome["winners"] == 1
+    assert outcome["win_pct"] == 33
+    assert outcome["total_won_payout"] == Decimal("21.00")
+
+
+def test_match_detail_recap_card_no_betting_outcome_when_no_bets(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=1, away_score=0)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.context["betting_outcome"] is None
+
+
+def test_match_detail_recap_card_sentiment_vs_reality(client, monkeypatch):
+    match = MatchFactory(status=Match.Status.FINISHED, home_score=2, away_score=1)
+    stats = MatchStatsFactory(match=match)
+    monkeypatch.setattr("matches.views.fetch_match_hype_data", lambda m: stats)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.HOME_WIN)
+    BetSlipFactory(match=match, selection=BetSlip.Selection.DRAW)
+
+    response = client.get(reverse("matches:match_detail", args=[match.pk]))
+
+    assert response.context["actual_result"] == "HOME_WIN"
+    assert response.context["actual_result_label"] == "Home Win"
+    content = response.content.decode()
+    assert "Sentiment vs Reality" in content
+    assert "Community got it right" in content
 

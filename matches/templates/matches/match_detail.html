@@ -54,9 +54,9 @@
     </div>
 </div>
 
-<!-- Hype card (pre-match only) -->
-{% if match_stats %}
-    {% include "matches/partials/hype_card.html" %}
+<!-- Status-specific card (hype / live / recap) -->
+{% if status_card_template %}
+    {% include status_card_template %}
 {% endif %}
 
 <!-- Bet placement -->
