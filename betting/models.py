@@ -254,7 +254,9 @@ class UserStats(BaseModel):
         verbose_name_plural = "user stats"
 
     def __str__(self):
-        return f"{self.user}: {self.total_wins}W-{self.total_losses}L ({self.net_profit:+.2f})"
+        profit = Decimal(str(self.net_profit))
+        sign = "+" if profit >= 0 else ""
+        return f"{self.user}: {self.total_wins}W-{self.total_losses}L ({sign}{profit})"
 
     @property
     def win_rate(self):
