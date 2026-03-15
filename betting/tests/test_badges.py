@@ -3,6 +3,7 @@ Tests for Phase 17 badge criteria and awarding logic.
 """
 
 from decimal import Decimal
+from io import StringIO
 from unittest.mock import Mock
 
 import pytest
@@ -18,9 +19,16 @@ from betting.badges import (
     _perfect_matchweek,
     _sharp_eye,
     _streak_master,
+    _underdog_hunter,
     check_and_award_badges,
 )
-from betting.tests.factories import BadgeFactory, UserBadgeFactory, UserStatsFactory
+from betting.tests.factories import (
+    BadgeFactory,
+    BetSlipFactory,
+    ParlayFactory,
+    UserBadgeFactory,
+    UserStatsFactory,
+)
 from users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -341,6 +349,29 @@ class TestBadgeNotificationConsumer:
         assert "betting/partials/badge_toast_oob.html" in text
         assert str(user_badge.pk) in text
 
+    def test_badge_notification_swallows_render_errors(self, monkeypatch):
+        from unittest.mock import Mock
+
+        from rewards.consumers import NotificationConsumer
+
+        ub = UserBadgeFactory()
+
+        consumer = NotificationConsumer()
+        consumer.scope = {"user": ub.user}
+        consumer.channel_name = "test-channel"
+        consumer.send = Mock()
+
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+        monkeypatch.setattr(
+            "rewards.consumers.render_to_string",
+            Mock(side_effect=RuntimeError("render error")),
+        )
+
+        # Should not raise
+        consumer.badge_notification({"user_badge_id": ub.pk})
+
+        consumer.send.assert_not_called()
+
     def test_badge_notification_ignores_wrong_user(self, monkeypatch):
         from unittest.mock import Mock
 
@@ -359,3 +390,160 @@ class TestBadgeNotificationConsumer:
         consumer.badge_notification({"user_badge_id": ub.pk})
 
         consumer.send.assert_not_called()
+
+
+# ── _underdog_hunter DB queries ───────────────────────────────────────────────
+
+class TestUnderdogHunter:
+    def test_true_when_10_single_upset_wins(self):
+        user = UserFactory()
+        stats = UserStatsFactory(user=user)
+        stats.user = user
+        for _ in range(10):
+            BetSlipFactory(
+                user=user,
+                status="WON",
+                odds_at_placement="4.50",
+            )
+        ctx = make_ctx(won=True, odds=Decimal("4.50"))
+        assert _underdog_hunter(stats, ctx) is True
+
+    def test_false_below_threshold(self):
+        user = UserFactory()
+        stats = UserStatsFactory(user=user)
+        stats.user = user
+        for _ in range(9):
+            BetSlipFactory(user=user, status="WON", odds_at_placement="4.50")
+        ctx = make_ctx(won=True)
+        assert _underdog_hunter(stats, ctx) is False
+
+    def test_counts_parlay_upsets(self):
+        user = UserFactory()
+        stats = UserStatsFactory(user=user)
+        stats.user = user
+        for _ in range(5):
+            BetSlipFactory(user=user, status="WON", odds_at_placement="4.50")
+        for _ in range(5):
+            ParlayFactory(user=user, status="WON", combined_odds="5.00")
+        ctx = make_ctx(won=True)
+        assert _underdog_hunter(stats, ctx) is True
+
+
+# ── check_and_award_badges: all-earned early return ───────────────────────────
+
+class TestCheckAndAwardBadgesEarlyReturn:
+    def test_returns_empty_when_all_badges_already_earned(self):
+        user = UserFactory()
+        badge = BadgeFactory(slug="first_blood")
+        UserBadgeFactory(user=user, badge=badge)
+        stats = UserStatsFactory(user=user, total_bets=1)
+        ctx = make_ctx(won=True)
+
+        # Only one badge in DB and user already has it — hits the `not candidate_slugs` path
+        newly_earned = check_and_award_badges(user, stats, ctx)
+
+        assert newly_earned == []
+
+
+# ── _broadcast_badges exception handler ──────────────────────────────────────
+
+class TestBroadcastBadgesErrorHandler:
+    @pytest.mark.django_db(transaction=True)
+    def test_swallows_channel_layer_error(self, monkeypatch):
+        from betting.stats import record_bet_result
+
+        user = UserFactory()
+        BadgeFactory(slug="first_blood")
+
+        class BrokenLayer:
+            async def group_send(self, group, event):
+                raise RuntimeError("channel layer down")
+
+        monkeypatch.setattr("betting.stats.get_channel_layer", lambda: BrokenLayer())
+
+        # Should not raise even when channel layer is broken
+        record_bet_result(
+            user, won=True, stake=Decimal("10"), payout=Decimal("20"),
+        )
+
+
+# ── seed_badges management command ───────────────────────────────────────────
+
+class TestSeedBadgesCommand:
+    def test_creates_all_badge_definitions(self):
+        from django.core.management import call_command
+
+        from betting.models import Badge
+
+        out = StringIO()
+        call_command("seed_badges", stdout=out)
+
+        assert Badge.objects.count() == len(BADGE_DEFINITIONS)
+
+    def test_idempotent_on_second_run(self):
+        from django.core.management import call_command
+
+        from betting.models import Badge
+
+        call_command("seed_badges", stdout=StringIO())
+        call_command("seed_badges", stdout=StringIO())
+
+        assert Badge.objects.count() == len(BADGE_DEFINITIONS)
+
+    def test_output_reports_created_and_updated(self):
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("seed_badges", stdout=out)
+        output = out.getvalue()
+
+        assert "Created" in output or "Updated" in output
+        assert "Done" in output
+
+
+# ── tasks: no-legs parlay and PENDING+VOID paths ─────────────────────────────
+
+class TestEvaluateParlayEdgeCases:
+    @pytest.mark.django_db(transaction=True)
+    def test_parlay_with_no_legs_marked_lost(self, monkeypatch):
+        from betting.tasks import _evaluate_parlay
+
+        user = UserFactory()
+        from betting.models import UserBalance
+        UserBalance.objects.create(user=user, balance=Decimal("1000"))
+        parlay = ParlayFactory(user=user, stake=Decimal("10"), combined_odds="3.00")
+        # No legs created
+
+        monkeypatch.setattr(
+            "betting.tasks.record_bet_result",
+            lambda *a, **kw: None,
+        )
+
+        _evaluate_parlay(parlay.pk)
+
+        parlay.refresh_from_db()
+        assert parlay.status == "LOST"
+        assert parlay.payout == Decimal("0")
+
+    @pytest.mark.django_db(transaction=True)
+    def test_parlay_recalculates_odds_when_pending_leg_voided(self, monkeypatch):
+        from betting.tasks import _evaluate_parlay
+        from betting.tests.factories import ParlayLegFactory
+
+        user = UserFactory()
+        from betting.models import UserBalance
+        UserBalance.objects.create(user=user, balance=Decimal("1000"))
+        parlay = ParlayFactory(user=user, stake=Decimal("10"), combined_odds="6.00")
+
+        ParlayLegFactory(parlay=parlay, odds_at_placement="2.00", status="WON")
+        ParlayLegFactory(parlay=parlay, odds_at_placement="3.00", status="PENDING")
+        ParlayLegFactory(parlay=parlay, odds_at_placement="2.00", status="VOID")
+
+        # Still has a PENDING leg — should recalc combined_odds but not settle
+        _evaluate_parlay(parlay.pk)
+
+        parlay.refresh_from_db()
+        assert parlay.status == "PENDING"
+        # odds should now reflect only the active (non-void) legs: 2.00 * 3.00 = 6.00
+        # leg1(WON)=2.00, leg2(PENDING)=3.00 — void leg excluded
+        assert parlay.combined_odds == Decimal("6.00")
