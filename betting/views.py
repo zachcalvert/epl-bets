@@ -31,6 +31,7 @@ from betting.models import (
     UserStats,
 )
 from betting.services import get_public_identity, get_user_rank, mask_email
+from challenges.engine import update_challenge_progress
 from matches.models import Match
 from rewards.models import RewardDistribution
 from website.transparency import (
@@ -336,6 +337,12 @@ class PlaceBetView(LoginRequiredMixin, View):
             route=request.path,
             entity_ref=match.pk,
         )
+
+        # Update challenge progress (runs after any active transaction commits)
+        _user = request.user
+        _ctx = {"match": match, "odds": best_odds_val, "stake": stake, "selection": selection}
+        transaction.on_commit(lambda: update_challenge_progress(_user, "bet_placed", _ctx))
+
         return render(
             request,
             "betting/partials/bet_confirmation.html",
@@ -850,6 +857,11 @@ class PlaceParlayView(LoginRequiredMixin, View):
             status="success",
             route=request.path,
         )
+
+        # Update challenge progress
+        _user = request.user
+        _ctx = {"stake": stake, "leg_count": len(leg_data), "combined_odds": combined_odds}
+        transaction.on_commit(lambda: update_challenge_progress(_user, "parlay_placed", _ctx))
 
         return render(
             request,

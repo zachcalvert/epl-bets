@@ -7,6 +7,7 @@ from django.db import close_old_connections
 from django.template.loader import render_to_string
 
 from betting.models import UserBadge, UserBalance
+from challenges.models import UserChallenge
 from rewards.models import RewardDistribution
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,39 @@ class NotificationConsumer(WebsocketConsumer):
             logger.exception(
                 "Error rendering badge_notification for user_badge %s",
                 user_badge_id,
+            )
+
+    def challenge_notification(self, event):
+        """Push a challenge-complete toast to the connected user via OOB swap."""
+        close_old_connections()
+        user_challenge_id = event["user_challenge_id"]
+        try:
+            user = self.scope.get("user")
+            user_challenge = (
+                UserChallenge.objects.filter(pk=user_challenge_id, user=user)
+                .select_related("challenge__template")
+                .first()
+            )
+            if not user_challenge:
+                return
+
+            html = render_to_string(
+                "challenges/partials/challenge_toast_oob.html",
+                {"user_challenge": user_challenge},
+            )
+            try:
+                current_balance = UserBalance.objects.get(user=user).balance
+                html += render_to_string(
+                    "website/components/balance_oob.html",
+                    {"balance": f"{current_balance:.2f}"},
+                )
+            except UserBalance.DoesNotExist:
+                pass
+            self.send(text_data=html)
+        except Exception:
+            logger.exception(
+                "Error rendering challenge_notification for user_challenge %s",
+                user_challenge_id,
             )
 
     def reward_notification(self, event):

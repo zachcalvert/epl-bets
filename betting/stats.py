@@ -7,6 +7,7 @@ from django.db import transaction
 
 from betting.badges import BetContext, check_and_award_badges
 from betting.models import UserStats
+from challenges.engine import update_challenge_progress
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,18 @@ def record_bet_result(user, *, won, stake, payout, odds=None, is_parlay=False, l
 
     if newly_earned:
         transaction.on_commit(lambda: _broadcast_badges(user, newly_earned))
+
+    # Update challenge progress on settlement
+    event_type = "parlay_settled" if is_parlay else "bet_settled"
+    _ctx = {
+        "won": won,
+        "stake": stake,
+        "payout": payout,
+        "odds": odds,
+        "is_parlay": is_parlay,
+        "leg_count": leg_count,
+    }
+    transaction.on_commit(lambda: update_challenge_progress(user, event_type, _ctx))
 
 
 def _broadcast_badges(user, user_badges):

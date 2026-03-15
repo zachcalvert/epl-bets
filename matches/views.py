@@ -6,6 +6,8 @@ from django.views.generic import DetailView, TemplateView
 from betting.forms import PlaceBetForm
 from betting.models import BetSlip, Odds
 from betting.services import BOARD_TYPES, get_leaderboard_entries, get_user_rank
+from challenges.models import UserChallenge
+from challenges.views import _ensure_enrollment, _get_user_challenges
 from matches.models import Match, Standing
 from matches.services import fetch_match_hype_data
 from website.transparency import (
@@ -115,6 +117,14 @@ class DashboardView(TemplateView):
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
         ctx["leaderboard_rendered_at"] = timezone.now()
         ctx.update(_get_dashboard_transparency_context())
+
+        # Challenge widget context for authenticated users
+        if self.request.user.is_authenticated:
+            _ensure_enrollment(self.request.user)
+            ctx["active_challenges"] = _get_user_challenges(
+                self.request.user, UserChallenge.Status.IN_PROGRESS
+            )[:3]
+
         return ctx
 
 

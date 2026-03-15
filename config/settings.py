@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "matches",
     "betting",
     "rewards",
+    "challenges",
     "website",
 ]
 
@@ -207,6 +208,18 @@ CELERY_BEAT_SCHEDULE = {
     "prefetch-hype-data-6h": {
         "task": "matches.tasks.prefetch_upcoming_hype_data",
         "schedule": timedelta(hours=6),
+    },
+    "rotate-daily-challenges": {
+        "task": "challenges.tasks.rotate_daily_challenges",
+        "schedule": crontab(hour=5, minute=0),
+    },
+    "rotate-weekly-challenges": {
+        "task": "challenges.tasks.rotate_weekly_challenges",
+        "schedule": crontab(hour=4, minute=0, day_of_week="friday"),
+    },
+    "expire-challenges-15m": {
+        "task": "challenges.tasks.expire_challenges",
+        "schedule": timedelta(minutes=15),
     },
 }
 
