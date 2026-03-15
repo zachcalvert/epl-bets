@@ -3,6 +3,7 @@ import random
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Min, Sum
@@ -25,6 +26,7 @@ from betting.models import (
     Parlay,
     ParlayLeg,
     UserBalance,
+    UserStats,
 )
 from betting.services import get_public_identity, get_user_rank, mask_email
 from matches.models import Match
@@ -413,6 +415,57 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
                 status=422,
             )
         return self.render_to_response(context, status=422)
+
+
+class ProfileView(TemplateView):
+    """Public profile page showing a user's betting stats."""
+
+    template_name = "betting/profile.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        User = get_user_model()
+        profile_user = get_object_or_404(User, pk=self.kwargs["user_pk"])
+
+        # Identity
+        ctx["profile_user"] = profile_user
+        ctx["display_identity"] = get_public_identity(profile_user)
+
+        # Stats
+        try:
+            stats = profile_user.stats
+        except UserStats.DoesNotExist:
+            stats = None
+        ctx["stats"] = stats
+
+        # Balance & rank
+        try:
+            balance = profile_user.balance
+            ctx["balance"] = balance.balance
+        except UserBalance.DoesNotExist:
+            ctx["balance"] = Decimal("1000.00")
+
+        ctx["user_rank"] = get_user_rank(profile_user)
+
+        # Recent bets (last 20 settled)
+        recent_bets = (
+            BetSlip.objects.filter(user=profile_user)
+            .exclude(status=BetSlip.Status.PENDING)
+            .select_related("match__home_team", "match__away_team")
+            .order_by("-created_at")[:20]
+        )
+        ctx["recent_bets"] = recent_bets
+
+        # Recent parlays (last 10 settled)
+        recent_parlays = (
+            Parlay.objects.filter(user=profile_user)
+            .exclude(status=Parlay.Status.PENDING)
+            .prefetch_related("legs__match__home_team", "legs__match__away_team")
+            .order_by("-created_at")[:10]
+        )
+        ctx["recent_parlays"] = recent_parlays
+
+        return ctx
 
 
 class QuickBetFormView(LoginRequiredMixin, View):

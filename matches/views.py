@@ -5,7 +5,7 @@ from django.views.generic import DetailView, TemplateView
 
 from betting.forms import PlaceBetForm
 from betting.models import Odds
-from betting.services import get_leaderboard_entries, get_user_rank
+from betting.services import BOARD_TYPES, get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
 from website.transparency import (
     GLOBAL_SCOPE,
@@ -151,10 +151,24 @@ class LeaderboardPartialView(TemplateView):
 class LeaderboardView(TemplateView):
     template_name = "matches/leaderboard.html"
 
+    def _get_board_type(self):
+        board_type = self.request.GET.get("type", "balance")
+        return board_type if board_type in BOARD_TYPES else "balance"
+
+    def get_template_names(self):
+        if self.request.htmx:
+            return ["matches/partials/leaderboard_table.html"]
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["leaderboard"] = get_leaderboard_entries(limit=None)
-        ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
+        board_type = self._get_board_type()
+        ctx["leaderboard"] = get_leaderboard_entries(limit=None, board_type=board_type)
+        ctx["user_rank"] = get_user_rank(
+            self.request.user, ctx["leaderboard"], board_type=board_type
+        )
+        ctx["board_type"] = board_type
+        ctx["board_types"] = BOARD_TYPES
         return ctx
 
 
