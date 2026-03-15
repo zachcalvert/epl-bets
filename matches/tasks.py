@@ -179,28 +179,33 @@ def _broadcast_score_changes(pre_sync):
 
 @shared_task
 def prefetch_upcoming_hype_data():
-    """Pre-warm MatchStats for SCHEDULED matches kicking off within 48 hours.
+    """Pre-warm MatchStats for SCHEDULED/TIMED matches kicking off within 48 hours.
 
-    Spreads API calls with a short sleep to respect the 10 req/min free-tier
-    rate limit (3 calls per match → ~18 req/min worst-case without throttling).
+    Spreads API calls with a 20s sleep between matches to stay comfortably under
+    the 10 req/min free-tier limit (3 calls per match × 1 match/20s = 9 req/min).
     """
-    cutoff = timezone.now() + timedelta(hours=48)
+    now = timezone.now()
+    cutoff = now + timedelta(hours=48)
     upcoming = Match.objects.filter(
         status__in=[Match.Status.SCHEDULED, Match.Status.TIMED],
+        kickoff__gte=now,
         kickoff__lte=cutoff,
         season=settings.CURRENT_SEASON,
-    ).select_related("home_team", "away_team")
+    ).select_related("home_team", "away_team").prefetch_related("hype_stats")
 
     refreshed = skipped = 0
     for match in upcoming:
-        # Check staleness without hitting the DB unnecessarily
-        stats = getattr(match, "hype_stats", None)
+        try:
+            stats = match.hype_stats
+        except match.__class__.hype_stats.RelatedObjectDoesNotExist:
+            stats = None
+
         if stats and not stats.is_stale():
             skipped += 1
             continue
 
         fetch_match_hype_data(match)
         refreshed += 1
-        time.sleep(6)  # ~10 requests/minute ceiling across all callers
+        time.sleep(20)  # 3 API calls/match × 1 match/20s ≈ 9 req/min
 
     logger.info("prefetch_upcoming_hype_data: refreshed=%d skipped=%d", refreshed, skipped)

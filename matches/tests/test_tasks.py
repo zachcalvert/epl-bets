@@ -452,7 +452,7 @@ def test_prefetch_upcoming_hype_data_sleeps_between_matches(monkeypatch, setting
     prefetch_upcoming_hype_data()
 
     assert len(sleep_calls) == 2
-    assert all(s == 6 for s in sleep_calls)
+    assert all(s == 20 for s in sleep_calls)
 
 
 class SimpleChannelLayer:

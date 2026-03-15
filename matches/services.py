@@ -284,8 +284,7 @@ def fetch_match_hype_data(match):
     """Fetch and cache H2H + form data for a match.
 
     Returns the MatchStats instance (fresh or from cache). Never raises — on
-    any API error the existing (possibly stale) record is returned, or None if
-    no record exists yet.
+    any API error the existing (possibly stale) record is returned unchanged.
     """
     stats, _ = MatchStats.objects.get_or_create(match=match)
     if not stats.is_stale():
@@ -302,11 +301,16 @@ def fetch_match_hype_data(match):
         stats.home_form_json = home_form
         stats.away_form_json = away_form
         stats.fetched_at = timezone.now()
+        stats.last_attempt_at = timezone.now()
         stats.save()
         logger.info("fetch_match_hype_data: updated stats for match %d", match.pk)
     except RateLimitError:
         logger.warning("fetch_match_hype_data: rate limited for match %d", match.pk)
+        stats.last_attempt_at = timezone.now()
+        stats.save(update_fields=["last_attempt_at"])
     except Exception:
         logger.exception("fetch_match_hype_data: failed for match %d", match.pk)
+        stats.last_attempt_at = timezone.now()
+        stats.save(update_fields=["last_attempt_at"])
 
     return stats

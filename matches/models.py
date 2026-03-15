@@ -111,6 +111,7 @@ class MatchStats(models.Model):
     home_form_json = models.JSONField(_("home team form"), default=list)
     away_form_json = models.JSONField(_("away team form"), default=list)
     fetched_at = models.DateTimeField(_("fetched at"), null=True, blank=True)
+    last_attempt_at = models.DateTimeField(_("last attempt at"), null=True, blank=True)
 
     class Meta:
         verbose_name = "match stats"
@@ -121,5 +122,8 @@ class MatchStats(models.Model):
 
     def is_stale(self):
         if not self.fetched_at:
+            # If we attempted recently but failed, back off for 15 minutes
+            if self.last_attempt_at:
+                return (timezone.now() - self.last_attempt_at) > timedelta(minutes=15)
             return True
         return (timezone.now() - self.fetched_at) > timedelta(hours=24)

@@ -2,12 +2,12 @@
 
 ## Overview
 
-Pre-match cards that build excitement by surfacing form, head-to-head records, key stats, and community betting sentiment. Rendered on the match detail page (above the odds table) for scheduled matches only.
+Pre-match cards that build excitement by surfacing form, head-to-head records, key stats, and community betting sentiment. Rendered on the match detail page (above the odds table) for `SCHEDULED` and `TIMED` matches.
 
 ## Design Decisions
 
 - **`MatchStats` model for caching** — H2H and form data fetched from football-data.org and cached for 24 hours; community sentiment is computed live from `BetSlip` on every request (cheap aggregation, always fresh)
-- **Scheduled matches only** — hype card only renders when `match.status == SCHEDULED`; once a match is in-play or finished the card is hidden (no longer relevant)
+- **Pre-match only** — hype card renders when `match.status` is `SCHEDULED` or `TIMED`; once a match is in-play or finished the card is hidden (no longer relevant)
 - **H2H capped at last 5 meetings** — enough narrative context without cluttering the UI
 - **Form = last 5 finished matches per team** — fetched via separate team-filtered API calls and stored in `home_form_json` / `away_form_json`
 - **Sentiment visible to all users** — this is a demo/social feature; hiding it until after bet placement adds friction without meaningful benefit in a fake-money context
@@ -22,11 +22,9 @@ Pre-match cards that build excitement by surfacing form, head-to-head records, k
 ### Form Guide
 - Last 5 finished matches for each team (W/D/L from that team's perspective)
 - Displayed as colored badge pills: green W, amber D, red L (left = most recent)
-- Points earned over those 5 matches shown as a sub-label (e.g., "10 pts")
-- Goals scored / conceded across the 5 matches
 
 ### Head-to-Head Record
-- Last 5 meetings between the two teams (date, score, venue)
+- Last 5 meetings between the two teams (date, score)
 - Aggregate summary: "Arsenal 3 wins · 1 draw · Chelsea 1 win"
 
 ### Key Stats
@@ -74,9 +72,9 @@ Result dict shape (same structure for H2H entries and form entries):
     "away_team": "Chelsea",
     "home_score": 2,
     "away_score": 1,
-    "venue": "Emirates Stadium",  # H2H only, omitted from form
 }
 ```
+Form entries additionally include a `"result"` key (`"W"`, `"D"`, or `"L"` from the team's perspective).
 
 `MatchStats.is_stale()` — returns `True` if `fetched_at` is null or older than 24 hours.
 
@@ -101,7 +99,7 @@ Add `fetch_match_hype_data(match)` to `matches/services.py`:
 Add `prefetch_upcoming_hype_data` to `matches/tasks.py`:
 
 - Runs every 6 hours via Celery Beat
-- Finds all `SCHEDULED` matches with kickoff within the next 48 hours
+- Finds all `SCHEDULED`/`TIMED` matches with kickoff within the next 48 hours
 - Calls `fetch_match_hype_data(match)` for each (skips if data is already fresh)
 - Spreads calls with a short sleep between teams to respect the 10 req/min rate limit
 
@@ -114,7 +112,7 @@ Register in `CELERY_BEAT_SCHEDULE` in settings.
 ### `MatchDetailView` (in `matches/views.py`)
 
 Add to `get_context_data()`:
-1. Only run for `SCHEDULED` matches — skip entirely if `match.status != "SCHEDULED"`
+1. Only run for pre-match statuses — skip entirely if `match.status` is not `SCHEDULED` or `TIMED`
 2. Call `fetch_match_hype_data(match)` → `match_stats`
 3. Compute community sentiment:
    ```python
@@ -177,7 +175,7 @@ Sections are individually wrapped in `{% if %}` guards:
 
 ### Changes to `match_detail.html`
 
-- Add `{% if match.status == "SCHEDULED" %}...{% endif %}` block above the odds table
+- Add `{% if match.status == "SCHEDULED" or match.status == "TIMED" %}...{% endif %}` block above the odds table
 - Include `hype_card.html` partial inside that block
 
 ---
