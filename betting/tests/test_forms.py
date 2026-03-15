@@ -35,12 +35,12 @@ def test_place_bet_form_rejects_stake_above_maximum():
     form = PlaceBetForm(
         data={
             "selection": BetSlip.Selection.AWAY_WIN,
-            "stake": "1000.50",
+            "stake": "10000.50",
         }
     )
 
     assert form.is_valid() is False
-    assert "Ensure this value is less than or equal to 1000." in form.errors["stake"][0]
+    assert "Ensure this value is less than or equal to 10000." in form.errors["stake"][0]
 
 
 @pytest.mark.django_db
