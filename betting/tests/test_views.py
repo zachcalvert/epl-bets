@@ -186,6 +186,29 @@ def test_place_bet_creates_bet_and_deducts_balance(client):
     assert get_events(match_scope(match.pk))[0]["action"] == "bet_placed"
 
 
+def test_place_bet_confirmation_includes_oob_sentiment_update(client):
+    user = UserFactory()
+    UserBalanceFactory(user=user, balance="100.00")
+    match = MatchFactory()
+    OddsFactory(match=match, home_win="2.10")
+    client.force_login(user)
+
+    response = client.post(
+        reverse("betting:place_bet", args=[match.pk]),
+        data={"selection": BetSlip.Selection.HOME_WIN, "stake": "10.00"},
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    # The OOB sentiment element must be present so HTMX updates the page in-place
+    assert 'id="community-sentiment"' in content
+    assert 'hx-swap-oob="true"' in content
+    # Sentiment data reflects the just-placed bet
+    assert "Community Sentiment" in content
+    assert "1 bet" in content
+    assert "Home Win" in content
+
+
 def test_place_bet_auto_creates_balance_when_missing(client):
     user = UserFactory()
     match = MatchFactory()
