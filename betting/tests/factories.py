@@ -1,7 +1,16 @@
 import factory
 from django.utils import timezone
 
-from betting.models import BetSlip, Odds, Parlay, ParlayLeg, UserBalance, UserStats
+from betting.models import (
+    Badge,
+    BetSlip,
+    Odds,
+    Parlay,
+    ParlayLeg,
+    UserBadge,
+    UserBalance,
+    UserStats,
+)
 from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
 
@@ -74,3 +83,22 @@ class UserStatsFactory(factory.django.DjangoModelFactory):
     net_profit = "0.00"
     current_streak = 0
     best_streak = 0
+
+
+class BadgeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Badge
+
+    slug = factory.Sequence(lambda n: f"badge_{n}")
+    name = factory.Sequence(lambda n: f"Badge {n}")
+    description = "Test badge"
+    icon = "🏅"
+    rarity = Badge.Rarity.COMMON
+
+
+class UserBadgeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = UserBadge
+
+    user = factory.SubFactory(UserFactory)
+    badge = factory.SubFactory(BadgeFactory)

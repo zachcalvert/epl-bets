@@ -59,6 +59,30 @@
     {% endif %}
 </div>
 
+{# Badges #}
+<div class="mb-6">
+    <h2 class="text-lg font-bold text-white mb-3">Badges</h2>
+    {% if all_badges %}
+    <div class="badge-grid">
+        {% for badge in all_badges %}
+        {% with earned=badge.earned %}
+        <div class="badge-card badge-card--{{ badge.rarity }} {% if earned %}badge-card--earned{% else %}badge-card--locked{% endif %}">
+            <div class="badge-card-icon">{{ badge.icon }}</div>
+            <div class="badge-card-name">{{ badge.name }}</div>
+            <div class="badge-card-desc">{{ badge.description }}</div>
+            <span class="badge-rarity-pill badge-rarity-pill--{{ badge.rarity }}">{{ badge.get_rarity_display }}</span>
+            {% if earned %}
+            <div class="text-xs text-muted mt-1">{{ earned|date:"d M Y" }}</div>
+            {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-muted">No badges defined yet.</p>
+    {% endif %}
+</div>
+
 {# Recent bets #}
 {% if recent_bets %}
 <div class="mb-6">

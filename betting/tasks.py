@@ -13,10 +13,18 @@ from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_e
 logger = logging.getLogger(__name__)
 
 
-def _schedule_stat_update(user, won, stake, payout):
+def _schedule_stat_update(user, won, stake, payout, odds=None, is_parlay=False, leg_count=0):
     """Schedule a stat update to run after the current transaction commits."""
     transaction.on_commit(
-        lambda: record_bet_result(user, won=won, stake=stake, payout=payout)
+        lambda: record_bet_result(
+            user,
+            won=won,
+            stake=stake,
+            payout=payout,
+            odds=odds,
+            is_parlay=is_parlay,
+            leg_count=leg_count,
+        )
     )
 
 
@@ -92,7 +100,10 @@ def _evaluate_parlay(parlay_id):
                 parlay.status = Parlay.Status.LOST
                 parlay.payout = Decimal("0")
                 parlay.save(update_fields=["status", "payout"])
-                _schedule_stat_update(parlay.user, False, parlay.stake, Decimal("0"))
+                _schedule_stat_update(
+                    parlay.user, False, parlay.stake, Decimal("0"),
+                    is_parlay=True, leg_count=0,
+                )
                 return
 
             statuses = {leg.status for leg in legs}
@@ -102,7 +113,10 @@ def _evaluate_parlay(parlay_id):
                 parlay.payout = Decimal("0")
                 parlay.save(update_fields=["status", "payout"])
                 logger.info("_evaluate_parlay: parlay %d LOST", parlay_id)
-                _schedule_stat_update(parlay.user, False, parlay.stake, Decimal("0"))
+                _schedule_stat_update(
+                    parlay.user, False, parlay.stake, Decimal("0"),
+                    odds=parlay.combined_odds, is_parlay=True, leg_count=len(legs),
+                )
                 return
 
             if ParlayLeg.Status.PENDING in statuses:
@@ -141,7 +155,10 @@ def _evaluate_parlay(parlay_id):
                 payout,
                 parlay.combined_odds,
             )
-            _schedule_stat_update(parlay.user, True, parlay.stake, payout)
+            _schedule_stat_update(
+                parlay.user, True, parlay.stake, payout,
+                odds=parlay.combined_odds, is_parlay=True, leg_count=len(legs),
+            )
 
     except Parlay.DoesNotExist:
         logger.error("_evaluate_parlay: parlay %d not found", parlay_id)
@@ -270,6 +287,7 @@ def settle_match_bets(self, match_id):
             won=(bet.status == BetSlip.Status.WON),
             stake=bet.stake,
             payout=bet.payout or Decimal("0"),
+            odds=bet.odds_at_placement,
         )
 
     logger.info(

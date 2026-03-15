@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from betting.models import BetSlip, Odds, Parlay, ParlayLeg, UserBalance
+from betting.models import (
+    Badge,
+    BetSlip,
+    Odds,
+    Parlay,
+    ParlayLeg,
+    UserBadge,
+    UserBalance,
+)
 
 
 @admin.register(Odds)
@@ -40,4 +48,27 @@ class ParlayAdmin(admin.ModelAdmin):
 class UserBalanceAdmin(admin.ModelAdmin):
     list_display = ["user", "balance"]
     search_fields = ["user__email"]
+    raw_id_fields = ["user"]
+
+
+@admin.register(Badge)
+class BadgeAdmin(admin.ModelAdmin):
+    list_display = ["icon", "name", "slug", "rarity"]
+    list_filter = ["rarity"]
+    search_fields = ["name", "slug"]
+    prepopulated_fields = {"slug": ("name",)}
+
+
+class UserBadgeInline(admin.TabularInline):
+    model = UserBadge
+    extra = 0
+    readonly_fields = ["badge", "earned_at"]
+    can_delete = False
+
+
+@admin.register(UserBadge)
+class UserBadgeAdmin(admin.ModelAdmin):
+    list_display = ["user", "badge", "earned_at"]
+    list_filter = ["badge__rarity", "badge"]
+    search_fields = ["user__email", "badge__name"]
     raw_id_fields = ["user"]
