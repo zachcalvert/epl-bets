@@ -1,9 +1,9 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from matches.views import (
     DashboardUnderTheHoodPartialView,
     DashboardView,
-    FixturesView,
     LeaderboardPartialView,
     LeaderboardView,
     LeagueTableView,
@@ -23,7 +23,7 @@ urlpatterns = [
     ),
     path("leaderboard/", LeaderboardView.as_view(), name="leaderboard"),
     path("leaderboard/partial/", LeaderboardPartialView.as_view(), name="leaderboard_partial"),
-    path("fixtures/", FixturesView.as_view(), name="fixtures"),
+    path("fixtures/", RedirectView.as_view(url="/", permanent=True), name="fixtures"),
     path("table/", LeagueTableView.as_view(), name="table"),
     path("match/<int:pk>/", MatchDetailView.as_view(), name="match_detail"),
     path(

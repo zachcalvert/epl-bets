@@ -22,10 +22,6 @@
                    class="nav-link {% if url_name == 'dashboard' %}nav-link-active{% endif %}">
                     Dashboard
                 </a>
-                <a href="{% url 'matches:fixtures' %}"
-                   class="nav-link {% if url_name == 'fixtures' %}nav-link-active{% endif %}">
-                    Fixtures
-                </a>
                 <a href="{% url 'matches:table' %}"
                    class="nav-link {% if url_name == 'table' %}nav-link-active{% endif %}">
                     Table
@@ -115,7 +111,6 @@
         <div class="px-2 pt-2 pb-3 space-y-1">
             {% with url_name=request.resolver_match.url_name %}
             <a href="{% url 'matches:dashboard' %}" class="mobile-nav-link {% if url_name == 'dashboard' %}nav-link-active{% endif %}">Dashboard</a>
-            <a href="{% url 'matches:fixtures' %}" class="mobile-nav-link {% if url_name == 'fixtures' %}nav-link-active{% endif %}">Fixtures</a>
             <a href="{% url 'matches:table' %}" class="mobile-nav-link {% if url_name == 'table' %}nav-link-active{% endif %}">Table</a>
             <a href="{% url 'matches:leaderboard' %}" class="mobile-nav-link {% if url_name == 'leaderboard' %}nav-link-active{% endif %}">Leaderboard</a>
             <a href="{% url 'betting:odds' %}" class="mobile-nav-link {% if url_name == 'odds' %}nav-link-active{% endif %}">Odds</a>

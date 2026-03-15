@@ -5,30 +5,28 @@
 <div class="mb-6 flex items-center justify-between">
     <div>
         <h1 class="text-3xl font-bold text-white mb-1">Dashboard</h1>
-        {% if current_matchday %}
-            <p class="text-muted text-sm">Matchday {{ current_matchday }}</p>
-        {% endif %}
+        <p class="text-muted text-sm">Matchday {{ current_matchday }}</p>
     </div>
-    {% if matches %}
     <div id="ws-status-container" class="flex items-center gap-2 text-xs text-muted">
         <span class="ws-status disconnected" id="ws-dot"></span>
         <span id="ws-label">Connecting&hellip;</span>
     </div>
-    {% endif %}
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
-    <div class="order-2 xl:order-1">
-        {% if matches %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="match-grid"
-             hx-ext="ws" ws-connect="/ws/live/dashboard/">
-            {% for match in matches %}
-                {% include "matches/partials/match_card.html" %}
-            {% endfor %}
+    <div class="order-2 xl:order-1" id="match-grid"
+         hx-ext="ws" ws-connect="/ws/live/dashboard/">
+        <div class="mb-4">
+            {% include "website/components/matchday_tabs.html" %}
         </div>
-        {% else %}
-        {% include "website/components/empty_state.html" with icon="calendar" title="No matches today" message="Check the fixtures page for upcoming matches." cta_url="/fixtures/" cta_text="View Fixtures" %}
-        {% endif %}
+        <div class="relative">
+            <div id="fixture-loading" class="htmx-indicator pointer-events-none absolute inset-x-0 top-3 z-10 text-center">
+                <span class="spinner text-accent"></span>
+            </div>
+            <div id="fixture-list">
+                {% include "matches/partials/fixture_list.html" %}
+            </div>
+        </div>
     </div>
 
     <div class="order-1 xl:order-2 space-y-6">
