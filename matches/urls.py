@@ -9,6 +9,7 @@ from matches.views import (
     LeagueTableView,
     MatchDetailView,
     MatchOddsPartialView,
+    MatchStatusCardPartialView,
     MatchUnderTheHoodPartialView,
 )
 
@@ -30,6 +31,11 @@ urlpatterns = [
         "match/<int:pk>/under-the-hood/",
         MatchUnderTheHoodPartialView.as_view(),
         name="match_under_the_hood",
+    ),
+    path(
+        "match/<int:pk>/status-card/",
+        MatchStatusCardPartialView.as_view(),
+        name="match_status_card",
     ),
     path("match/<int:pk>/odds/", MatchOddsPartialView.as_view(), name="match_odds_partial"),
 ]

@@ -383,32 +383,14 @@ class MatchDetailView(DetailView):
         if self.request.user.is_authenticated:
             ctx["form"] = PlaceBetForm()
 
-        # Status-specific card data
-        card_statuses = (
+        # Status card is lazy-loaded via HTMX for faster initial render
+        ctx["has_status_card"] = match.status in (
             Match.Status.SCHEDULED,
             Match.Status.TIMED,
             Match.Status.IN_PLAY,
             Match.Status.PAUSED,
             Match.Status.FINISHED,
         )
-        if match.status in card_statuses:
-            ctx["match_stats"] = fetch_match_hype_data(match)
-            hype_ctx = _get_hype_context(match)
-            ctx.update(hype_ctx)
-
-            if match.status in (Match.Status.SCHEDULED, Match.Status.TIMED):
-                ctx["status_card_template"] = "matches/partials/hype_card.html"
-            elif match.status in (Match.Status.IN_PLAY, Match.Status.PAUSED):
-                ctx["status_card_template"] = "matches/partials/live_card.html"
-            elif match.status == Match.Status.FINISHED:
-                ctx["status_card_template"] = "matches/partials/recap_card.html"
-                ctx.update(
-                    _get_recap_context(
-                        match,
-                        hype_ctx.get("home_standing"),
-                        hype_ctx.get("away_standing"),
-                    )
-                )
 
         ctx.update(_get_match_transparency_context(match.pk))
         return ctx
@@ -426,6 +408,47 @@ class MatchUnderTheHoodPartialView(DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_get_match_transparency_context(self.object.pk))
         ctx["rendered_at"] = timezone.now()
+        return ctx
+
+
+class MatchStatusCardPartialView(DetailView):
+    """Lazy-loaded status card (hype / live / recap) for HTMX."""
+
+    model = Match
+    context_object_name = "match"
+
+    def get_queryset(self):
+        return Match.objects.select_related("home_team", "away_team").prefetch_related(
+            "odds"
+        )
+
+    def get_template_names(self):
+        match = self.object
+        if match.status in (Match.Status.SCHEDULED, Match.Status.TIMED):
+            return ["matches/partials/hype_card.html"]
+        elif match.status in (Match.Status.IN_PLAY, Match.Status.PAUSED):
+            return ["matches/partials/live_card.html"]
+        elif match.status == Match.Status.FINISHED:
+            return ["matches/partials/recap_card.html"]
+        return ["matches/partials/hype_card.html"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        match = self.object
+
+        ctx["match_stats"] = fetch_match_hype_data(match)
+        hype_ctx = _get_hype_context(match)
+        ctx.update(hype_ctx)
+
+        if match.status == Match.Status.FINISHED:
+            ctx.update(
+                _get_recap_context(
+                    match,
+                    hype_ctx.get("home_standing"),
+                    hype_ctx.get("away_standing"),
+                )
+            )
+
         return ctx
 
 
