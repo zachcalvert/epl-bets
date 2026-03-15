@@ -54,6 +54,11 @@
     </div>
 </div>
 
+<!-- Hype card (pre-match only) -->
+{% if match_stats %}
+    {% include "matches/partials/hype_card.html" %}
+{% endif %}
+
 <!-- Bet placement -->
 {% if user.is_authenticated %}
     {% if match.status == "SCHEDULED" or match.status == "TIMED" %}

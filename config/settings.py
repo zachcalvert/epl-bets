@@ -204,6 +204,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "betting.tasks.fetch_odds",
         "schedule": timedelta(minutes=30),
     },
+    "prefetch-hype-data-6h": {
+        "task": "matches.tasks.prefetch_upcoming_hype_data",
+        "schedule": timedelta(hours=6),
+    },
 }
 
 # External APIs

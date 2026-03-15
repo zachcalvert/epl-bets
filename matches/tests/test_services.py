@@ -5,14 +5,21 @@ from types import SimpleNamespace
 import pytest
 from django.utils import timezone
 
+from matches.models import MatchStats
 from matches.services import (
     FootballDataClient,
     RateLimitError,
+    fetch_match_hype_data,
     sync_matches,
     sync_standings,
     sync_teams,
 )
-from matches.tests.factories import MatchFactory, StandingFactory, TeamFactory
+from matches.tests.factories import (
+    MatchFactory,
+    MatchStatsFactory,
+    StandingFactory,
+    TeamFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -412,3 +419,216 @@ def test_sync_standings_creates_updates_and_skips_missing_teams(monkeypatch):
 
     assert (created, updated) == (1, 1)
     assert existing.points == 25
+
+
+# ---------------------------------------------------------------------------
+# FootballDataClient — get_head_to_head / get_team_form
+# ---------------------------------------------------------------------------
+
+H2H_MATCH = {
+    "utcDate": "2025-12-20T15:00:00Z",
+    "homeTeam": {"id": 1, "shortName": "Arsenal", "name": "Arsenal FC"},
+    "awayTeam": {"id": 2, "shortName": "Chelsea", "name": "Chelsea FC"},
+    "score": {"fullTime": {"home": 2, "away": 1}},
+}
+
+
+def test_get_head_to_head_normalizes_matches_and_summary(monkeypatch):
+    client = FootballDataClient()
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: {
+            "matches": [H2H_MATCH],
+            "aggregates": {
+                "homeTeam": {"wins": 3, "draws": 1},
+                "awayTeam": {"wins": 1, "draws": 1},
+                "numberOfDraws": 1,
+            },
+        },
+    )
+
+    matches, summary = client.get_head_to_head(999, limit=5)
+
+    assert len(matches) == 1
+    assert matches[0] == {
+        "date": "2025-12-20",
+        "home_team": "Arsenal",
+        "away_team": "Chelsea",
+        "home_score": 2,
+        "away_score": 1,
+    }
+    assert summary == {"home_wins": 3, "away_wins": 1, "draws": 1}
+
+
+def test_get_head_to_head_passes_limit_param(monkeypatch):
+    client = FootballDataClient()
+    captured = {}
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: captured.update({"path": path, "params": params}) or {"matches": [], "aggregates": {}},
+    )
+
+    client.get_head_to_head(42, limit=3)
+
+    assert captured["params"] == {"limit": 3}
+    assert "head2head" in captured["path"]
+
+
+def test_get_team_form_result_win_from_home_perspective(monkeypatch):
+    client = FootballDataClient()
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: {"matches": [{**H2H_MATCH}]},  # home_id=1 wins 2-1
+    )
+
+    results = client.get_team_form(team_external_id=1, limit=5)
+
+    assert results[0]["result"] == "W"
+
+
+def test_get_team_form_result_win_from_away_perspective(monkeypatch):
+    client = FootballDataClient()
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: {"matches": [{**H2H_MATCH}]},  # away_id=2 loses 2-1
+    )
+
+    results = client.get_team_form(team_external_id=2, limit=5)
+
+    assert results[0]["result"] == "L"
+
+
+def test_get_team_form_result_draw(monkeypatch):
+    client = FootballDataClient()
+    draw_match = {**H2H_MATCH, "score": {"fullTime": {"home": 1, "away": 1}}}
+    monkeypatch.setattr(client, "_get", lambda path, params=None: {"matches": [draw_match]})
+
+    results = client.get_team_form(team_external_id=1, limit=5)
+
+    assert results[0]["result"] == "D"
+
+
+def test_get_team_form_result_none_when_scores_missing(monkeypatch):
+    client = FootballDataClient()
+    no_score_match = {**H2H_MATCH, "score": {"fullTime": {"home": None, "away": None}}}
+    monkeypatch.setattr(client, "_get", lambda path, params=None: {"matches": [no_score_match]})
+
+    results = client.get_team_form(team_external_id=1, limit=5)
+
+    assert results[0]["result"] is None
+
+
+def test_get_team_form_respects_limit_and_returns_latest(monkeypatch):
+    """Only the last `limit` matches are returned when the API sends more."""
+    client = FootballDataClient()
+    many_matches = [H2H_MATCH] * 8
+    monkeypatch.setattr(client, "_get", lambda path, params=None: {"matches": many_matches})
+
+    results = client.get_team_form(team_external_id=1, limit=5)
+
+    assert len(results) == 5
+
+
+# ---------------------------------------------------------------------------
+# fetch_match_hype_data
+# ---------------------------------------------------------------------------
+
+
+class _FakeHypeClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def get_head_to_head(self, match_id, limit=5):
+        return (
+            [{"date": "2025-01-01", "home_team": "A", "away_team": "B", "home_score": 1, "away_score": 0}],
+            {"home_wins": 1, "away_wins": 0, "draws": 0},
+        )
+
+    def get_team_form(self, team_id, limit=5):
+        return [{"date": "2025-01-01", "home_team": "A", "away_team": "B", "home_score": 2, "away_score": 0, "result": "W"}]
+
+
+def test_fetch_match_hype_data_creates_and_populates_stats(monkeypatch):
+    match = MatchFactory()
+    monkeypatch.setattr("matches.services.FootballDataClient", _FakeHypeClient)
+
+    stats = fetch_match_hype_data(match)
+
+    assert stats.match == match
+    assert stats.h2h_json != []
+    assert stats.home_form_json != []
+    assert stats.away_form_json != []
+    assert stats.fetched_at is not None
+    assert MatchStats.objects.filter(match=match).count() == 1
+
+
+def test_fetch_match_hype_data_returns_cached_when_fresh(monkeypatch):
+    match = MatchFactory()
+    existing = MatchStatsFactory(match=match)  # fetched_at=now() by default
+    called = {"count": 0}
+
+    class NeverCalledClient(_FakeHypeClient):
+        def get_head_to_head(self, *args, **kwargs):
+            called["count"] += 1
+            return super().get_head_to_head(*args, **kwargs)
+
+    monkeypatch.setattr("matches.services.FootballDataClient", NeverCalledClient)
+
+    stats = fetch_match_hype_data(match)
+
+    assert stats.pk == existing.pk
+    assert called["count"] == 0
+
+
+def test_fetch_match_hype_data_refreshes_stale_stats(monkeypatch):
+    from datetime import timedelta
+    match = MatchFactory()
+    stale = MatchStatsFactory(match=match, fetched_at=timezone.now() - timedelta(hours=25))
+    monkeypatch.setattr("matches.services.FootballDataClient", _FakeHypeClient)
+
+    stats = fetch_match_hype_data(match)
+    stale.refresh_from_db()
+
+    assert stale.fetched_at is not None
+    assert stale.h2h_json != []
+    assert stats.pk == stale.pk
+
+
+def test_fetch_match_hype_data_returns_stale_stats_on_rate_limit(monkeypatch):
+    match = MatchFactory()
+    existing = MatchStatsFactory(match=match, fetched_at=None)  # stale
+
+    class RateLimitedClient(_FakeHypeClient):
+        def get_head_to_head(self, *args, **kwargs):
+            raise RateLimitError("rate limited")
+
+    monkeypatch.setattr("matches.services.FootballDataClient", RateLimitedClient)
+
+    stats = fetch_match_hype_data(match)
+
+    # Should return the existing record without raising
+    assert stats.pk == existing.pk
+    stats.refresh_from_db()
+    assert stats.fetched_at is None  # not updated
+
+
+def test_fetch_match_hype_data_returns_stale_stats_on_generic_error(monkeypatch):
+    match = MatchFactory()
+    existing = MatchStatsFactory(match=match, fetched_at=None)
+
+    class BrokenClient(_FakeHypeClient):
+        def get_head_to_head(self, *args, **kwargs):
+            raise ConnectionError("network down")
+
+    monkeypatch.setattr("matches.services.FootballDataClient", BrokenClient)
+
+    stats = fetch_match_hype_data(match)
+
+    assert stats.pk == existing.pk

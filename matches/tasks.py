@@ -1,14 +1,18 @@
 import logging
+import time
+from datetime import timedelta
 
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 from django.conf import settings
+from django.utils import timezone
 
 from betting.tasks import settle_match_bets
 from matches.models import Match
 from matches.services import (
     FootballDataClient,
+    fetch_match_hype_data,
     sync_matches,
     sync_standings,
     sync_teams,
@@ -171,3 +175,32 @@ def _broadcast_score_changes(pre_sync):
             if new_status in ("FINISHED", "CANCELLED", "POSTPONED") and old_status != new_status:
                 logger.info("Triggering bet settlement for match %d (status: %s)", pk, new_status)
                 settle_match_bets.delay(pk)
+
+
+@shared_task
+def prefetch_upcoming_hype_data():
+    """Pre-warm MatchStats for SCHEDULED matches kicking off within 48 hours.
+
+    Spreads API calls with a short sleep to respect the 10 req/min free-tier
+    rate limit (3 calls per match → ~18 req/min worst-case without throttling).
+    """
+    cutoff = timezone.now() + timedelta(hours=48)
+    upcoming = Match.objects.filter(
+        status__in=[Match.Status.SCHEDULED, Match.Status.TIMED],
+        kickoff__lte=cutoff,
+        season=settings.CURRENT_SEASON,
+    ).select_related("home_team", "away_team")
+
+    refreshed = skipped = 0
+    for match in upcoming:
+        # Check staleness without hitting the DB unnecessarily
+        stats = getattr(match, "hype_stats", None)
+        if stats and not stats.is_stale():
+            skipped += 1
+            continue
+
+        fetch_match_hype_data(match)
+        refreshed += 1
+        time.sleep(6)  # ~10 requests/minute ceiling across all callers
+
+    logger.info("prefetch_upcoming_hype_data: refreshed=%d skipped=%d", refreshed, skipped)

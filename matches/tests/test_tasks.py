@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
+from django.utils import timezone
 
 from matches.models import Match
 from matches.tasks import (
@@ -10,8 +11,9 @@ from matches.tasks import (
     fetch_live_scores,
     fetch_standings,
     fetch_teams,
+    prefetch_upcoming_hype_data,
 )
-from matches.tests.factories import MatchFactory
+from matches.tests.factories import MatchFactory, MatchStatsFactory
 from website.transparency import GLOBAL_SCOPE, get_events, match_scope, page_scope
 
 pytestmark = pytest.mark.django_db
@@ -362,6 +364,95 @@ def test_refresh_stale_matches_continues_on_individual_failure(monkeypatch, sett
     assert match_ok.status == Match.Status.FINISHED
     match_fail.refresh_from_db()
     assert match_fail.status == Match.Status.IN_PLAY
+
+
+# ---------------------------------------------------------------------------
+# prefetch_upcoming_hype_data
+# ---------------------------------------------------------------------------
+
+
+def test_prefetch_upcoming_hype_data_fetches_scheduled_matches_within_48h(monkeypatch, settings):
+    from datetime import timedelta
+    upcoming = MatchFactory(
+        status=Match.Status.SCHEDULED,
+        kickoff=timezone.now() + timedelta(hours=24),
+        season=settings.CURRENT_SEASON,
+    )
+    # Beyond 48h — should be skipped
+    MatchFactory(
+        status=Match.Status.SCHEDULED,
+        kickoff=timezone.now() + timedelta(hours=72),
+        season=settings.CURRENT_SEASON,
+    )
+    # Finished match — should be skipped
+    MatchFactory(
+        status=Match.Status.FINISHED,
+        kickoff=timezone.now() + timedelta(hours=12),
+        season=settings.CURRENT_SEASON,
+    )
+    fetched = []
+    monkeypatch.setattr("matches.tasks.fetch_match_hype_data", lambda m: fetched.append(m))
+    monkeypatch.setattr("matches.tasks.time.sleep", lambda s: None)
+
+    prefetch_upcoming_hype_data()
+
+    assert fetched == [upcoming]
+
+
+def test_prefetch_upcoming_hype_data_skips_matches_with_fresh_stats(monkeypatch, settings):
+    from datetime import timedelta
+    match = MatchFactory(
+        status=Match.Status.SCHEDULED,
+        kickoff=timezone.now() + timedelta(hours=6),
+        season=settings.CURRENT_SEASON,
+    )
+    MatchStatsFactory(match=match, fetched_at=timezone.now())  # fresh
+    fetched = []
+    monkeypatch.setattr("matches.tasks.fetch_match_hype_data", lambda m: fetched.append(m))
+    monkeypatch.setattr("matches.tasks.time.sleep", lambda s: None)
+
+    prefetch_upcoming_hype_data()
+
+    assert fetched == []
+
+
+def test_prefetch_upcoming_hype_data_fetches_match_with_stale_stats(monkeypatch, settings):
+    from datetime import timedelta
+    match = MatchFactory(
+        status=Match.Status.SCHEDULED,
+        kickoff=timezone.now() + timedelta(hours=6),
+        season=settings.CURRENT_SEASON,
+    )
+    MatchStatsFactory(match=match, fetched_at=timezone.now() - timedelta(hours=25))  # stale
+    fetched = []
+    monkeypatch.setattr("matches.tasks.fetch_match_hype_data", lambda m: fetched.append(m))
+    monkeypatch.setattr("matches.tasks.time.sleep", lambda s: None)
+
+    prefetch_upcoming_hype_data()
+
+    assert fetched == [match]
+
+
+def test_prefetch_upcoming_hype_data_sleeps_between_matches(monkeypatch, settings):
+    from datetime import timedelta
+    MatchFactory(
+        status=Match.Status.SCHEDULED,
+        kickoff=timezone.now() + timedelta(hours=6),
+        season=settings.CURRENT_SEASON,
+    )
+    MatchFactory(
+        status=Match.Status.SCHEDULED,
+        kickoff=timezone.now() + timedelta(hours=12),
+        season=settings.CURRENT_SEASON,
+    )
+    sleep_calls = []
+    monkeypatch.setattr("matches.tasks.fetch_match_hype_data", lambda m: None)
+    monkeypatch.setattr("matches.tasks.time.sleep", lambda s: sleep_calls.append(s))
+
+    prefetch_upcoming_hype_data()
+
+    assert len(sleep_calls) == 2
+    assert all(s == 6 for s in sleep_calls)
 
 
 class SimpleChannelLayer:
