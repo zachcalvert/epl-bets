@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import IntegrityError, transaction
-from django.db.models import Max, Min, Sum
+from django.db.models import Count, Max, Min, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -159,6 +159,35 @@ class OddsBoardPartialView(OddsBoardView):
             route=self.request.path,
         )
         return ctx
+
+
+def _get_match_sentiment(match):
+    """Aggregate community sentiment for a match from all placed BetSlips."""
+    rows = (
+        BetSlip.objects.filter(match=match)
+        .values("selection")
+        .annotate(count=Count("id"))
+    )
+    counts = {r["selection"]: r["count"] for r in rows}
+    total = sum(counts.values())
+    if not total:
+        return None
+    home_pct = round(counts.get(BetSlip.Selection.HOME_WIN, 0) / total * 100)
+    draw_pct = round(counts.get(BetSlip.Selection.DRAW, 0) / total * 100)
+    away_pct = 100 - home_pct - draw_pct
+    most_popular_count = max(counts.values())
+    most_popular_label = next(
+        label
+        for sel, label in BetSlip.Selection.choices
+        if counts.get(sel, 0) == most_popular_count
+    )
+    return {
+        "total": total,
+        "home_pct": home_pct,
+        "draw_pct": draw_pct,
+        "away_pct": away_pct,
+        "most_popular": most_popular_label,
+    }
 
 
 class PlaceBetView(LoginRequiredMixin, View):
@@ -315,6 +344,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                 "match": match,
                 "potential_payout": potential_payout,
                 "balance": f"{balance.balance:.2f}",
+                "sentiment": _get_match_sentiment(match),
             },
         )
 
