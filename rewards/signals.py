@@ -4,17 +4,13 @@ from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from betting.models import BetSlip
+from betting.models import BetSlip, Parlay
 
 logger = logging.getLogger(__name__)
 
 
-@receiver(post_save, sender=BetSlip)
-def check_reward_rules(sender, instance, created, **kwargs):
-    """Evaluate active reward rules whenever a new bet is placed."""
-    if not created:
-        return
-
+def _evaluate_rules_for_user(user, stake):
+    """Shared reward rule evaluation used by both single bet and parlay signals."""
     from rewards.models import RewardRule
 
     active_rules = RewardRule.objects.filter(is_active=True).select_related("reward")
@@ -28,12 +24,32 @@ def check_reward_rules(sender, instance, created, **kwargs):
             stake_rules.append(rule)
 
     if bet_count_rules:
-        bet_count = BetSlip.objects.filter(user=instance.user).count()
+        # Count both single bets and parlays as "bets" for milestone rules
+        total_bet_count = (
+            BetSlip.objects.filter(user=user).count()
+            + Parlay.objects.filter(user=user).count()
+        )
         for rule in bet_count_rules:
-            if bet_count == int(rule.threshold):
-                rule.reward.distribute_to_users([instance.user])
+            if total_bet_count == int(rule.threshold):
+                rule.reward.distribute_to_users([user])
 
-    stake = Decimal(str(instance.stake))
+    stake_decimal = Decimal(str(stake))
     for rule in stake_rules:
-        if stake >= rule.threshold:
-            rule.reward.distribute_to_users([instance.user])
+        if stake_decimal >= rule.threshold:
+            rule.reward.distribute_to_users([user])
+
+
+@receiver(post_save, sender=BetSlip)
+def check_reward_rules(sender, instance, created, **kwargs):
+    """Evaluate active reward rules whenever a new single bet is placed."""
+    if not created:
+        return
+    _evaluate_rules_for_user(instance.user, instance.stake)
+
+
+@receiver(post_save, sender=Parlay)
+def check_reward_rules_for_parlay(sender, instance, created, **kwargs):
+    """Evaluate active reward rules whenever a new parlay is placed."""
+    if not created:
+        return
+    _evaluate_rules_for_user(instance.user, instance.stake)

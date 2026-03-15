@@ -1,7 +1,7 @@
 import factory
 from django.utils import timezone
 
-from betting.models import BetSlip, Odds, UserBalance
+from betting.models import BetSlip, Odds, Parlay, ParlayLeg, UserBalance
 from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
 
@@ -37,3 +37,25 @@ class UserBalanceFactory(factory.django.DjangoModelFactory):
 
     user = factory.SubFactory(UserFactory)
     balance = "1000.00"
+
+
+class ParlayFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Parlay
+
+    user = factory.SubFactory(UserFactory)
+    stake = "10.00"
+    combined_odds = "6.00"
+    status = Parlay.Status.PENDING
+    payout = None
+
+
+class ParlayLegFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ParlayLeg
+
+    parlay = factory.SubFactory(ParlayFactory)
+    match = factory.SubFactory(MatchFactory)
+    selection = BetSlip.Selection.HOME_WIN
+    odds_at_placement = "2.00"
+    status = ParlayLeg.Status.PENDING
