@@ -54,7 +54,7 @@ def test_disconnect_discards_all_joined_groups(monkeypatch):
     consumer = build_consumer("dashboard")
     consumer.groups_joined = ["live_scores", "match_1"]
     layer = SimpleLayer()
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+    monkeypatch.setattr("matches.consumers.get_channel_layer", lambda: layer)
 
     consumer.disconnect(1000)
 
@@ -68,7 +68,7 @@ def test_disconnect_discards_all_joined_groups(monkeypatch):
 def test_disconnect_noops_when_no_groups_joined(monkeypatch):
     consumer = build_consumer("dashboard")
     layer = SimpleLayer()
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+    monkeypatch.setattr("matches.consumers.get_channel_layer", lambda: layer)
 
     consumer.disconnect(1000)
 
@@ -78,7 +78,7 @@ def test_disconnect_noops_when_no_groups_joined(monkeypatch):
 def test_join_group_adds_group_and_tracks_membership(monkeypatch):
     consumer = build_consumer("dashboard")
     layer = SimpleLayer()
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+    monkeypatch.setattr("matches.consumers.get_channel_layer", lambda: layer)
 
     consumer._join_group("live_scores")
 

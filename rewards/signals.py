@@ -5,14 +5,13 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from betting.models import BetSlip, Parlay
+from rewards.models import RewardRule
 
 logger = logging.getLogger(__name__)
 
 
 def _evaluate_rules_for_user(user, stake):
     """Shared reward rule evaluation used by both single bet and parlay signals."""
-    from rewards.models import RewardRule
-
     active_rules = RewardRule.objects.filter(is_active=True).select_related("reward")
 
     bet_count_rules = []

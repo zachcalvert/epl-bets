@@ -5,6 +5,7 @@ import pytest
 from matches.models import Match
 from matches.tasks import (
     _broadcast_score_changes,
+    _refresh_stale_matches,
     fetch_fixtures,
     fetch_live_scores,
     fetch_standings,
@@ -184,8 +185,8 @@ def test_broadcast_score_changes_sends_updates_and_triggers_settlement(monkeypat
     sent = []
     delay = Mock()
     channel_layer = SimpleChannelLayer(sent)
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: channel_layer)
-    monkeypatch.setattr("betting.tasks.settle_match_bets.delay", delay)
+    monkeypatch.setattr("matches.tasks.get_channel_layer", lambda: channel_layer)
+    monkeypatch.setattr("matches.tasks.settle_match_bets.delay", delay)
 
     _broadcast_score_changes({match.pk: (1, 1, Match.Status.IN_PLAY)})
 
@@ -208,7 +209,7 @@ def test_broadcast_score_changes_sends_updates_for_newly_live_match(monkeypatch,
     )
     sent = []
     channel_layer = SimpleChannelLayer(sent)
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: channel_layer)
+    monkeypatch.setattr("matches.tasks.get_channel_layer", lambda: channel_layer)
 
     _broadcast_score_changes({})
 
@@ -219,7 +220,7 @@ def test_broadcast_score_changes_sends_updates_for_newly_live_match(monkeypatch,
 
 
 def test_broadcast_score_changes_returns_when_channel_layer_missing(monkeypatch):
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: None)
+    monkeypatch.setattr("matches.tasks.get_channel_layer", lambda: None)
 
     _broadcast_score_changes({})
 
@@ -233,7 +234,7 @@ def test_broadcast_score_changes_ignores_unchanged_match(monkeypatch, settings):
     )
     sent = []
     channel_layer = SimpleChannelLayer(sent)
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: channel_layer)
+    monkeypatch.setattr("matches.tasks.get_channel_layer", lambda: channel_layer)
 
     _broadcast_score_changes({match.pk: (1, 1, Match.Status.IN_PLAY)})
 
@@ -253,8 +254,8 @@ def test_broadcast_score_changes_triggers_settlement_for_terminal_statuses(
     sent = []
     delay = Mock()
     channel_layer = SimpleChannelLayer(sent)
-    monkeypatch.setattr("channels.layers.get_channel_layer", lambda: channel_layer)
-    monkeypatch.setattr("betting.tasks.settle_match_bets.delay", delay)
+    monkeypatch.setattr("matches.tasks.get_channel_layer", lambda: channel_layer)
+    monkeypatch.setattr("matches.tasks.settle_match_bets.delay", delay)
 
     _broadcast_score_changes({match.pk: (1, 1, Match.Status.IN_PLAY)})
 
@@ -294,8 +295,6 @@ def test_fetch_live_scores_refreshes_stale_matches(monkeypatch, settings):
 
 def test_refresh_stale_matches_updates_match_from_api(monkeypatch, settings):
     """_refresh_stale_matches fetches each match individually and updates the DB."""
-    from matches.tasks import _refresh_stale_matches
-
     match = MatchFactory(
         status=Match.Status.IN_PLAY,
         season=settings.CURRENT_SEASON,
@@ -326,8 +325,6 @@ def test_refresh_stale_matches_updates_match_from_api(monkeypatch, settings):
 
 def test_refresh_stale_matches_continues_on_individual_failure(monkeypatch, settings):
     """If one match fails to refresh, others should still be processed."""
-    from matches.tasks import _refresh_stale_matches
-
     match_ok = MatchFactory(
         status=Match.Status.IN_PLAY,
         season=settings.CURRENT_SEASON,

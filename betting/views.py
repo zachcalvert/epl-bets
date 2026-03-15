@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Max, Min, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from betting.context_processors import parlay_slip as _parlay_slip_ctx
 from betting.forms import DisplayNameForm, PlaceBetForm, PlaceParlayForm
 from betting.models import (
     PARLAY_MAX_LEGS,
@@ -518,7 +519,6 @@ def _save_slip(request, slip):
 
 def _build_slip_context(request):
     """Build the template context for the parlay slip panel (used by HTMX views)."""
-    from betting.context_processors import parlay_slip as _parlay_slip_ctx
     return _parlay_slip_ctx(request)
 
 
@@ -710,7 +710,6 @@ class PlaceParlayView(LoginRequiredMixin, View):
         leg_data = unique_leg_data
 
         # Atomic: deduct balance + create Parlay + ParlayLegs
-        from django.db import IntegrityError
         try:
             with transaction.atomic():
                 balance = UserBalance.objects.select_for_update().get(user=request.user)

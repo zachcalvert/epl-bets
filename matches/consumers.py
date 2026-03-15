@@ -1,10 +1,13 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
+from channels.layers import get_channel_layer
 from django.db import close_old_connections
 from django.db.models import Min
 from django.template.loader import render_to_string
 
+from betting.models import Odds
 from matches.models import Match
 
 logger = logging.getLogger(__name__)
@@ -40,17 +43,11 @@ class LiveUpdatesConsumer(WebsocketConsumer):
 
     def disconnect(self, close_code):
         for group in self.groups_joined:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_discard)(group, self.channel_name)
         self.groups_joined.clear()
 
     def _join_group(self, group_name):
-        from asgiref.sync import async_to_sync
-        from channels.layers import get_channel_layer
-
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_add)(group_name, self.channel_name)
         self.groups_joined.append(group_name)
@@ -71,8 +68,6 @@ class LiveUpdatesConsumer(WebsocketConsumer):
                 return
 
             # Annotate best odds
-            from betting.models import Odds
-
             best = (
                 Odds.objects.filter(match_id=match_id)
                 .aggregate(

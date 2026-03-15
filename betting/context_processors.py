@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from django.db.models import Min
+
 from betting.forms import PlaceParlayForm
 from betting.models import (
     PARLAY_MAX_LEGS,
@@ -7,8 +9,10 @@ from betting.models import (
     PARLAY_MIN_LEGS,
     Bankruptcy,
     BetSlip,
+    Odds,
     UserBalance,
 )
+from matches.models import Match
 
 MIN_BET = Decimal("0.50")
 PARLAY_SESSION_KEY = "parlay_slip"
@@ -55,11 +59,6 @@ def parlay_slip(request):
             "parlay_max_payout": PARLAY_MAX_PAYOUT,
             "parlay_form": PlaceParlayForm(),
         }
-
-    from django.db.models import Min
-
-    from betting.models import BetSlip, Odds
-    from matches.models import Match
 
     ODDS_FIELD_MAP = {
         BetSlip.Selection.HOME_WIN: "home_win",

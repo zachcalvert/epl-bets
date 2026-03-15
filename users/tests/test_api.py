@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient, APIRequestFactory
 
@@ -61,8 +62,6 @@ def test_register_api_blocked_when_cap_reached(client):
     )
 
     assert response.status_code == 400
-    from django.contrib.auth import get_user_model
-
     assert not get_user_model().objects.filter(email="capped@example.com").exists()
 
 

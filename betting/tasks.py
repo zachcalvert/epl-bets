@@ -2,8 +2,11 @@ import logging
 from decimal import Decimal
 
 from celery import shared_task
+from django.db import transaction
 
+from betting.models import BetSlip, Parlay, ParlayLeg, UserBalance
 from betting.services import sync_odds
+from matches.models import Match
 from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 logger = logging.getLogger(__name__)
@@ -18,8 +21,6 @@ def settle_parlay_legs(match, winning_selection):
 
     After settling legs, evaluate each affected parlay.
     """
-
-    from betting.models import ParlayLeg
 
     pending_legs = ParlayLeg.objects.filter(
         match=match, status=ParlayLeg.Status.PENDING
@@ -51,8 +52,6 @@ def settle_parlay_legs(match, winning_selection):
 
 def _recalculate_combined_odds(parlay, legs):
     """Recalculate combined_odds using only non-VOID legs. Updates parlay in place."""
-    from betting.models import ParlayLeg
-
     active_legs = [leg for leg in legs if leg.status != ParlayLeg.Status.VOID]
     if not active_legs:
         parlay.combined_odds = Decimal("1.00")
@@ -73,10 +72,6 @@ def _evaluate_parlay(parlay_id):
       - all VOID  → parlay VOID, refund stake
       - all settled, no LOST, some WON → parlay WON
     """
-    from django.db import transaction
-
-    from betting.models import Parlay, ParlayLeg, UserBalance
-
     try:
         with transaction.atomic():
             parlay = Parlay.objects.select_for_update().get(pk=parlay_id)
@@ -169,11 +164,6 @@ def settle_match_bets(self, match_id):
 
     Called when a match transitions to FINISHED, CANCELLED, or POSTPONED.
     """
-    from django.db import transaction
-
-    from betting.models import BetSlip, UserBalance
-    from matches.models import Match
-
     logger.info("settle_match_bets: starting for match %d", match_id)
 
     try:
@@ -183,8 +173,7 @@ def settle_match_bets(self, match_id):
         return
 
     pending_bets = BetSlip.objects.filter(match=match, status=BetSlip.Status.PENDING)
-    from betting.models import ParlayLeg as _ParlayLeg
-    pending_parlay_legs = _ParlayLeg.objects.filter(match=match, status=_ParlayLeg.Status.PENDING)
+    pending_parlay_legs = ParlayLeg.objects.filter(match=match, status=ParlayLeg.Status.PENDING)
     if not pending_bets.exists() and not pending_parlay_legs.exists():
         logger.info("settle_match_bets: no pending bets or parlay legs for match %d", match_id)
         return

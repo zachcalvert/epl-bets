@@ -1,6 +1,8 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
+from channels.layers import get_channel_layer
 from django.db import close_old_connections
 from django.template.loader import render_to_string
 
@@ -35,9 +37,6 @@ class NotificationConsumer(WebsocketConsumer):
 
     def disconnect(self, close_code):
         if self.group_name:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_discard)(
                 self.group_name, self.channel_name
@@ -45,9 +44,6 @@ class NotificationConsumer(WebsocketConsumer):
             self.group_name = None
 
     def _join_group(self, group_name):
-        from asgiref.sync import async_to_sync
-        from channels.layers import get_channel_layer
-
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_add)(group_name, self.channel_name)
 

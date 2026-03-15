@@ -7,6 +7,7 @@ from betting.models import BetSlip, UserBalance
 from betting.tests.factories import BetSlipFactory, UserBalanceFactory
 from rewards.models import Reward, RewardDistribution
 from rewards.tests.factories import RewardFactory
+from users.models import User
 from users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -31,8 +32,6 @@ class TestRewardAdmin:
 
         assert response.status_code == 200
         # All active users get the reward (admin, factory users, etc.)
-        from users.models import User
-
         active_count = User.objects.filter(is_active=True).count()
         assert RewardDistribution.objects.count() == active_count
         for user in users:

@@ -1,8 +1,12 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from celery import shared_task
+from channels.layers import get_channel_layer
 from django.conf import settings
 
+from betting.tasks import settle_match_bets
+from matches.models import Match
 from matches.services import (
     FootballDataClient,
     sync_matches,
@@ -52,8 +56,6 @@ def fetch_live_scores(self):
     logger.info("fetch_live_scores: starting")
     try:
         # Snapshot live matches before sync to detect changes
-        from matches.models import Match
-
         pre_sync = {
             m["pk"]: (m["home_score"], m["away_score"], m["status"])
             for m in Match.objects.filter(
@@ -102,8 +104,6 @@ def fetch_live_scores(self):
 def _refresh_stale_matches(stale_matches):
     """Fetch current status for matches our DB thinks are live but the LIVE
     API didn't return (they likely just finished)."""
-    from matches.models import Match
-
     updated = 0
     with FootballDataClient() as client:
         for pk, ext_id in stale_matches:
@@ -126,11 +126,6 @@ def _refresh_stale_matches(stale_matches):
 
 def _broadcast_score_changes(pre_sync):
     """Compare current match state to pre-sync snapshot and broadcast changes."""
-    from asgiref.sync import async_to_sync
-    from channels.layers import get_channel_layer
-
-    from matches.models import Match
-
     channel_layer = get_channel_layer()
     if not channel_layer:
         logger.warning("No channel layer configured, skipping broadcast")
@@ -174,7 +169,5 @@ def _broadcast_score_changes(pre_sync):
             old_status = old[2] if old else None
             new_status = m["status"]
             if new_status in ("FINISHED", "CANCELLED", "POSTPONED") and old_status != new_status:
-                from betting.tasks import settle_match_bets
-
                 logger.info("Triggering bet settlement for match %d (status: %s)", pk, new_status)
                 settle_match_bets.delay(pk)

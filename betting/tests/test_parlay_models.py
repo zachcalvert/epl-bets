@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.db import IntegrityError
 
 from betting.models import (
     PARLAY_MAX_LEGS,
@@ -49,8 +50,6 @@ class TestParlayLegModel:
         assert leg.selection == BetSlip.Selection.HOME_WIN
 
     def test_unique_together_match_per_parlay(self):
-        from django.db import IntegrityError
-
         parlay = ParlayFactory()
         match = MatchFactory()
         ParlayLegFactory(parlay=parlay, match=match, selection=BetSlip.Selection.HOME_WIN)

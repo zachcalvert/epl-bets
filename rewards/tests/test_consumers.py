@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from rewards.consumers import NotificationConsumer
+from rewards.models import Reward
 from rewards.tests.factories import RewardDistributionFactory
 from users.tests.factories import UserFactory
 
@@ -57,7 +58,7 @@ class TestNotificationConsumerDisconnect:
         consumer = build_consumer(user)
         consumer.group_name = f"user_notifications_{user.pk}"
         layer = SimpleLayer()
-        monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+        monkeypatch.setattr("rewards.consumers.get_channel_layer", lambda: layer)
 
         consumer.disconnect(1000)
 
@@ -67,7 +68,7 @@ class TestNotificationConsumerDisconnect:
     def test_disconnect_noops_when_no_group(self, monkeypatch):
         consumer = build_consumer(user=None)
         layer = SimpleLayer()
-        monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+        monkeypatch.setattr("rewards.consumers.get_channel_layer", lambda: layer)
 
         consumer.disconnect(1000)
 
@@ -118,13 +119,11 @@ class TestNotificationConsumerEvents:
 class TestBroadcastOnDistribute:
     @pytest.mark.django_db(transaction=True)
     def test_distribute_broadcasts_to_each_user(self, monkeypatch):
-        from rewards.models import Reward
-
         users = UserFactory.create_batch(3)
         reward = Reward.objects.create(name="Test", amount=10)
 
         layer = BroadcastLayer()
-        monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+        monkeypatch.setattr("rewards.models.get_channel_layer", lambda: layer)
 
         distributions = reward.distribute_to_users(users)
 
@@ -139,14 +138,12 @@ class TestBroadcastOnDistribute:
 
     @pytest.mark.django_db(transaction=True)
     def test_distribute_does_not_broadcast_when_no_new_distributions(self, monkeypatch):
-        from rewards.models import Reward
-
         user = UserFactory()
         reward = Reward.objects.create(name="Test", amount=10)
         reward.distribute_to_users([user])  # first distribution
 
         layer = BroadcastLayer()
-        monkeypatch.setattr("channels.layers.get_channel_layer", lambda: layer)
+        monkeypatch.setattr("rewards.models.get_channel_layer", lambda: layer)
 
         distributions = reward.distribute_to_users([user])  # duplicate
 

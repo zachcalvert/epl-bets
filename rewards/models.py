@@ -1,6 +1,8 @@
 import logging
 from decimal import Decimal
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -132,9 +134,6 @@ class RewardRule(BaseModel):
 
 def _broadcast_rewards(distributions):
     """Send a WebSocket notification to each reward recipient."""
-    from asgiref.sync import async_to_sync
-    from channels.layers import get_channel_layer
-
     channel_layer = get_channel_layer()
     send = async_to_sync(channel_layer.group_send)
 

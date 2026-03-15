@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 
 from rewards.context_processors import unseen_rewards
@@ -17,8 +18,6 @@ class TestUnseenRewardsContextProcessor:
         if user:
             request.user = user
         else:
-            from django.contrib.auth.models import AnonymousUser
-
             request.user = AnonymousUser()
         return request
 

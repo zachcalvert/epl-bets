@@ -3,6 +3,8 @@ from django.db.models import Min
 from django.utils import timezone
 from django.views.generic import DetailView, TemplateView
 
+from betting.forms import PlaceBetForm
+from betting.models import Odds
 from betting.services import get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
 from website.transparency import (
@@ -88,8 +90,6 @@ class DashboardView(TemplateView):
         matches = matches.order_by("kickoff")
         match_list = list(matches)
         match_ids = [m.pk for m in match_list]
-
-        from betting.models import Odds
 
         best_odds = (
             Odds.objects.filter(match_id__in=match_ids)
@@ -195,8 +195,6 @@ class FixturesView(TemplateView):
         match_list = list(matches)
         match_ids = [m.pk for m in match_list]
 
-        from betting.models import Odds
-
         best_odds = (
             Odds.objects.filter(match_id__in=match_ids)
             .values("match_id")
@@ -269,8 +267,6 @@ class MatchDetailView(DetailView):
 
         # Bet form for authenticated users
         if self.request.user.is_authenticated:
-            from betting.forms import PlaceBetForm
-
             ctx["form"] = PlaceBetForm()
 
         ctx.update(_get_match_transparency_context(match.pk))
