@@ -1,7 +1,14 @@
 from decimal import Decimal
 
 from betting.forms import PlaceParlayForm
-from betting.models import Bankruptcy, BetSlip, PARLAY_MAX_LEGS, PARLAY_MAX_PAYOUT, PARLAY_MIN_LEGS, UserBalance
+from betting.models import (
+    PARLAY_MAX_LEGS,
+    PARLAY_MAX_PAYOUT,
+    PARLAY_MIN_LEGS,
+    Bankruptcy,
+    BetSlip,
+    UserBalance,
+)
 
 MIN_BET = Decimal("0.50")
 PARLAY_SESSION_KEY = "parlay_slip"
