@@ -1,8 +1,9 @@
 """Smoke tests for the seed_all master seed command."""
 
+from unittest.mock import patch
+
 import pytest
 from django.core.management import call_command
-from unittest.mock import call, patch
 
 pytestmark = pytest.mark.django_db
 
