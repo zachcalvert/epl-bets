@@ -203,15 +203,19 @@ class ThemeToggleView(View):
 
 
 class AccountView(LoginRequiredMixin, View):
+    def _partial_context(self, form, save_success=False):
+        """Minimal context for HTMX partial responses — no extra DB queries."""
+        user = self.request.user
+        return {
+            "display_name_form": form,
+            "account_masked_email": mask_email(user.email),
+            "account_public_identity": get_public_identity(user),
+            "account_save_success": save_success,
+        }
+
     def _build_context(self, form=None, save_success=False):
         user = self.request.user
-
-        # Identity
-        display_name_form = form or DisplayNameForm(instance=user)
         masked = mask_email(user.email)
-
-        # Rank
-        user_rank = get_user_rank(user)
 
         # Balance
         try:
@@ -236,11 +240,11 @@ class AccountView(LoginRequiredMixin, View):
             all_badges.append(badge)
 
         return {
-            "display_name_form": display_name_form,
+            "display_name_form": form or DisplayNameForm(instance=user),
             "account_masked_email": masked,
             "account_public_identity": get_public_identity(user),
             "account_save_success": save_success,
-            "user_rank": user_rank,
+            "user_rank": get_user_rank(user),
             "balance": balance,
             "stats": stats,
             "all_badges": all_badges,
@@ -253,15 +257,20 @@ class AccountView(LoginRequiredMixin, View):
         form = DisplayNameForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
-            ctx = self._build_context(
-                form=DisplayNameForm(instance=request.user),
-                save_success=True,
-            )
+            fresh_form = DisplayNameForm(instance=request.user)
             if request.htmx:
-                return render(request, "website/partials/account_settings_card.html", ctx)
-            return render(request, "website/account.html", ctx)
+                return render(
+                    request,
+                    "website/partials/account_settings_card.html",
+                    self._partial_context(fresh_form, save_success=True),
+                )
+            return render(request, "website/account.html", self._build_context(fresh_form, save_success=True))
 
-        ctx = self._build_context(form=form)
         if request.htmx:
-            return render(request, "website/partials/account_settings_card.html", ctx, status=422)
-        return render(request, "website/account.html", ctx, status=422)
+            return render(
+                request,
+                "website/partials/account_settings_card.html",
+                self._partial_context(form),
+                status=422,
+            )
+        return render(request, "website/account.html", self._build_context(form=form), status=422)
