@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "betting",
     "rewards",
     "challenges",
+    "bots",
     "website",
 ]
 
@@ -220,6 +221,10 @@ CELERY_BEAT_SCHEDULE = {
     "expire-challenges-15m": {
         "task": "challenges.tasks.expire_challenges",
         "schedule": timedelta(minutes=15),
+    },
+    "run-bot-strategies-35m": {
+        "task": "bots.tasks.run_bot_strategies",
+        "schedule": timedelta(minutes=35),
     },
 }
 

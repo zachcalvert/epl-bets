@@ -21,6 +21,10 @@ class User(AbstractUser):
         choices=Currency.choices,
         default=Currency.GBP,
     )
+    is_bot = models.BooleanField(
+        default=False,
+        help_text="Designates bot/automated accounts.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
