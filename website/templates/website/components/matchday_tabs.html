@@ -1,4 +1,4 @@
-<div id="matchday-tabs" class="flex gap-1 overflow-x-auto pb-2 scrollbar-thin" style="scrollbar-width: thin;">
+<div id="matchday-tabs" {% if oob %}hx-swap-oob="outerHTML"{% endif %} class="flex gap-1 overflow-x-auto pb-2 scrollbar-thin" style="scrollbar-width: thin;">
     {% for md in matchdays %}
         <button
             hx-get="{% url 'matches:dashboard' %}?matchday={{ md }}"
