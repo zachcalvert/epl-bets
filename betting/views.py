@@ -14,7 +14,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from betting.context_processors import parlay_slip as _parlay_slip_ctx
-from betting.forms import DisplayNameForm, PlaceBetForm, PlaceParlayForm
+from betting.forms import PlaceBetForm, PlaceParlayForm
 from betting.models import (
     PARLAY_MAX_LEGS,
     PARLAY_MAX_PAYOUT,
@@ -30,7 +30,7 @@ from betting.models import (
     UserBalance,
     UserStats,
 )
-from betting.services import get_public_identity, get_user_rank, mask_email
+from betting.services import get_public_identity, get_user_rank
 from challenges.engine import update_challenge_progress
 from matches.models import Match
 from rewards.models import RewardDistribution
@@ -359,8 +359,8 @@ class PlaceBetView(LoginRequiredMixin, View):
 class MyBetsView(LoginRequiredMixin, TemplateView):
     template_name = "betting/my_bets.html"
 
-    def _build_context(self, form=None, account_save_success=False):
-        ctx = super().get_context_data()
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
         user = self.request.user
 
         bets = (
@@ -415,45 +415,7 @@ class MyBetsView(LoginRequiredMixin, TemplateView):
         ctx["current_balance"] = current_balance
         ctx["total_rewards"] = total_rewards
         ctx["activity"] = activity
-        ctx["user_rank"] = get_user_rank(user)
-        ctx["display_name_form"] = form or DisplayNameForm(instance=user)
-        ctx["account_public_identity"] = get_public_identity(user)
-        ctx["account_masked_email"] = mask_email(user.email)
-        ctx["account_save_success"] = account_save_success
         return ctx
-
-    def get_context_data(self, **kwargs):
-        return self._build_context()
-
-    def post(self, request, *args, **kwargs):
-        form = DisplayNameForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
-            if request.htmx:
-                return render(
-                    request,
-                    "betting/partials/account_settings_card.html",
-                    self._build_context(
-                        form=DisplayNameForm(instance=request.user),
-                        account_save_success=True,
-                    ),
-                )
-            return self.render_to_response(
-                self._build_context(
-                    form=DisplayNameForm(instance=request.user),
-                    account_save_success=True,
-                )
-            )
-
-        context = self._build_context(form=form)
-        if request.htmx:
-            return render(
-                request,
-                "betting/partials/account_settings_card.html",
-                context,
-                status=422,
-            )
-        return self.render_to_response(context, status=422)
 
 
 class ProfileView(TemplateView):
