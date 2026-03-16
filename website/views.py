@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
@@ -7,7 +8,9 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import TemplateView
 
-from betting.models import UserBalance
+from betting.forms import DisplayNameForm
+from betting.models import Badge, UserBadge, UserBalance, UserStats
+from betting.services import get_public_identity, get_user_rank, mask_email
 from website.forms import LoginForm, SignupForm
 from website.models import SiteSettings
 from website.theme import THEME_SESSION_KEY, get_theme, normalize_theme
@@ -197,3 +200,68 @@ class ThemeToggleView(View):
             next_url = reverse("matches:dashboard")
 
         return redirect(next_url)
+
+
+class AccountView(LoginRequiredMixin, View):
+    def _build_context(self, form=None, save_success=False):
+        user = self.request.user
+
+        # Identity
+        display_name_form = form or DisplayNameForm(instance=user)
+        masked = mask_email(user.email)
+
+        # Rank
+        user_rank = get_user_rank(user)
+
+        # Balance
+        try:
+            balance = user.balance.balance
+        except UserBalance.DoesNotExist:
+            balance = None
+
+        # Stats
+        try:
+            stats = user.stats
+        except UserStats.DoesNotExist:
+            stats = None
+
+        # Badges
+        earned_map = {
+            ub.badge_id: ub.earned_at
+            for ub in UserBadge.objects.filter(user=user).select_related("badge")
+        }
+        all_badges = []
+        for badge in Badge.objects.all():
+            badge.earned = earned_map.get(badge.pk)
+            all_badges.append(badge)
+
+        return {
+            "display_name_form": display_name_form,
+            "account_masked_email": masked,
+            "account_public_identity": get_public_identity(user),
+            "account_save_success": save_success,
+            "user_rank": user_rank,
+            "balance": balance,
+            "stats": stats,
+            "all_badges": all_badges,
+        }
+
+    def get(self, request):
+        return render(request, "website/account.html", self._build_context())
+
+    def post(self, request):
+        form = DisplayNameForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            ctx = self._build_context(
+                form=DisplayNameForm(instance=request.user),
+                save_success=True,
+            )
+            if request.htmx:
+                return render(request, "website/partials/account_settings_card.html", ctx)
+            return render(request, "website/account.html", ctx)
+
+        ctx = self._build_context(form=form)
+        if request.htmx:
+            return render(request, "website/partials/account_settings_card.html", ctx, status=422)
+        return render(request, "website/account.html", ctx, status=422)
