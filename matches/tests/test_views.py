@@ -36,6 +36,25 @@ def test_dashboard_view_prefers_todays_matches_and_sets_best_odds(client):
     assert matches[1].best_home_odds is None
 
 
+def test_dashboard_fixtures_unplayed_matches_shown_before_finished(client):
+    today = timezone.localdate()
+    early_kickoff = timezone.make_aware(datetime.combine(today, time(12, 0)))
+    late_kickoff = timezone.make_aware(datetime.combine(today, time(20, 0)))
+    finished_match = MatchFactory(
+        kickoff=early_kickoff, matchday=5, status=Match.Status.FINISHED
+    )
+    scheduled_match = MatchFactory(
+        kickoff=late_kickoff, matchday=5, status=Match.Status.SCHEDULED
+    )
+
+    response = client.get(reverse("matches:dashboard") + "?matchday=5")
+
+    matches = list(response.context["matches"])
+    assert response.status_code == 200
+    assert matches[0] == scheduled_match
+    assert matches[1] == finished_match
+
+
 def test_dashboard_view_falls_back_to_next_matchday_when_no_matches_today(client):
     MatchFactory(kickoff=timezone.now() + timedelta(days=3), matchday=8)
 
