@@ -13,8 +13,6 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
-from website.templatetags.currency_tags import format_currency
-
 from betting.context_processors import parlay_slip as _parlay_slip_ctx
 from betting.forms import PlaceBetForm, PlaceParlayForm
 from betting.models import (
@@ -36,6 +34,7 @@ from betting.services import get_public_identity, get_user_rank
 from challenges.engine import update_challenge_progress
 from matches.models import Match
 from rewards.models import RewardDistribution
+from website.templatetags.currency_tags import format_currency
 from website.transparency import (
     GLOBAL_SCOPE,
     get_events,
