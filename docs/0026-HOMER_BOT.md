@@ -168,7 +168,7 @@ Standard `makemigrations bots` — adds the `HomerBotConfig` table.
 
 ---
 
-## Tests to write
+## Tests
 
 | File | What to cover |
 |------|---------------|
@@ -182,7 +182,7 @@ Standard `makemigrations bots` — adds the `HomerBotConfig` table.
 | File | Action |
 |------|--------|
 | `bots/models.py` | Create |
-| `bots/migrations/XXXX_add_homer_bot_config.py` | Create (via makemigrations) |
+| `bots/migrations/0001_initial.py` | Create (via makemigrations) |
 | `bots/strategies.py` | Add `HomerBotStrategy` |
 | `bots/registry.py` | Update `get_strategy_for_bot()`, add `HomerBotStrategy` import |
 | `bots/admin.py` | Create |
