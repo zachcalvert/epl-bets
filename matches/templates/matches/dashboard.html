@@ -29,10 +29,8 @@
         </div>
     </div>
 
-    <div class="order-1 xl:order-2 space-y-6">
-        {% if user.is_authenticated %}
-            {% include "challenges/partials/challenge_widget.html" %}
-        {% endif %}
+    <div class="hidden xl:block order-1 xl:order-2 space-y-6">
+        {% include "matches/partials/league_table_preview.html" %}
         {% include "matches/partials/leaderboard.html" %}
     </div>
 </div>

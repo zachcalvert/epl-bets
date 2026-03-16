@@ -119,23 +119,7 @@
 
     </div>
 
-    {% else %}
-    <!-- Empty state: just show the toggle bubble -->
-    <div id="parlay-slip-body" class="hidden"></div>
     {% endif %}
-
-    <!-- Toggle button (always visible) -->
-    <button id="parlay-slip-toggle"
-            onclick="document.getElementById('parlay-slip-body').classList.toggle('hidden');this.classList.toggle('hidden')"
-            aria-label="Open parlay slip"
-            title="Parlay slip"
-            style="width:3rem;height:3rem;"
-            class="relative bg-accent text-dark rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors font-bold text-lg leading-none{% if parlay_leg_count > 0 %} hidden{% endif %}">
-        +
-        {% if parlay_leg_count > 0 %}
-        <span class="absolute -top-1 -right-1 bg-danger text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ parlay_leg_count }}</span>
-        {% endif %}
-    </button>
 </div>
 
 <script>
