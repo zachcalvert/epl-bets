@@ -438,17 +438,11 @@ def test_get_head_to_head_normalizes_matches_and_summary(monkeypatch):
     monkeypatch.setattr(
         client,
         "_get",
-        lambda path, params=None: {
-            "matches": [H2H_MATCH],
-            "aggregates": {
-                "homeTeam": {"wins": 3, "draws": 1},
-                "awayTeam": {"wins": 1, "draws": 1},
-                "numberOfDraws": 1,
-            },
-        },
+        lambda path, params=None: {"matches": [H2H_MATCH]},
     )
 
-    matches, summary = client.get_head_to_head(999, limit=5)
+    # H2H_MATCH: Arsenal (id=1) beat Chelsea (id=2) 2-1 at home
+    matches, summary = client.get_head_to_head(999, home_team_id=1, away_team_id=2, limit=5)
 
     assert len(matches) == 1
     assert matches[0] == {
@@ -458,7 +452,34 @@ def test_get_head_to_head_normalizes_matches_and_summary(monkeypatch):
         "home_score": 2,
         "away_score": 1,
     }
-    assert summary == {"home_wins": 3, "away_wins": 1, "draws": 1}
+    assert summary == {"home_wins": 1, "away_wins": 0, "draws": 0}
+
+
+def test_get_head_to_head_summary_counts_draws_and_away_wins(monkeypatch):
+    draw_match = {
+        "utcDate": "2025-10-01T15:00:00Z",
+        "homeTeam": {"id": 2, "shortName": "Chelsea", "name": "Chelsea FC"},
+        "awayTeam": {"id": 1, "shortName": "Arsenal", "name": "Arsenal FC"},
+        "score": {"fullTime": {"home": 1, "away": 1}},
+    }
+    away_win_match = {
+        "utcDate": "2025-08-01T15:00:00Z",
+        "homeTeam": {"id": 2, "shortName": "Chelsea", "name": "Chelsea FC"},
+        "awayTeam": {"id": 1, "shortName": "Arsenal", "name": "Arsenal FC"},
+        "score": {"fullTime": {"home": 0, "away": 2}},
+    }
+    client = FootballDataClient()
+    monkeypatch.setattr(
+        client,
+        "_get",
+        lambda path, params=None: {"matches": [H2H_MATCH, draw_match, away_win_match]},
+    )
+
+    _, summary = client.get_head_to_head(999, home_team_id=1, away_team_id=2, limit=5)
+
+    # Arsenal (home_team_id=1) won H2H_MATCH and away_win_match; draw_match was a draw
+    # home_wins/away_wins track wins for Arsenal/Chelsea overall, not per-venue
+    assert summary == {"home_wins": 2, "away_wins": 0, "draws": 1}
 
 
 def test_get_head_to_head_passes_limit_param(monkeypatch):
@@ -467,10 +488,10 @@ def test_get_head_to_head_passes_limit_param(monkeypatch):
     monkeypatch.setattr(
         client,
         "_get",
-        lambda path, params=None: captured.update({"path": path, "params": params}) or {"matches": [], "aggregates": {}},
+        lambda path, params=None: captured.update({"path": path, "params": params}) or {"matches": []},
     )
 
-    client.get_head_to_head(42, limit=3)
+    client.get_head_to_head(42, home_team_id=1, away_team_id=2, limit=3)
 
     assert captured["params"] == {"limit": 3}
     assert "head2head" in captured["path"]
@@ -545,7 +566,7 @@ class _FakeHypeClient:
     def __exit__(self, *args):
         pass
 
-    def get_head_to_head(self, match_id, limit=5):
+    def get_head_to_head(self, match_id, home_team_id, away_team_id, limit=5):
         return (
             [{"date": "2025-01-01", "home_team": "A", "away_team": "B", "home_score": 1, "away_score": 0}],
             {"home_wins": 1, "away_wins": 0, "draws": 0},

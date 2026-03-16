@@ -54,17 +54,29 @@ class FootballDataClient:
         data = self._get(f"matches/{match_id}")
         return self._normalize_match(data, data.get("season", {}).get("id", ""))
 
-    def get_head_to_head(self, match_external_id, limit=5):
+    def get_head_to_head(self, match_external_id, home_team_id, away_team_id, limit=5):
         data = self._get(f"matches/{match_external_id}/head2head", params={"limit": limit})
         matches = [self._normalize_h2h_match(m) for m in data.get("matches", [])]
-        aggregates = data.get("aggregates", {})
-        home_team = aggregates.get("homeTeam", {})
-        away_team = aggregates.get("awayTeam", {})
-        summary = {
-            "home_wins": home_team.get("wins", 0),
-            "away_wins": away_team.get("wins", 0),
-            "draws": aggregates.get("numberOfDraws", 0) or home_team.get("draws", 0),
-        }
+        home_wins = away_wins = draws = 0
+        for m in data.get("matches", []):
+            score = m.get("score", {}).get("fullTime", {})
+            hs, as_ = score.get("home"), score.get("away")
+            if hs is None or as_ is None:
+                continue
+            m_home_id = m.get("homeTeam", {}).get("id")
+            if hs == as_:
+                draws += 1
+            elif hs > as_:
+                if m_home_id == home_team_id:
+                    home_wins += 1
+                else:
+                    away_wins += 1
+            else:
+                if m_home_id == home_team_id:
+                    away_wins += 1
+                else:
+                    home_wins += 1
+        summary = {"home_wins": home_wins, "away_wins": away_wins, "draws": draws}
         return matches, summary
 
     def get_team_form(self, team_external_id, limit=5):
@@ -292,7 +304,12 @@ def fetch_match_hype_data(match):
 
     try:
         with FootballDataClient() as client:
-            h2h_matches, h2h_summary = client.get_head_to_head(match.external_id, limit=5)
+            h2h_matches, h2h_summary = client.get_head_to_head(
+                match.external_id,
+                match.home_team.external_id,
+                match.away_team.external_id,
+                limit=5,
+            )
             home_form = client.get_team_form(match.home_team.external_id, limit=5)
             away_form = client.get_team_form(match.away_team.external_id, limit=5)
 
