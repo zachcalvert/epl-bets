@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db.models import Count, Min, Q, Sum
+from django.db.models import Case, Count, IntegerField, Min, Q, Sum, Value, When
 from django.utils import timezone
 from django.views.generic import DetailView, TemplateView
 
@@ -73,10 +73,18 @@ def _get_default_matchday(season):
 
 def _get_matches_with_odds(season, matchday):
     """Return match list for a matchday with best odds annotated."""
+    unplayed_statuses = [Match.Status.SCHEDULED, Match.Status.TIMED]
     matches = (
         Match.objects.filter(season=season, matchday=matchday)
         .select_related("home_team", "away_team")
-        .order_by("kickoff")
+        .annotate(
+            unplayed_priority=Case(
+                When(status__in=unplayed_statuses, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("unplayed_priority", "kickoff")
     )
     match_list = list(matches)
     match_ids = [m.pk for m in match_list]
