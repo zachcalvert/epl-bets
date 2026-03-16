@@ -45,6 +45,56 @@
     color: var(--theme-page-text);
 }
 
+/* Matchday tabs scrollable strip */
+.matchday-tabs-scroll::-webkit-scrollbar { display: none; }
+.matchday-tabs-scroll { scrollbar-width: none; }
+
+.matchday-tabs-wrapper {
+    position: relative;
+}
+
+.matchday-tabs-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2rem;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 150ms ease;
+}
+.matchday-tabs-fade--left {
+    left: 0;
+    background: linear-gradient(to right, rgb(var(--color-dark)), transparent);
+}
+.matchday-tabs-fade--right {
+    right: 0;
+    background: linear-gradient(to left, rgb(var(--color-dark)), transparent);
+}
+
+.matchday-tabs-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    background-color: rgb(var(--color-surface));
+    color: rgb(var(--color-muted));
+    border: 1px solid var(--theme-border-soft);
+    cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+.matchday-tabs-arrow:hover {
+    color: var(--theme-panel-text);
+    background-color: var(--theme-hover-surface);
+}
+.matchday-tabs-arrow--left { left: 0; }
+.matchday-tabs-arrow--right { right: 0; }
+
 .site-nav,
 .site-footer {
     background-color: rgb(var(--color-surface));
