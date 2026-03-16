@@ -5,7 +5,7 @@
 <div class="mb-6 flex items-center justify-between">
     <div>
         <h1 class="text-3xl font-bold text-white mb-1">Dashboard</h1>
-        <p class="text-muted text-sm">Matchday {{ current_matchday }}</p>
+        {% include "website/components/matchday_header.html" %}
     </div>
     <div id="ws-status-container" class="flex items-center gap-2 text-xs text-muted">
         <span class="ws-status disconnected" id="ws-dot"></span>
