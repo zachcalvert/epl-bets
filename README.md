@@ -48,10 +48,35 @@ cd epl-bets
 cp .env.example .env   # Add your API keys
 docker compose up -d
 docker compose run --rm web python manage.py migrate
-docker compose run --rm web python manage.py seed_epl
+docker compose run --rm web python manage.py seed_all
 ```
 
 Then open `http://localhost:8000`.
+
+## Seed Commands
+
+`seed_all` is the master seed command — it runs all individual commands in dependency order:
+
+| Step | Command | What it does |
+|------|---------|--------------|
+| 1 | `seed_epl` | Teams, fixtures, standings, and odds from external APIs |
+| 2 | `seed_challenge_templates` | Challenge template definitions |
+| 3 | `seed_badges` | Badge definitions |
+| 4 | `seed_bots` | Bot user accounts |
+| 5 | `backfill_stats` | UserStats from existing bet history |
+
+All commands are idempotent (safe to re-run). Flags:
+
+```bash
+# Skip external API calls entirely (useful offline / in CI)
+docker compose run --rm web python manage.py seed_all --skip-epl
+
+# Use bundled JSON fixture instead of live API
+docker compose run --rm web python manage.py seed_all --offline
+
+# Skip odds fetch to save Odds API credits
+docker compose run --rm web python manage.py seed_all --skip-odds
+```
 
 ## API Keys
 
