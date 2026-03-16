@@ -108,7 +108,7 @@ class DashboardView(TemplateView):
 
     def get_template_names(self):
         if self.request.htmx:
-            return ["matches/partials/fixture_list.html"]
+            return ["matches/partials/fixture_list_htmx.html"]
         return [self.template_name]
 
     def get_context_data(self, **kwargs):

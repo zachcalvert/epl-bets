@@ -181,11 +181,30 @@ def test_dashboard_returns_partial_for_htmx_and_invalid_matchday_falls_back(clie
 
     assert response.status_code == 200
     assert any(
-        template.name == "matches/partials/fixture_list.html"
+        template.name == "matches/partials/fixture_list_htmx.html"
         for template in response.templates
     )
     assert response.context["matchday"] == 9
     assert response.context["matches"][0].best_home_odds == Decimal("1.95")
+
+
+def test_dashboard_htmx_response_includes_oob_matchday_tabs(client):
+    MatchFactory(kickoff=timezone.now() + timedelta(days=1), matchday=20)
+
+    response = client.get(
+        reverse("matches:dashboard"),
+        data={"matchday": "20"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert response.context["current_matchday"] == 20
+    content = response.content.decode()
+    assert 'hx-swap-oob="outerHTML"' in content
+    assert 'id="matchday-tabs"' in content
+    assert 'id="active-matchday"' in content
+    # The active tab button should link to matchday 20
+    assert '?matchday=20' in content[content.index('id="active-matchday"') - 200 : content.index('id="active-matchday"')]
 
 
 def test_league_table_view_orders_current_season_standings(client):
