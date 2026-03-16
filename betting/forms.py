@@ -65,17 +65,6 @@ class DisplayNameForm(forms.ModelForm):
             )
         }
 
-
-class CurrencyForm(forms.ModelForm):
-    class Meta:
-        model = User
-        fields = ("currency",)
-        widgets = {
-            "currency": forms.Select(
-                attrs={"class": "themed-input themed-input-sm"}
-            )
-        }
-
     def clean_display_name(self):
         display_name = (self.cleaned_data.get("display_name") or "").strip()
         if not display_name:
@@ -90,3 +79,14 @@ class CurrencyForm(forms.ModelForm):
             raise forms.ValidationError("Display name already taken.")
 
         return display_name
+
+
+class CurrencyForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("currency",)
+        widgets = {
+            "currency": forms.Select(
+                attrs={"class": "themed-input themed-input-sm"}
+            )
+        }

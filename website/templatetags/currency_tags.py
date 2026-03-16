@@ -24,7 +24,7 @@ def get_currency_symbol(user):
 @register.filter
 def currency(value, user):
     """Usage: {{ amount|currency:user }}"""
-    if value is None:
+    if value is None or value == "":
         return ""
     code = getattr(user, "currency", "GBP") if user else "GBP"
     return format_currency(value, code)
