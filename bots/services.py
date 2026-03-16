@@ -163,7 +163,10 @@ def place_bot_parlay(user, legs_data, stake):
                 ):
                     return None
 
-                odds_field = SELECTION_TO_ODDS_FIELD[entry["selection"]]
+                odds_field = SELECTION_TO_ODDS_FIELD.get(entry["selection"])
+                if not odds_field:
+                    logger.warning("Bot parlay leg has invalid selection %r", entry["selection"])
+                    return None
                 best = (
                     Odds.objects.filter(match=match)
                     .aggregate(best=Min(odds_field))

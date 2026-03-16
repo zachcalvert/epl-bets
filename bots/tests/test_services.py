@@ -1,6 +1,7 @@
 """Tests for bot services: bet placement, odds helpers, top-up."""
 
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
@@ -395,21 +396,8 @@ class TestMaybeTopupBot:
         bot = BotUserFactory()
         UserBalanceFactory(user=bot, balance="10.00")
 
-        # Simulate another process topping up the balance before the lock is acquired
-        # by patching the locked re-fetch to return a sufficient balance
-        original_get = UserBalance.objects.get
-
-        call_count = [0]
-
-        def patched_get(*args, **kwargs):
-            obj = original_get(*args, **kwargs)
-            if call_count[0] == 0 and kwargs.get("user") == bot:
-                obj.balance = Decimal("200.00")
-                call_count[0] += 1
-            return obj
-
-        from unittest.mock import patch
-
+        # Simulate another process having topped up the balance before the lock is
+        # acquired: the locked re-fetch returns a sufficiently-high balance.
         with patch("bots.services.UserBalance.objects.select_for_update") as mock_sfq:
             mock_sfq.return_value.get.return_value = type(
                 "FakeBalance", (), {"balance": Decimal("200.00")}

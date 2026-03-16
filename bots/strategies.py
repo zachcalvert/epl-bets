@@ -193,8 +193,8 @@ class DrawSpecialistStrategy(BotStrategy):
 class ValueHunterStrategy(BotStrategy):
     """Bets where the bookmaker odds spread is largest (> 0.30 gap).
 
-    Uses full per-bookmaker odds (passed via odds_map["_full"][match_id]).
-    Falls back to best-odds map if full data unavailable.
+    Requires full per-bookmaker odds (passed via odds_map["_full"][match_id]).
+    Skips matches where full data is unavailable or only one bookmaker is present.
     Stake: 8-12% of balance, max 80.
     """
 

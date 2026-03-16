@@ -11,7 +11,7 @@ Six automated user accounts that place bets in distinctive styles to populate le
 - **Real User accounts** — bots are standard `User` rows with `is_bot=True`. No separate model. They appear naturally on leaderboards, match sentiment bars, and bet history.
 - **Unusable passwords + non-routable email domain** — `@bots.eplbets.local` emails can't receive mail; `set_unusable_password()` blocks login. Bots can never be logged into.
 - **Staggered timing** — `run_bot_strategies` (every 35 min) dispatches per-bot tasks with a random 1-10 minute countdown each, so bets trickle in naturally rather than appearing all at once.
-- **Duplicate prevention** — each bot only sees matches it has no pending bet on, so it never double-bets a fixture.
+- **Duplicate prevention (best-effort)** — each bot filters out matches it already has a pending bet on before picking, reducing the chance of double-betting. This is not enforced at the DB level, so two overlapping task runs could theoretically produce duplicates on the same fixture.
 - **Auto-bailout** — when a bot's balance drops below 50 credits with no pending bets, it receives an automatic bailout (1000-3000 credits) using the existing `Bankruptcy`/`Bailout` models.
 - **Settlement is free** — bots' bets settle via the existing `settle_match_bets` Celery task, exactly like human bets. Stats, badges, and streaks all update normally.
 

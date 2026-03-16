@@ -32,6 +32,9 @@ class Command(BaseCommand):
                 created_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  Created: {profile['display_name']}"))
             else:
+                if user.has_usable_password():
+                    user.set_unusable_password()
+                    user.save(update_fields=["password"])
                 updated_count += 1
                 self.stdout.write(f"  Updated: {profile['display_name']}")
 
