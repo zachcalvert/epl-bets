@@ -41,6 +41,7 @@
 
 .theme-page {
     background: var(--theme-page-bg);
+    background-attachment: fixed;
     color: var(--theme-page-text);
 }
 
