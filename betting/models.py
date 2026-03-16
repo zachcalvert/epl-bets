@@ -221,7 +221,7 @@ class UserBalance(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.user}: {self.balance} credits"
+        return f"{self.user}: {self.balance}"
 
 
 class UserStats(BaseModel):

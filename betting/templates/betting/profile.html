@@ -1,4 +1,5 @@
 {% extends "website/base.html" %}
+{% load currency_tags %}
 {% block title %}{{ display_identity }} — Profile{% endblock %}
 
 {% block content %}
@@ -26,14 +27,14 @@
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Balance</div>
-        <div class="text-xl font-mono font-bold text-accent">{{ balance|floatformat:2 }}</div>
+        <div class="text-xl font-mono font-bold text-accent">{{ balance|currency:request.user }}</div>
     </div>
 
     {% if stats %}
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Net Profit</div>
         <div class="text-xl font-mono font-bold {% if stats.net_profit > 0 %}text-green-400{% elif stats.net_profit < 0 %}text-red-400{% else %}text-muted{% endif %}">
-            {% if stats.net_profit > 0 %}+{% endif %}{{ stats.net_profit|floatformat:2 }}
+            {% if stats.net_profit > 0 %}+{% endif %}{{ stats.net_profit|currency:request.user }}
         </div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
@@ -108,10 +109,10 @@
                     </td>
                     <td class="px-2 sm:px-3 py-2 text-sm text-muted">{{ bet.get_selection_display }}</td>
                     <td class="px-2 sm:px-3 py-2 text-right font-mono text-sm text-muted">{{ bet.odds_at_placement }}</td>
-                    <td class="px-2 sm:px-3 py-2 text-right font-mono text-sm text-white">{{ bet.stake|floatformat:2 }}</td>
+                    <td class="px-2 sm:px-3 py-2 text-right font-mono text-sm text-white">{{ bet.stake|currency:request.user }}</td>
                     <td class="px-2 sm:px-3 py-2 text-right">
                         {% if bet.status == "WON" %}
-                        <span class="text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded">WON +{{ bet.payout|floatformat:2 }}</span>
+                        <span class="text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded">WON +{{ bet.payout|currency:request.user }}</span>
                         {% elif bet.status == "LOST" %}
                         <span class="text-xs font-semibold text-red-400 bg-red-400/10 px-2 py-0.5 rounded">LOST</span>
                         {% elif bet.status == "VOID" %}
@@ -140,7 +141,7 @@
                 </div>
                 <div>
                     {% if parlay.status == "WON" %}
-                    <span class="text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded">WON +{{ parlay.payout|floatformat:2 }}</span>
+                    <span class="text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded">WON +{{ parlay.payout|currency:request.user }}</span>
                     {% elif parlay.status == "LOST" %}
                     <span class="text-xs font-semibold text-red-400 bg-red-400/10 px-2 py-0.5 rounded">LOST</span>
                     {% elif parlay.status == "VOID" %}

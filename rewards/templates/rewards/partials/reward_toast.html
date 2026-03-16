@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div class="reward-toast animate-slide-in" role="alert" data-distribution-id="{{ distribution.pk }}">
     <div class="reward-toast-confetti" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span>
@@ -11,7 +12,7 @@
         </div>
         <div class="flex-1 min-w-0">
             <p class="reward-toast-title">{{ distribution.reward.name }}</p>
-            <p class="reward-toast-amount">+{{ distribution.reward.amount|floatformat:2 }} credits</p>
+            <p class="reward-toast-amount">+{{ distribution.reward.amount|currency:user }}</p>
             {% if distribution.reward.description %}
             <p class="reward-toast-desc">{{ distribution.reward.description }}</p>
             {% endif %}

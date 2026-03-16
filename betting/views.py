@@ -13,6 +13,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from website.templatetags.currency_tags import format_currency
+
 from betting.context_processors import parlay_slip as _parlay_slip_ctx
 from betting.forms import PlaceBetForm, PlaceParlayForm
 from betting.models import (
@@ -298,7 +300,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                             "form": form,
                             "selection": selection,
                             "container_id": container_id,
-                            "error": f"Insufficient balance. You have {balance.balance:.2f} credits.",
+                            "error": f"Insufficient balance. You have {format_currency(balance.balance, request.user.currency)}.",
                             **self._get_odds_context(match, selection, container_id),
                         },
                     )
@@ -332,7 +334,7 @@ class PlaceBetView(LoginRequiredMixin, View):
             source="place_bet",
             action="bet_placed",
             summary=f"Bet placed on {match.home_team.short_name or match.home_team.name} vs {match.away_team.short_name or match.away_team.name}.",
-            detail=f"Selection {selection} at {best_odds_val} for {stake} credits.",
+            detail=f"Selection {selection} at {best_odds_val} for {format_currency(stake, request.user.currency)}.",
             status="success",
             route=request.path,
             entity_ref=match.pk,
@@ -350,7 +352,7 @@ class PlaceBetView(LoginRequiredMixin, View):
                 "bet": bet,
                 "match": match,
                 "potential_payout": potential_payout,
-                "balance": f"{balance.balance:.2f}",
+                "balance": balance.balance,
                 "sentiment": _get_match_sentiment(match),
             },
         )
@@ -780,7 +782,7 @@ class PlaceParlayView(LoginRequiredMixin, View):
                 balance = UserBalance.objects.select_for_update().get(user=request.user)
 
                 if balance.balance < stake:
-                    return _error(f"Insufficient balance. You have {balance.balance:.2f} credits.")
+                    return _error(f"Insufficient balance. You have {format_currency(balance.balance, request.user.currency)}.")
 
                 balance.balance -= stake
                 balance.save(update_fields=["balance"])
@@ -815,7 +817,7 @@ class PlaceParlayView(LoginRequiredMixin, View):
             source="place_parlay",
             action="parlay_placed",
             summary=f"Parlay placed with {len(leg_data)} legs @ {combined_odds}x.",
-            detail=f"Stake: {stake} credits. Potential payout: {potential_payout:.2f} credits.",
+            detail=f"Stake: {format_currency(stake, request.user.currency)}. Potential payout: {format_currency(potential_payout, request.user.currency)}.",
             status="success",
             route=request.path,
         )
@@ -834,6 +836,6 @@ class PlaceParlayView(LoginRequiredMixin, View):
                 "combined_odds": combined_odds,
                 "potential_payout": potential_payout,
                 "stake": stake,
-                "balance": f"{balance.balance:.2f}",
+                "balance": balance.balance,
             },
         )

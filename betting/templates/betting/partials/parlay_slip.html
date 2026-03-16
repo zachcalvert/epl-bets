@@ -1,3 +1,4 @@
+{% load currency_tags %}
 {% if user.is_authenticated %}
 <div id="parlay-slip-panel"
      class="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 max-w-xs w-full sm:w-80">
@@ -91,6 +92,7 @@
               hx-disabled-elt="find button[type='submit']"
               data-combined-odds="{{ parlay_combined_odds|floatformat:4 }}"
               data-max-payout="{{ parlay_max_payout }}"
+              data-currency-symbol="{% currency_symbol user %}"
               class="px-4 py-3 space-y-2 border-t border-gray-700/40"
               id="parlay-stake-form">
             {% csrf_token %}
@@ -132,12 +134,13 @@
 
     var combinedOdds = parseFloat(form.dataset.combinedOdds) || 0;
     var maxPayout = parseFloat(form.dataset.maxPayout) || 50000;
+    var currencySymbol = form.dataset.currencySymbol || '£';
 
     function updatePayout() {
         var stake = parseFloat(stakeInput.value) || 0;
         if (stake > 0 && combinedOdds > 0) {
             var payout = Math.min(stake * combinedOdds, maxPayout);
-            payoutDisplay.textContent = payout.toFixed(2) + ' cr';
+            payoutDisplay.textContent = currencySymbol + payout.toFixed(2);
         } else {
             payoutDisplay.textContent = '—';
         }
