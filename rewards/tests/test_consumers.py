@@ -1,13 +1,45 @@
+from datetime import timedelta
+from decimal import Decimal
 from unittest.mock import Mock
 
 import pytest
+from django.utils import timezone
 
+from betting.models import UserBalance
+from challenges.models import Challenge, ChallengeTemplate, UserChallenge
 from rewards.consumers import NotificationConsumer
 from rewards.models import Reward
 from rewards.tests.factories import RewardDistributionFactory
 from users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
+
+
+def make_user_challenge(user):
+    template = ChallengeTemplate.objects.create(
+        slug=f"test-challenge-{user.pk}",
+        title="Test Challenge",
+        description="Test",
+        icon="trophy",
+        challenge_type=ChallengeTemplate.ChallengeType.DAILY,
+        criteria_type=ChallengeTemplate.CriteriaType.BET_COUNT,
+        criteria_params={"target": 3},
+        reward_amount="50.00",
+    )
+    now = timezone.now()
+    challenge = Challenge.objects.create(
+        template=template,
+        status=Challenge.Status.ACTIVE,
+        starts_at=now,
+        ends_at=now + timedelta(days=1),
+    )
+    return UserChallenge.objects.create(
+        user=user,
+        challenge=challenge,
+        progress=3,
+        target=3,
+        status=UserChallenge.Status.COMPLETED,
+    )
 
 
 def build_consumer(user=None):
@@ -75,6 +107,18 @@ class TestNotificationConsumerDisconnect:
         assert layer.discarded == []
 
 
+class TestJoinGroup:
+    def test_join_group_adds_to_channel_layer(self, monkeypatch):
+        user = UserFactory()
+        consumer = build_consumer(user)
+        layer = SimpleLayer()
+        monkeypatch.setattr("rewards.consumers.get_channel_layer", lambda: layer)
+
+        consumer._join_group("test-group")
+
+        assert layer.added == [("test-group", "test-channel")]
+
+
 class TestNotificationConsumerEvents:
     def test_reward_notification_renders_and_sends(self, monkeypatch):
         dist = RewardDistributionFactory()
@@ -114,6 +158,96 @@ class TestNotificationConsumerEvents:
         consumer.reward_notification({"distribution_id": dist.pk})
 
         consumer.send.assert_called_once_with(text_data="payload")
+
+    def test_reward_notification_skips_other_users_distribution(self, monkeypatch):
+        dist = RewardDistributionFactory()
+        other_user = UserFactory()
+        consumer = build_consumer(other_user)
+        consumer.send = Mock()
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+
+        consumer.reward_notification({"distribution_id": dist.pk})
+
+        consumer.send.assert_not_called()
+
+    def test_reward_notification_appends_balance_oob_when_balance_exists(self, monkeypatch):
+        dist = RewardDistributionFactory()
+        UserBalance.objects.create(user=dist.user, balance=Decimal("500.00"))
+        consumer = build_consumer(dist.user)
+        consumer.send = Mock()
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+        monkeypatch.setattr(
+            "rewards.consumers.render_to_string",
+            lambda template, context: f"{template}",
+        )
+
+        consumer.reward_notification({"distribution_id": dist.pk})
+
+        consumer.send.assert_called_once()
+        html = consumer.send.call_args.kwargs["text_data"]
+        assert "website/components/balance_oob.html" in html
+
+    def test_challenge_notification_renders_and_sends(self, monkeypatch):
+        user = UserFactory()
+        uc = make_user_challenge(user)
+        consumer = build_consumer(user)
+        consumer.send = Mock()
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+        monkeypatch.setattr(
+            "rewards.consumers.render_to_string",
+            lambda template, context: f"{template}",
+        )
+
+        consumer.challenge_notification({"user_challenge_id": uc.pk})
+
+        consumer.send.assert_called_once()
+        html = consumer.send.call_args.kwargs["text_data"]
+        assert "challenges/partials/challenge_toast_oob.html" in html
+
+    def test_challenge_notification_appends_balance_oob_when_balance_exists(self, monkeypatch):
+        user = UserFactory()
+        UserBalance.objects.create(user=user, balance=Decimal("500.00"))
+        uc = make_user_challenge(user)
+        consumer = build_consumer(user)
+        consumer.send = Mock()
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+        monkeypatch.setattr(
+            "rewards.consumers.render_to_string",
+            lambda template, context: f"{template}",
+        )
+
+        consumer.challenge_notification({"user_challenge_id": uc.pk})
+
+        consumer.send.assert_called_once()
+        html = consumer.send.call_args.kwargs["text_data"]
+        assert "website/components/balance_oob.html" in html
+
+    def test_challenge_notification_skips_other_users_challenge(self, monkeypatch):
+        user = UserFactory()
+        other_user = UserFactory()
+        uc = make_user_challenge(user)
+        consumer = build_consumer(other_user)
+        consumer.send = Mock()
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+
+        consumer.challenge_notification({"user_challenge_id": uc.pk})
+
+        consumer.send.assert_not_called()
+
+    def test_challenge_notification_swallows_send_errors(self, monkeypatch):
+        user = UserFactory()
+        uc = make_user_challenge(user)
+        consumer = build_consumer(user)
+        consumer.send = Mock(side_effect=RuntimeError("fail"))
+        monkeypatch.setattr("rewards.consumers.close_old_connections", lambda: None)
+        monkeypatch.setattr(
+            "rewards.consumers.render_to_string",
+            lambda template, context: "html",
+        )
+
+        consumer.challenge_notification({"user_challenge_id": uc.pk})
+
+        consumer.send.assert_called_once_with(text_data="html")
 
 
 class TestBroadcastOnDistribute:
