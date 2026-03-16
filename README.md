@@ -5,7 +5,7 @@
 
 EPL betting demo built with Django, HTMX, Redis, and Celery. Live scores via WebSocket, real bookmaker odds, and simulated bet placement — all server-rendered with zero JavaScript frameworks.
 
-**This is just a demo. No real money. No real gambling.**
+**This just demo. No real money. No real gambling.**
 
 **Live demo:** [eplbets.net](https://eplbets.net)
 
@@ -90,6 +90,3 @@ Add your keys to `.env` after copying `.env.example`.
 ## Deployment
 
 Production is deployed on Fly at [eplbets.net](https://eplbets.net).
-
-Deploys are configured to run automatically from GitHub Actions on every push to `main`.
-To enable automated deploys in GitHub, add a repository secret named `FLY_API_TOKEN` with a Fly deploy token scoped to the `epl-bets` app.
