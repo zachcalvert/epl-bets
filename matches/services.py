@@ -4,10 +4,9 @@ from pathlib import Path
 
 import httpx
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-
-from django.db.models import Q
 
 from matches.models import Match, MatchStats, Standing, Team
 
