@@ -69,8 +69,8 @@ class FootballDataClient:
 
     def get_team_form(self, team_external_id, limit=5):
         data = self._get(
-            "matches",
-            params={"team": team_external_id, "status": "FINISHED", "limit": limit},
+            "competitions/PL/matches",
+            params={"team": team_external_id, "status": "FINISHED"},
         )
         results = []
         for m in data.get("matches", [])[-limit:]:
