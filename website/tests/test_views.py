@@ -487,3 +487,79 @@ def test_account_view_post_full_page_on_error_without_htmx(client):
     assert response.status_code == 422
     assert any(template.name == "website/account.html" for template in response.templates)
     assert "Display name already taken." in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_currency_update_view_saves_currency_and_returns_partial(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:currency_update"),
+        data={"currency": "USD"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 200
+    assert user.currency == "USD"
+    assert any(
+        template.name == "website/partials/currency_settings_card.html"
+        for template in response.templates
+    )
+
+
+@pytest.mark.django_db
+def test_currency_update_view_redirects_without_htmx(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:currency_update"),
+        data={"currency": "EUR"},
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 302
+    assert response.url == reverse("website:account")
+    assert user.currency == "EUR"
+
+
+@pytest.mark.django_db
+def test_currency_update_view_rejects_invalid_currency_with_htmx(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:currency_update"),
+        data={"currency": "JPY"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 422
+    assert user.currency == "GBP"
+    assert any(
+        template.name == "website/partials/currency_settings_card.html"
+        for template in response.templates
+    )
+
+
+@pytest.mark.django_db
+def test_currency_update_view_rejects_invalid_currency_without_htmx(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:currency_update"),
+        data={"currency": "JPY"},
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 302
+    assert response.url == reverse("website:account")
+    assert user.currency == "GBP"
