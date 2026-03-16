@@ -1,15 +1,16 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
 
-from matches.models import MatchStats
+from matches.models import Match, MatchStats
 from matches.services import (
     FootballDataClient,
     RateLimitError,
     fetch_match_hype_data,
+    get_team_form,
     sync_matches,
     sync_standings,
     sync_teams,
@@ -422,7 +423,7 @@ def test_sync_standings_creates_updates_and_skips_missing_teams(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# FootballDataClient — get_head_to_head / get_team_form
+# FootballDataClient — get_head_to_head
 # ---------------------------------------------------------------------------
 
 H2H_MATCH = {
@@ -497,61 +498,105 @@ def test_get_head_to_head_passes_limit_param(monkeypatch):
     assert "head2head" in captured["path"]
 
 
-def test_get_team_form_result_win_from_home_perspective(monkeypatch):
-    client = FootballDataClient()
-    monkeypatch.setattr(
-        client,
-        "_get",
-        lambda path, params=None: {"matches": [{**H2H_MATCH}]},  # home_id=1 wins 2-1
+# ---------------------------------------------------------------------------
+# get_team_form (DB-backed)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_get_team_form_win_from_home_perspective():
+    team = TeamFactory()
+    opponent = TeamFactory()
+    MatchFactory(
+        home_team=team, away_team=opponent,
+        home_score=2, away_score=1,
+        status=Match.Status.FINISHED,
+        kickoff=timezone.now() - timedelta(days=1),
     )
 
-    results = client.get_team_form(team_external_id=1, limit=5)
+    results = get_team_form(team)
+
+    assert len(results) == 1
+    assert results[0]["result"] == "W"
+
+
+@pytest.mark.django_db
+def test_get_team_form_win_from_away_perspective():
+    team = TeamFactory()
+    opponent = TeamFactory()
+    MatchFactory(
+        home_team=opponent, away_team=team,
+        home_score=0, away_score=3,
+        status=Match.Status.FINISHED,
+        kickoff=timezone.now() - timedelta(days=1),
+    )
+
+    results = get_team_form(team)
 
     assert results[0]["result"] == "W"
 
 
-def test_get_team_form_result_win_from_away_perspective(monkeypatch):
-    client = FootballDataClient()
-    monkeypatch.setattr(
-        client,
-        "_get",
-        lambda path, params=None: {"matches": [{**H2H_MATCH}]},  # away_id=2 loses 2-1
+@pytest.mark.django_db
+def test_get_team_form_draw():
+    team = TeamFactory()
+    opponent = TeamFactory()
+    MatchFactory(
+        home_team=team, away_team=opponent,
+        home_score=1, away_score=1,
+        status=Match.Status.FINISHED,
+        kickoff=timezone.now() - timedelta(days=1),
     )
 
-    results = client.get_team_form(team_external_id=2, limit=5)
-
-    assert results[0]["result"] == "L"
-
-
-def test_get_team_form_result_draw(monkeypatch):
-    client = FootballDataClient()
-    draw_match = {**H2H_MATCH, "score": {"fullTime": {"home": 1, "away": 1}}}
-    monkeypatch.setattr(client, "_get", lambda path, params=None: {"matches": [draw_match]})
-
-    results = client.get_team_form(team_external_id=1, limit=5)
+    results = get_team_form(team)
 
     assert results[0]["result"] == "D"
 
 
-def test_get_team_form_result_none_when_scores_missing(monkeypatch):
-    client = FootballDataClient()
-    no_score_match = {**H2H_MATCH, "score": {"fullTime": {"home": None, "away": None}}}
-    monkeypatch.setattr(client, "_get", lambda path, params=None: {"matches": [no_score_match]})
+@pytest.mark.django_db
+def test_get_team_form_respects_limit():
+    team = TeamFactory()
+    opponent = TeamFactory()
+    for i in range(8):
+        MatchFactory(
+            home_team=team, away_team=opponent,
+            home_score=1, away_score=0,
+            status=Match.Status.FINISHED,
+            kickoff=timezone.now() - timedelta(days=i + 1),
+        )
 
-    results = client.get_team_form(team_external_id=1, limit=5)
-
-    assert results[0]["result"] is None
-
-
-def test_get_team_form_respects_limit_and_returns_latest(monkeypatch):
-    """Only the last `limit` matches are returned when the API sends more."""
-    client = FootballDataClient()
-    many_matches = [H2H_MATCH] * 8
-    monkeypatch.setattr(client, "_get", lambda path, params=None: {"matches": many_matches})
-
-    results = client.get_team_form(team_external_id=1, limit=5)
+    results = get_team_form(team, limit=5)
 
     assert len(results) == 5
+
+
+@pytest.mark.django_db
+def test_get_team_form_ordered_oldest_first():
+    """Results are returned chronologically (oldest first) for display."""
+    team = TeamFactory()
+    opponent = TeamFactory()
+    for i in range(3):
+        MatchFactory(
+            home_team=team, away_team=opponent,
+            home_score=i, away_score=0,
+            status=Match.Status.FINISHED,
+            kickoff=timezone.now() - timedelta(days=3 - i),
+        )
+
+    results = get_team_form(team, limit=5)
+
+    dates = [r["date"] for r in results]
+    assert dates == sorted(dates)
+
+
+@pytest.mark.django_db
+def test_get_team_form_excludes_unfinished():
+    team = TeamFactory()
+    opponent = TeamFactory()
+    MatchFactory(home_team=team, away_team=opponent, status=Match.Status.SCHEDULED)
+
+    results = get_team_form(team)
+
+    assert results == []
 
 
 # ---------------------------------------------------------------------------
@@ -572,13 +617,13 @@ class _FakeHypeClient:
             {"home_wins": 1, "away_wins": 0, "draws": 0},
         )
 
-    def get_team_form(self, team_id, limit=5):
-        return [{"date": "2025-01-01", "home_team": "A", "away_team": "B", "home_score": 2, "away_score": 0, "result": "W"}]
+_FAKE_FORM = [{"date": "2025-01-01", "home_team": "A", "away_team": "B", "home_score": 2, "away_score": 0, "result": "W"}]
 
 
 def test_fetch_match_hype_data_creates_and_populates_stats(monkeypatch):
     match = MatchFactory()
     monkeypatch.setattr("matches.services.FootballDataClient", _FakeHypeClient)
+    monkeypatch.setattr("matches.services.get_team_form", lambda team, limit=5: _FAKE_FORM)
 
     stats = fetch_match_hype_data(match)
 
@@ -609,7 +654,6 @@ def test_fetch_match_hype_data_returns_cached_when_fresh(monkeypatch):
 
 
 def test_fetch_match_hype_data_refreshes_stale_stats(monkeypatch):
-    from datetime import timedelta
     match = MatchFactory()
     stale = MatchStatsFactory(match=match, fetched_at=timezone.now() - timedelta(hours=25))
     monkeypatch.setattr("matches.services.FootballDataClient", _FakeHypeClient)

@@ -7,6 +7,8 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from django.db.models import Q
+
 from matches.models import Match, MatchStats, Standing, Team
 
 logger = logging.getLogger(__name__)
@@ -79,27 +81,6 @@ class FootballDataClient:
         summary = {"home_wins": home_wins, "away_wins": away_wins, "draws": draws}
         return matches, summary
 
-    def get_team_form(self, team_external_id, limit=5):
-        data = self._get(
-            "competitions/PL/matches",
-            params={"team": team_external_id, "status": "FINISHED"},
-        )
-        results = []
-        for m in data.get("matches", [])[-limit:]:
-            entry = self._normalize_h2h_match(m)
-            score = m.get("score", {}).get("fullTime", {})
-            home_id = m.get("homeTeam", {}).get("id")
-            hs = score.get("home")
-            as_ = score.get("away")
-            if hs is not None and as_ is not None:
-                if home_id == team_external_id:
-                    entry["result"] = "W" if hs > as_ else ("D" if hs == as_ else "L")
-                else:
-                    entry["result"] = "W" if as_ > hs else ("D" if as_ == hs else "L")
-            else:
-                entry["result"] = None
-            results.append(entry)
-        return results
 
     def get_standings(self, season):
         data = self._get("competitions/PL/standings", params={"season": season})
@@ -292,6 +273,38 @@ def sync_standings(season, offline=False):
     return created, updated
 
 
+def get_team_form(team, limit=5):
+    """Return the last `limit` finished EPL matches for a team from the local DB."""
+    recent = (
+        Match.objects.filter(
+            Q(home_team=team) | Q(away_team=team),
+            status=Match.Status.FINISHED,
+        )
+        .select_related("home_team", "away_team")
+        .order_by("-kickoff")[:limit]
+    )
+    results = []
+    for m in reversed(list(recent)):
+        is_home = m.home_team_id == team.pk
+        hs, as_ = m.home_score, m.away_score
+        if hs is not None and as_ is not None:
+            if is_home:
+                result = "W" if hs > as_ else ("D" if hs == as_ else "L")
+            else:
+                result = "W" if as_ > hs else ("D" if as_ == hs else "L")
+        else:
+            result = None
+        results.append({
+            "date": m.kickoff.date().isoformat() if m.kickoff else "",
+            "home_team": m.home_team.short_name or m.home_team.name,
+            "away_team": m.away_team.short_name or m.away_team.name,
+            "home_score": hs,
+            "away_score": as_,
+            "result": result,
+        })
+    return results
+
+
 def fetch_match_hype_data(match):
     """Fetch and cache H2H + form data for a match.
 
@@ -310,13 +323,11 @@ def fetch_match_hype_data(match):
                 match.away_team.external_id,
                 limit=5,
             )
-            home_form = client.get_team_form(match.home_team.external_id, limit=5)
-            away_form = client.get_team_form(match.away_team.external_id, limit=5)
 
         stats.h2h_json = h2h_matches
         stats.h2h_summary_json = h2h_summary
-        stats.home_form_json = home_form
-        stats.away_form_json = away_form
+        stats.home_form_json = get_team_form(match.home_team)
+        stats.away_form_json = get_team_form(match.away_team)
         stats.fetched_at = timezone.now()
         stats.last_attempt_at = timezone.now()
         stats.save()
