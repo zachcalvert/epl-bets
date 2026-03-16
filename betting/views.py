@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Max, Min, Sum
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views import View
@@ -428,6 +428,9 @@ class ProfileView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         User = get_user_model()
         profile_user = get_object_or_404(User, pk=self.kwargs["user_pk"])
+
+        if profile_user.is_superuser:
+            raise Http404
 
         # Identity
         ctx["profile_user"] = profile_user

@@ -93,7 +93,11 @@ def _annotate_identity(entries):
 
 
 def _get_balance_leaderboard(limit):
-    qs = UserBalance.objects.select_related("user").order_by("-balance", "user_id")
+    qs = (
+        UserBalance.objects.select_related("user")
+        .filter(user__is_superuser=False)
+        .order_by("-balance", "user_id")
+    )
     if limit is not None:
         qs = qs[:limit]
     return _annotate_identity(list(qs))
@@ -102,7 +106,7 @@ def _get_balance_leaderboard(limit):
 def _get_profit_leaderboard(limit):
     qs = (
         UserStats.objects.select_related("user")
-        .filter(total_bets__gt=0)
+        .filter(total_bets__gt=0, user__is_superuser=False)
         .order_by("-net_profit", "user_id")
     )
     if limit is not None:
@@ -113,7 +117,7 @@ def _get_profit_leaderboard(limit):
 def _get_win_rate_leaderboard(limit):
     qs = (
         UserStats.objects.select_related("user")
-        .filter(total_bets__gte=WIN_RATE_MIN_BETS)
+        .filter(total_bets__gte=WIN_RATE_MIN_BETS, user__is_superuser=False)
         .annotate(
             _win_rate=Case(
                 When(total_bets=0, then=Value(0.0)),
@@ -132,7 +136,7 @@ def _get_win_rate_leaderboard(limit):
 def _get_streak_leaderboard(limit):
     qs = (
         UserStats.objects.select_related("user")
-        .filter(total_bets__gt=0)
+        .filter(total_bets__gt=0, user__is_superuser=False)
         .order_by("-best_streak", "-current_streak", "user_id")
     )
     if limit is not None:
@@ -142,6 +146,8 @@ def _get_streak_leaderboard(limit):
 
 def get_user_rank(user, leaderboard=None, board_type="balance"):
     if not getattr(user, "is_authenticated", False):
+        return None
+    if user.is_superuser:
         return None
 
     leaderboard_user_ids = {entry.user_id for entry in leaderboard or []}
@@ -164,7 +170,7 @@ def _get_balance_rank(user):
     higher_ranked_count = UserBalance.objects.filter(
         Q(balance__gt=balance.balance)
         | Q(balance=balance.balance, user_id__lt=user.id)
-    ).count()
+    ).filter(user__is_superuser=False).count()
 
     balance.display_identity = get_public_identity(user)
     balance.rank = higher_ranked_count + 1
@@ -184,7 +190,7 @@ def _get_stats_rank(user, board_type):
         higher = UserStats.objects.filter(
             Q(net_profit__gt=stats.net_profit)
             | Q(net_profit=stats.net_profit, user_id__lt=user.id)
-        ).filter(total_bets__gt=0).count()
+        ).filter(total_bets__gt=0, user__is_superuser=False).count()
     elif board_type == "win_rate":
         if stats.total_bets < WIN_RATE_MIN_BETS:
             return None
@@ -194,7 +200,7 @@ def _get_stats_rank(user, board_type):
         user_wins = stats.total_wins
         user_bets = stats.total_bets
         higher = (
-            UserStats.objects.filter(total_bets__gte=WIN_RATE_MIN_BETS)
+            UserStats.objects.filter(total_bets__gte=WIN_RATE_MIN_BETS, user__is_superuser=False)
             .annotate(
                 _cross_theirs=F("total_wins") * Value(user_bets),
                 _cross_user=Value(user_wins) * F("total_bets"),
@@ -222,7 +228,7 @@ def _get_stats_rank(user, board_type):
                 current_streak=stats.current_streak,
                 user_id__lt=user.id,
             )
-        ).filter(total_bets__gt=0).count()
+        ).filter(total_bets__gt=0, user__is_superuser=False).count()
     else:
         return None
 
