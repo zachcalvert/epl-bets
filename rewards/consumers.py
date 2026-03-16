@@ -91,13 +91,13 @@ class NotificationConsumer(WebsocketConsumer):
 
             html = render_to_string(
                 "challenges/partials/challenge_toast_oob.html",
-                {"user_challenge": user_challenge},
+                {"user_challenge": user_challenge, "user": user},
             )
             try:
                 current_balance = UserBalance.objects.get(user=user).balance
                 html += render_to_string(
                     "website/components/balance_oob.html",
-                    {"balance": f"{current_balance:.2f}"},
+                    {"balance": current_balance, "user": user},
                 )
             except UserBalance.DoesNotExist:
                 pass
@@ -126,13 +126,13 @@ class NotificationConsumer(WebsocketConsumer):
 
             html = render_to_string(
                 "rewards/partials/reward_toast_oob.html",
-                {"distribution": distribution},
+                {"distribution": distribution, "user": user},
             )
             try:
                 current_balance = UserBalance.objects.get(user=user).balance
                 html += render_to_string(
                     "website/components/balance_oob.html",
-                    {"balance": f"{current_balance:.2f}"},
+                    {"balance": current_balance, "user": user},
                 )
             except UserBalance.DoesNotExist:
                 pass

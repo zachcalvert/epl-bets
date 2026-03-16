@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div class="rounded-lg bg-dark/40 border border-gray-700 px-4 py-3 {% if uc.status == 'COMPLETED' %}border-accent/30{% endif %}">
     <div class="flex items-start gap-3">
         <i class="ph-duotone ph-{{ uc.challenge.template.icon }} text-2xl shrink-0 mt-0.5 text-accent" aria-hidden="true"></i>
@@ -14,7 +15,7 @@
             <p class="text-xs text-muted mb-2">{{ uc.challenge.template.description }}</p>
             {% include "challenges/partials/challenge_progress_bar.html" %}
             <div class="flex items-center justify-between mt-2">
-                <span class="text-xs text-accent font-medium">+{{ uc.challenge.template.reward_amount|floatformat:0 }} credits</span>
+                <span class="text-xs text-accent font-medium">+{{ uc.challenge.template.reward_amount|currency:request.user }}</span>
                 {% if uc.challenge.template.badge %}
                 <span class="text-xs text-muted">+ <i class="ph-duotone ph-{{ uc.challenge.template.badge.icon }}" aria-hidden="true"></i> badge</span>
                 {% endif %}

@@ -159,7 +159,7 @@ def test_place_bet_returns_error_for_insufficient_balance(client):
     )
 
     assert response.status_code == 200
-    assert "Insufficient balance. You have 5.00 credits." in response.content.decode()
+    assert "Insufficient balance. You have £5.00." in response.content.decode()
     assert BetSlip.objects.count() == 0
 
 

@@ -30,7 +30,7 @@ def test_betslip_str_uses_selection_display():
 def test_user_balance_str_formats_credits():
     balance = UserBalanceFactory(balance="875.50")
 
-    assert str(balance) == f"{balance.user}: 875.50 credits"
+    assert str(balance) == f"{balance.user}: 875.50"
 
 
 def test_bankruptcy_str_includes_user_pk_and_balance():

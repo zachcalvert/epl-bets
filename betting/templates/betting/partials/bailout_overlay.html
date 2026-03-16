@@ -1,11 +1,12 @@
-<div id="bailout-overlay" class="bailout-overlay">
+{% load currency_tags %}
+<div id="bailout-overlay" class="bailout-overlay" data-currency-symbol="{% currency_symbol user %}">
     <div class="bailout-card">
         <!-- State 1: Request -->
         <div id="bailout-request" class="bailout-state">
             <i class="ph-duotone ph-bank text-5xl mb-4 text-accent" aria-hidden="true"></i>
             <h2 class="text-2xl font-bold text-white mb-2">You're Bankrupt!</h2>
             <p class="text-muted text-sm mb-1">
-                Balance: <span class="text-accent font-mono">{{ bankrupt_balance|floatformat:2 }} cr</span>
+                Balance: <span class="text-accent font-mono">{{ bankrupt_balance|currency:user }}</span>
             </p>
             {% if bankruptcy_count > 0 %}
             <p class="text-muted text-xs mb-6">Bankruptcy #{{ bankruptcy_count|add:1 }}</p>
@@ -109,7 +110,8 @@
             if (data && data.success) {
                 countdownEl.classList.add('hidden');
                 resultEl.classList.remove('hidden');
-                amountEl.textContent = '+ ' + Number(data.amount).toLocaleString() + ' cr';
+                var sym = document.getElementById('bailout-overlay').dataset.currencySymbol || '£';
+                amountEl.textContent = '+ ' + sym + Number(data.amount).toLocaleString();
                 setTimeout(function() {
                     window.location.reload();
                 }, 2000);

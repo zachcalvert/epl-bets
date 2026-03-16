@@ -6,10 +6,21 @@ from django.db.models.functions import Lower
 from .managers import UserManager
 
 
+class Currency(models.TextChoices):
+    USD = "USD", "US Dollars ($)"
+    GBP = "GBP", "UK Pounds (£)"
+    EUR = "EUR", "Euros (€)"
+
+
 class User(AbstractUser):
     username = None
     email = models.EmailField("email address", unique=True)
     display_name = models.CharField(max_length=50, null=True, blank=True)
+    currency = models.CharField(
+        max_length=3,
+        choices=Currency.choices,
+        default=Currency.GBP,
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

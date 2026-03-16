@@ -40,7 +40,7 @@ CHALLENGE_TEMPLATE_DEFINITIONS = [
     {
         "slug": "daily_high_roller",
         "title": "High Roller",
-        "description": "Stake 500 or more credits total today.",
+        "description": "Stake £500 or more total today.",
         "icon": "coins",
         "challenge_type": "DAILY",
         "criteria_type": "TOTAL_STAKED",
@@ -161,7 +161,7 @@ CHALLENGE_TEMPLATE_DEFINITIONS = [
     {
         "slug": "weekly_big_spender",
         "title": "Big Spender",
-        "description": "Stake 2,000 or more credits total this week.",
+        "description": "Stake £2,000 or more total this week.",
         "icon": "money-wavy",
         "challenge_type": "WEEKLY",
         "criteria_type": "TOTAL_STAKED",

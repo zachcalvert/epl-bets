@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div id="challenge-list" class="space-y-3">
     {% if active_tab == "upcoming" %}
         {% if upcoming_challenges %}
@@ -17,7 +18,7 @@
                         </div>
                         <p class="text-xs text-muted mb-1">{{ challenge.template.description }}</p>
                         <div class="flex items-center gap-3">
-                            <span class="text-xs text-accent font-medium">+{{ challenge.template.reward_amount|floatformat:0 }} credits</span>
+                            <span class="text-xs text-accent font-medium">+{{ challenge.template.reward_amount|currency:request.user }}</span>
                             <span class="text-xs text-muted">Starts <time datetime="{{ challenge.starts_at|date:'c' }}" data-format="short">{{ challenge.starts_at }}</time></span>
                         </div>
                     </div>
@@ -34,7 +35,7 @@
             {% endfor %}
         {% else %}
             {% if active_tab == "completed" %}
-                {% include "website/components/empty_state.html" with icon="chart" title="No completed challenges yet" message="Complete active challenges to earn bonus credits." %}
+                {% include "website/components/empty_state.html" with icon="chart" title="No completed challenges yet" message="Complete active challenges to earn bonuses." %}
             {% else %}
                 {% include "website/components/empty_state.html" with icon="calendar" title="No active challenges" message="Check back soon — new challenges are created daily." %}
             {% endif %}

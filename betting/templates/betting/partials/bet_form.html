@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div id="bet-form-container" class="bg-surface rounded-lg border border-gray-700 p-6">
     <h3 class="text-xl font-bold text-white mb-4">Place a Bet</h3>
 
@@ -47,7 +48,7 @@
 
         <!-- Stake input -->
         <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Stake (credits)</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Stake ({% currency_symbol request.user %})</label>
             {{ form.stake }}
             {% if form.stake.errors %}
             <p class="text-danger text-xs mt-1">{{ form.stake.errors.0 }}</p>
@@ -55,7 +56,7 @@
         </div>
 
         <div class="hidden text-sm text-accent font-mono font-semibold text-right" data-payout-display>
-            Potential Payout: <span data-payout-value>0.00</span> credits
+            Potential Payout: {% currency_symbol request.user %}<span data-payout-value>0.00</span>
         </div>
 
         <button type="submit"

@@ -1,4 +1,5 @@
 {% extends "website/base.html" %}
+{% load currency_tags %}
 {% block title %}My Bets{% endblock %}
 
 {% block content %}
@@ -8,25 +9,25 @@
 <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Balance</div>
-        <div class="text-2xl font-mono font-bold text-accent">{{ current_balance|floatformat:2 }}</div>
+        <div class="text-2xl font-mono font-bold text-accent">{{ current_balance|currency:user }}</div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Total Staked</div>
-        <div class="text-2xl font-mono font-bold text-white">{{ total_staked|floatformat:2 }}</div>
+        <div class="text-2xl font-mono font-bold text-white">{{ total_staked|currency:user }}</div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Total Won</div>
-        <div class="text-2xl font-mono font-bold text-white">{{ total_payout|floatformat:2 }}</div>
+        <div class="text-2xl font-mono font-bold text-white">{{ total_payout|currency:user }}</div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-xs text-muted uppercase mb-1">Net P&L</div>
+        <div class="text-xs text-muted uppercase mb-1">Net P&amp;L</div>
         <div class="text-2xl font-mono font-bold {% if net_pnl >= 0 %}text-accent{% else %}text-danger{% endif %}">
-            {% if net_pnl >= 0 %}+{% endif %}{{ net_pnl|floatformat:2 }}
+            {% if net_pnl >= 0 %}+{% endif %}{{ net_pnl|currency:user }}
         </div>
     </div>
     <div class="bg-surface rounded-lg border border-accent/30 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Rewards</div>
-        <div class="text-2xl font-mono font-bold text-accent">+{{ total_rewards|floatformat:2 }}</div>
+        <div class="text-2xl font-mono font-bold text-accent">+{{ total_rewards|currency:user }}</div>
     </div>
 </div>
 
@@ -59,9 +60,9 @@
                 </td>
                 <td class="py-3 px-2 text-gray-300">{{ entry.item.get_selection_display }}</td>
                 <td class="py-3 px-2 text-right font-mono text-gray-300">{{ entry.item.odds_at_placement|floatformat:2 }}</td>
-                <td class="py-3 px-2 text-right font-mono text-white">{{ entry.item.stake|floatformat:2 }}</td>
+                <td class="py-3 px-2 text-right font-mono text-white">{{ entry.item.stake|currency:user }}</td>
                 <td class="py-3 px-2 text-right font-mono {% if entry.item.payout %}text-accent{% else %}text-muted{% endif %}">
-                    {% if entry.item.payout != None %}{{ entry.item.payout|floatformat:2 }}{% else %}&mdash;{% endif %}
+                    {% if entry.item.payout != None %}{{ entry.item.payout|currency:user }}{% else %}&mdash;{% endif %}
                 </td>
                 <td class="py-3 px-2 text-center">
                     {% if entry.item.status == "PENDING" %}
@@ -90,9 +91,9 @@
                     {% endfor %}
                 </td>
                 <td class="py-3 px-2 text-right font-mono text-gray-300">{{ entry.item.combined_odds|floatformat:2 }}x</td>
-                <td class="py-3 px-2 text-right font-mono text-white">{{ entry.item.stake|floatformat:2 }}</td>
+                <td class="py-3 px-2 text-right font-mono text-white">{{ entry.item.stake|currency:user }}</td>
                 <td class="py-3 px-2 text-right font-mono {% if entry.item.payout %}text-accent{% else %}text-muted{% endif %}">
-                    {% if entry.item.payout != None %}{{ entry.item.payout|floatformat:2 }}{% else %}&mdash;{% endif %}
+                    {% if entry.item.payout != None %}{{ entry.item.payout|currency:user }}{% else %}&mdash;{% endif %}
                 </td>
                 <td class="py-3 px-2 text-center">
                     {% if entry.item.status == "PENDING" %}
@@ -141,7 +142,7 @@
                 </td>
                 <td class="py-3 px-2 text-right font-mono text-muted">&mdash;</td>
                 <td class="py-3 px-2 text-right font-mono text-muted">&mdash;</td>
-                <td class="py-3 px-2 text-right font-mono text-accent font-semibold">+{{ entry.item.reward.amount|floatformat:2 }}</td>
+                <td class="py-3 px-2 text-right font-mono text-accent font-semibold">+{{ entry.item.reward.amount|currency:user }}</td>
                 <td class="py-3 px-2 text-center">
                     <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-accent/10 text-accent">Reward</span>
                 </td>
@@ -183,12 +184,12 @@
             </div>
             <div>
                 <div class="text-xs text-muted">Stake</div>
-                <div class="font-mono text-sm text-white">{{ entry.item.stake|floatformat:2 }}</div>
+                <div class="font-mono text-sm text-white">{{ entry.item.stake|currency:user }}</div>
             </div>
             <div>
                 <div class="text-xs text-muted">Payout</div>
                 <div class="font-mono text-sm {% if entry.item.payout %}text-accent{% else %}text-muted{% endif %}">
-                    {% if entry.item.payout != None %}{{ entry.item.payout|floatformat:2 }}{% else %}&mdash;{% endif %}
+                    {% if entry.item.payout != None %}{{ entry.item.payout|currency:user }}{% else %}&mdash;{% endif %}
                 </div>
             </div>
         </div>
@@ -229,12 +230,12 @@
             </div>
             <div>
                 <div class="text-xs text-muted">Stake</div>
-                <div class="font-mono text-sm text-white">{{ entry.item.stake|floatformat:2 }}</div>
+                <div class="font-mono text-sm text-white">{{ entry.item.stake|currency:user }}</div>
             </div>
             <div>
                 <div class="text-xs text-muted">Payout</div>
                 <div class="font-mono text-sm {% if entry.item.payout %}text-accent{% else %}text-muted{% endif %}">
-                    {% if entry.item.payout != None %}{{ entry.item.payout|floatformat:2 }}{% else %}&mdash;{% endif %}
+                    {% if entry.item.payout != None %}{{ entry.item.payout|currency:user }}{% else %}&mdash;{% endif %}
                 </div>
             </div>
         </div>
@@ -246,7 +247,7 @@
             <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-accent/10 text-accent">Reward</span>
         </div>
         <div class="text-xs text-muted mb-2">{{ entry.date|date:"d M H:i" }}</div>
-        <div class="font-mono text-lg font-bold text-accent">+{{ entry.item.reward.amount|floatformat:2 }} credits</div>
+        <div class="font-mono text-lg font-bold text-accent">+{{ entry.item.reward.amount|currency:user }}</div>
         {% if entry.item.reward.description %}
         <div class="text-xs text-muted mt-1">{{ entry.item.reward.description }}</div>
         {% endif %}

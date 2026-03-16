@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div id="bet-form-container" class="bg-surface rounded-lg border border-accent/30 p-6">
     <div class="text-center">
         <div class="text-accent text-3xl mb-2">&#10003;</div>
@@ -11,7 +12,7 @@
         <div class="grid grid-cols-3 gap-4 text-center mb-4">
             <div>
                 <div class="text-xs text-muted uppercase">Stake</div>
-                <div class="text-white font-mono font-semibold">{{ bet.stake|floatformat:2 }}</div>
+                <div class="text-white font-mono font-semibold">{{ bet.stake|currency:request.user }}</div>
             </div>
             <div>
                 <div class="text-xs text-muted uppercase">Odds</div>
@@ -19,7 +20,7 @@
             </div>
             <div>
                 <div class="text-xs text-muted uppercase">Potential Payout</div>
-                <div class="text-accent font-mono font-semibold">{{ potential_payout|floatformat:2 }}</div>
+                <div class="text-accent font-mono font-semibold">{{ potential_payout|currency:request.user }}</div>
             </div>
         </div>
 

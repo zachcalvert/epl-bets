@@ -1,3 +1,4 @@
+{% load currency_tags %}
 {% if leaderboard %}
 <div class="overflow-x-auto">
     <table class="w-full" id="leaderboard-table">
@@ -45,8 +46,7 @@
 
                 {% if board_type == "balance" %}
                 <td class="px-2 sm:px-3 py-3 text-right">
-                    <span class="font-mono text-sm font-bold text-accent">{{ entry.balance|floatformat:2 }}</span>
-                    <span class="text-xs text-muted ml-1">cr</span>
+                    <span class="font-mono text-sm font-bold text-accent">{{ entry.balance|currency:request.user }}</span>
                 </td>
                 <td class="px-2 sm:px-3 py-3 text-right hidden sm:table-cell">
                     <span class="text-xs text-muted">{{ entry.user.date_joined|date:"M Y" }}</span>
@@ -55,9 +55,8 @@
                 {% elif board_type == "profit" %}
                 <td class="px-2 sm:px-3 py-3 text-right">
                     <span class="font-mono text-sm font-bold {% if entry.net_profit > 0 %}text-green-400{% elif entry.net_profit < 0 %}text-red-400{% else %}text-muted{% endif %}">
-                        {% if entry.net_profit > 0 %}+{% endif %}{{ entry.net_profit|floatformat:2 }}
+                        {% if entry.net_profit > 0 %}+{% endif %}{{ entry.net_profit|currency:request.user }}
                     </span>
-                    <span class="text-xs text-muted ml-1">cr</span>
                 </td>
                 <td class="px-2 sm:px-3 py-3 text-right hidden sm:table-cell">
                     <span class="text-xs text-muted">{{ entry.total_wins }}W–{{ entry.total_losses }}L</span>
@@ -101,13 +100,11 @@
             </div>
             <div class="shrink-0 text-right">
                 {% if board_type == "balance" %}
-                <p class="font-mono text-sm font-bold text-white">{{ user_rank.balance|floatformat:2 }}</p>
-                <p class="text-[11px] uppercase tracking-wider text-muted">credits</p>
+                <p class="font-mono text-sm font-bold text-white">{{ user_rank.balance|currency:request.user }}</p>
                 {% elif board_type == "profit" %}
                 <p class="font-mono text-sm font-bold {% if user_rank.net_profit > 0 %}text-green-400{% elif user_rank.net_profit < 0 %}text-red-400{% else %}text-white{% endif %}">
-                    {% if user_rank.net_profit > 0 %}+{% endif %}{{ user_rank.net_profit|floatformat:2 }}
+                    {% if user_rank.net_profit > 0 %}+{% endif %}{{ user_rank.net_profit|currency:request.user }}
                 </p>
-                <p class="text-[11px] uppercase tracking-wider text-muted">profit</p>
                 {% elif board_type == "win_rate" %}
                 <p class="font-mono text-sm font-bold text-white">{{ user_rank.win_rate }}%</p>
                 <p class="text-[11px] uppercase tracking-wider text-muted">win rate</p>

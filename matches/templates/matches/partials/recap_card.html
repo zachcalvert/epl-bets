@@ -12,6 +12,7 @@ Context expected:
   actual_result       — "HOME_WIN", "DRAW", or "AWAY_WIN"
   actual_result_label — "Home Win", "Draw", or "Away Win"
 {% endcomment %}
+{% load currency_tags %}
 
 <div class="mb-6 rounded-lg border border-gray-700 bg-surface overflow-hidden">
     <!-- Header -->
@@ -48,8 +49,8 @@ Context expected:
                     <p class="text-xs text-muted">Got It Right</p>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-accent">{{ betting_outcome.total_won_payout|floatformat:0 }}</p>
-                    <p class="text-xs text-muted">Credits Won</p>
+                    <p class="text-2xl font-bold text-accent">{{ betting_outcome.total_won_payout|currency:request.user }}</p>
+                    <p class="text-xs text-muted">Won</p>
                 </div>
             </div>
         </div>

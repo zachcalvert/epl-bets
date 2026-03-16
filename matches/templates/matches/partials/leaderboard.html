@@ -1,4 +1,5 @@
 {% load match_tags %}
+{% load currency_tags %}
 <section
     id="leaderboard"
     class="bg-surface rounded-lg border border-gray-700 p-5"
@@ -27,8 +28,7 @@
                 </div>
             </div>
             <div class="shrink-0 text-right">
-                <p class="font-mono text-sm font-bold text-white">{{ entry.balance }}</p>
-                <p class="text-[11px] uppercase tracking-wider text-muted">credits</p>
+                <p class="font-mono text-sm font-bold text-white">{{ entry.balance|currency:request.user }}</p>
             </div>
         </div>
         {% endfor %}
@@ -42,8 +42,7 @@
                 <p class="text-xs text-muted">Open My Bets for your account snapshot</p>
             </div>
             <div class="shrink-0 text-right">
-                <p class="font-mono text-sm font-bold text-white">{{ user_rank.balance }}</p>
-                <p class="text-[11px] uppercase tracking-wider text-muted">credits</p>
+                <p class="font-mono text-sm font-bold text-white">{{ user_rank.balance|currency:request.user }}</p>
             </div>
         </div>
     </a>

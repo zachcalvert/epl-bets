@@ -79,3 +79,14 @@ class DisplayNameForm(forms.ModelForm):
             raise forms.ValidationError("Display name already taken.")
 
         return display_name
+
+
+class CurrencyForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("currency",)
+        widgets = {
+            "currency": forms.Select(
+                attrs={"class": "themed-input themed-input-sm"}
+            )
+        }

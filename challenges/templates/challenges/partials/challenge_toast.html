@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div class="reward-toast animate-slide-in" role="alert">
     <div class="reward-toast-confetti" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span>
@@ -8,7 +9,7 @@
         <div class="flex-1 min-w-0">
             <p class="reward-toast-title">Challenge Complete!</p>
             <p class="text-sm font-semibold text-white">{{ user_challenge.challenge.template.title }}</p>
-            <p class="reward-toast-amount">+{{ user_challenge.challenge.template.reward_amount|floatformat:0 }} credits</p>
+            <p class="reward-toast-amount">+{{ user_challenge.challenge.template.reward_amount|currency:user }}</p>
         </div>
         <button
             onclick="var t=this.closest('[role=alert]');t.classList.remove('animate-slide-in');t.classList.add('animate-slide-out');t.addEventListener('animationend',function(){t.remove()})"

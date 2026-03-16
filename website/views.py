@@ -8,7 +8,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import TemplateView
 
-from betting.forms import DisplayNameForm
+from betting.forms import CurrencyForm, DisplayNameForm
 from betting.models import Badge, UserBadge, UserBalance, UserStats
 from betting.services import get_public_identity, get_user_rank, mask_email
 from website.forms import LoginForm, SignupForm
@@ -213,7 +213,7 @@ class AccountView(LoginRequiredMixin, View):
             "account_save_success": save_success,
         }
 
-    def _build_context(self, form=None, save_success=False):
+    def _build_context(self, form=None, save_success=False, currency_form=None, currency_save_success=False):
         user = self.request.user
         masked = mask_email(user.email)
 
@@ -241,9 +241,11 @@ class AccountView(LoginRequiredMixin, View):
 
         return {
             "display_name_form": form or DisplayNameForm(instance=user),
+            "currency_form": currency_form or CurrencyForm(instance=user),
             "account_masked_email": masked,
             "account_public_identity": get_public_identity(user),
             "account_save_success": save_success,
+            "currency_save_success": currency_save_success,
             "user_rank": get_user_rank(user),
             "balance": balance,
             "stats": stats,
@@ -274,3 +276,27 @@ class AccountView(LoginRequiredMixin, View):
                 status=422,
             )
         return render(request, "website/account.html", self._build_context(form=form), status=422)
+
+
+class CurrencyUpdateView(LoginRequiredMixin, View):
+    def post(self, request):
+        form = CurrencyForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            fresh_form = CurrencyForm(instance=request.user)
+            if request.htmx:
+                return render(
+                    request,
+                    "website/partials/currency_settings_card.html",
+                    {"currency_form": fresh_form, "currency_save_success": True},
+                )
+            return redirect("website:account")
+
+        if request.htmx:
+            return render(
+                request,
+                "website/partials/currency_settings_card.html",
+                {"currency_form": form},
+                status=422,
+            )
+        return redirect("website:account")

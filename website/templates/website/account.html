@@ -1,4 +1,5 @@
 {% extends "website/base.html" %}
+{% load currency_tags %}
 {% block title %}Profile &amp; Settings{% endblock %}
 
 {% block content %}
@@ -7,6 +8,9 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     {# Display name form #}
     {% include "website/partials/account_settings_card.html" %}
+
+    {# Currency preference #}
+    {% include "website/partials/currency_settings_card.html" %}
 
     {# Rank summary #}
     {% if user_rank %}
@@ -24,7 +28,7 @@
                 </div>
                 <div class="rounded-lg border border-gray-700 bg-surface px-4 py-3 text-center">
                     <div class="text-xs uppercase text-muted mb-1">Balance</div>
-                    <div class="font-mono text-sm font-bold text-accent">{{ user_rank.balance|floatformat:2 }}</div>
+                    <div class="font-mono text-sm font-bold text-accent">{{ user_rank.balance|currency:user }}</div>
                 </div>
             </div>
         </div>
@@ -37,7 +41,7 @@
     {% if balance is not None %}
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-xs text-muted uppercase mb-1">Balance</div>
-        <div class="text-xl font-mono font-bold text-accent">{{ balance|floatformat:2 }}</div>
+        <div class="text-xl font-mono font-bold text-accent">{{ balance|currency:user }}</div>
     </div>
     {% endif %}
 

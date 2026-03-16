@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <div class="bg-dark rounded-md border border-gray-600 p-3 my-1">
     {% if error %}
     <div class="bg-danger/10 border border-danger/30 rounded-md p-2 mb-2">
@@ -34,7 +35,7 @@
             </div>
 
             <div class="hidden text-xs text-accent font-mono font-semibold whitespace-nowrap" data-payout-display>
-                <span data-payout-value>0.00</span>
+                {% currency_symbol request.user %}<span data-payout-value>0.00</span>
             </div>
 
             <button type="submit"
