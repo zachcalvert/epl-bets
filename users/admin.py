@@ -82,6 +82,7 @@ class UserAdmin(BaseUserAdmin):
             {
                 "fields": (
                     "is_active",
+                    "is_bot",
                     "is_staff",
                     "is_superuser",
                     "groups",

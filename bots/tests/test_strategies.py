@@ -9,12 +9,13 @@ from bots.strategies import (
     ChaosAgentStrategy,
     DrawSpecialistStrategy,
     FrontrunnerStrategy,
+    HomerBotStrategy,
     ParlayStrategy,
     UnderdogStrategy,
     ValueHunterStrategy,
     _clamp_stake,
 )
-from matches.tests.factories import MatchFactory
+from matches.tests.factories import MatchFactory, TeamFactory
 
 
 def _odds_map(*entries):
@@ -337,6 +338,127 @@ class TestChaosAgentStrategy:
 
         for pick in all_picks:
             assert pick.selection in valid
+
+
+@pytest.mark.django_db
+class TestHomerBotStrategy:
+    def _make_match(self, team, as_home=True):
+        other = TeamFactory()
+        if as_home:
+            return MatchFactory(home_team=team, away_team=other)
+        return MatchFactory(home_team=other, away_team=team)
+
+    def test_bets_home_win_when_team_is_home(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=True)
+        odds = _odds_map((match.pk, 2.00, 3.20, 3.80))
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([match], odds, Decimal("1000"))
+
+        assert len(picks) == 1
+        assert picks[0].selection == "HOME_WIN"
+        assert picks[0].match_id == match.pk
+
+    def test_bets_away_win_when_team_is_away_and_not_underdog(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=False)
+        # away_win odds 2.10 — below default threshold of 3.50
+        odds = _odds_map((match.pk, 1.80, 3.20, 2.10))
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([match], odds, Decimal("1000"))
+
+        assert len(picks) == 1
+        assert picks[0].selection == "AWAY_WIN"
+
+    def test_bets_draw_when_team_is_big_underdog_away(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=False)
+        # away_win odds 4.00 — at or above default threshold of 3.50
+        odds = _odds_map((match.pk, 1.50, 3.30, 4.00))
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([match], odds, Decimal("1000"))
+
+        assert len(picks) == 1
+        assert picks[0].selection == "DRAW"
+
+    def test_draw_threshold_is_inclusive(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=False)
+        # away_win odds exactly at threshold
+        odds = _odds_map((match.pk, 1.80, 3.20, 3.50))
+        strategy = HomerBotStrategy(team_id=team.pk, draw_underdog_threshold=Decimal("3.50"))
+
+        picks = strategy.pick_bets([match], odds, Decimal("1000"))
+
+        assert picks[0].selection == "DRAW"
+
+    def test_skips_match_where_team_is_not_involved(self):
+        team = TeamFactory()
+        other_match = MatchFactory()  # neither team is our homer's team
+        odds = _odds_map((other_match.pk, 2.00, 3.20, 3.80))
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([other_match], odds, Decimal("1000"))
+
+        assert picks == []
+
+    def test_skips_match_with_no_odds(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=True)
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([match], {}, Decimal("1000"))
+
+        assert picks == []
+
+    def test_bets_only_on_team_matches_when_mixed(self):
+        team = TeamFactory()
+        team_match = self._make_match(team, as_home=True)
+        other_match = MatchFactory()
+        odds = _odds_map(
+            (team_match.pk, 2.00, 3.20, 3.80),
+            (other_match.pk, 1.50, 3.50, 5.00),
+        )
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([team_match, other_match], odds, Decimal("1000"))
+
+        assert len(picks) == 1
+        assert picks[0].match_id == team_match.pk
+
+    def test_stake_capped_at_150(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=True)
+        odds = _odds_map((match.pk, 2.00, 3.20, 3.80))
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        picks = strategy.pick_bets([match], odds, Decimal("10000"))
+
+        assert all(p.stake <= Decimal("150") for p in picks)
+
+    def test_custom_draw_underdog_threshold(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=False)
+        # away_win 3.00 — above custom threshold of 2.80, so expect DRAW
+        odds = _odds_map((match.pk, 1.80, 3.20, 3.00))
+        strategy = HomerBotStrategy(team_id=team.pk, draw_underdog_threshold=Decimal("2.80"))
+
+        picks = strategy.pick_bets([match], odds, Decimal("1000"))
+
+        assert picks[0].selection == "DRAW"
+
+    def test_returns_no_parlays(self):
+        team = TeamFactory()
+        match = self._make_match(team, as_home=True)
+        odds = _odds_map((match.pk, 2.00, 3.20, 3.80))
+        strategy = HomerBotStrategy(team_id=team.pk)
+
+        parlays = strategy.pick_parlays([match], odds, Decimal("1000"))
+
+        assert parlays == []
 
 
 class TestClampStake:

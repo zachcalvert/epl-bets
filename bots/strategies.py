@@ -234,6 +234,56 @@ class ValueHunterStrategy(BotStrategy):
         return picks
 
 
+class HomerBotStrategy(BotStrategy):
+    """Bets exclusively on one team, every match they play.
+
+    - Home: always HOME_WIN, 15–25% of balance, max 150.
+    - Away, not a big underdog (away_win odds < draw_underdog_threshold): AWAY_WIN, 10–20% of balance, max 150.
+    - Away, big underdog (away_win odds >= draw_underdog_threshold): DRAW, 10–20% of balance, max 150.
+    - Skips all matches where the supported team is not involved.
+    - No odds ceiling — blind loyalty doesn't do expected-value calculations.
+    """
+
+    HOME_PCT = (0.15, 0.25)
+    AWAY_PCT = (0.10, 0.20)
+    MAX_STAKE = Decimal("150")
+
+    def __init__(self, team_id: int, draw_underdog_threshold: Decimal = Decimal("3.50")):
+        self.team_id = team_id
+        self.draw_underdog_threshold = draw_underdog_threshold
+
+    def pick_bets(self, available_matches, odds_map, balance):
+        picks = []
+        for match in available_matches:
+            odds = odds_map.get(match.pk)
+            if not odds:
+                continue
+
+            is_home = match.home_team_id == self.team_id
+            is_away = match.away_team_id == self.team_id
+
+            if not (is_home or is_away):
+                continue
+
+            if is_home:
+                selection = "HOME_WIN"
+                pct = Decimal(str(random.uniform(*self.HOME_PCT)))
+            else:
+                if odds["away_win"] >= self.draw_underdog_threshold:
+                    selection = "DRAW"
+                else:
+                    selection = "AWAY_WIN"
+                pct = Decimal(str(random.uniform(*self.AWAY_PCT)))
+
+            stake = _clamp_stake(
+                (balance * pct).quantize(Decimal("0.01")),
+                ceiling=self.MAX_STAKE,
+            )
+            picks.append(BetPick(match_id=match.pk, selection=selection, stake=stake))
+
+        return picks
+
+
 class ChaosAgentStrategy(BotStrategy):
     """Random match, random selection, random stake. Pure chaos.
 

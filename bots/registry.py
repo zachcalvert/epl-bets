@@ -4,6 +4,7 @@ from bots.strategies import (
     ChaosAgentStrategy,
     DrawSpecialistStrategy,
     FrontrunnerStrategy,
+    HomerBotStrategy,
     ParlayStrategy,
     UnderdogStrategy,
     ValueHunterStrategy,
@@ -48,5 +49,19 @@ STRATEGY_MAP = {p["email"]: p["strategy"] for p in BOT_PROFILES}
 
 def get_strategy_for_bot(user):
     """Return an instantiated strategy for the given bot user, or None."""
+    # Homer bots are configured via HomerBotConfig rather than the static map
+    from bots.models import (
+        HomerBotConfig,  # local import avoids circular at module level
+    )
+
+    try:
+        config = user.homer_config
+        return HomerBotStrategy(
+            team_id=config.team_id,
+            draw_underdog_threshold=config.draw_underdog_threshold,
+        )
+    except HomerBotConfig.DoesNotExist:
+        pass
+
     cls = STRATEGY_MAP.get(user.email)
     return cls() if cls else None
