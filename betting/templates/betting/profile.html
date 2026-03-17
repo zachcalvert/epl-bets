@@ -60,16 +60,6 @@
     {% endif %}
 </div>
 
-{# Balance history chart (own profile only) #}
-{% if is_own_profile %}
-<div class="bg-surface rounded-lg border border-gray-700 p-4 mb-6">
-    <h2 class="text-lg font-bold text-white mb-3">Balance History</h2>
-    <div style="position: relative; height: 250px;">
-        <canvas id="balanceChart"></canvas>
-    </div>
-</div>
-{% endif %}
-
 {# Badges #}
 <div class="mb-6">
     <h2 class="text-lg font-bold text-white mb-3">Badges</h2>
@@ -177,73 +167,5 @@
 
 {% if not recent_bets and not recent_parlays %}
 {% include "website/components/empty_state.html" with icon="chart" title="No bet history" message="This player hasn't had any bets settle yet." %}
-{% endif %}
-{% endblock %}
-
-{% block extra_js %}
-{% if is_own_profile %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-<script>
-(function() {
-    var canvas = document.getElementById('balanceChart');
-    if (!canvas) return;
-
-    fetch('/api/balance-history/{{ profile_user.pk }}/')
-        .then(function(r) { return r.json(); })
-        .then(function(json) {
-            var accentColor = getComputedStyle(document.documentElement)
-                .getPropertyValue('--color-accent').trim().split(' ');
-            var rgb = 'rgb(' + accentColor.join(',') + ')';
-            var rgbA = 'rgba(' + accentColor.join(',') + ', 0.1)';
-
-            new Chart(canvas, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        data: json.data,
-                        borderColor: rgb,
-                        backgroundColor: rgbA,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        pointHitRadius: 8,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    parsing: { xAxisKey: 't', yAxisKey: 'y' },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: { tooltipFormat: 'MMM d, yyyy h:mm a' },
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#9ca3af', maxTicksLimit: 8 }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: {
-                                color: '#9ca3af',
-                                callback: function(v) { return v.toLocaleString() + ' cr'; }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(ctx) {
-                                    return ctx.parsed.y.toLocaleString() + ' credits';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        });
-})();
-</script>
 {% endif %}
 {% endblock %}

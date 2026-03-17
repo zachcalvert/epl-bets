@@ -350,26 +350,23 @@ class TestBotServicesLogTransactions:
         assert tx.amount > 0
 
 
-# ── Profile page ─────────────────────────────────────────────────────────────
+# ── Account page chart ───────────────────────────────────────────────────────
 
-class TestProfileChart:
-    def test_own_profile_shows_chart_section(self, client):
+class TestAccountChart:
+    def test_account_page_shows_chart(self, client):
+        user = UserFactory()
+        client.force_login(user)
+
+        response = client.get(reverse("website:account"))
+
+        assert response.status_code == 200
+        assert b"balanceChart" in response.content
+
+    def test_profile_page_does_not_show_chart(self, client):
         user = UserFactory()
         client.force_login(user)
 
         response = client.get(reverse("profile", args=[user.pk]))
 
         assert response.status_code == 200
-        assert response.context["is_own_profile"] is True
-        assert b"balanceChart" in response.content
-
-    def test_other_user_profile_hides_chart_section(self, client):
-        user = UserFactory()
-        other = UserFactory()
-        client.force_login(user)
-
-        response = client.get(reverse("profile", args=[other.pk]))
-
-        assert response.status_code == 200
-        assert response.context["is_own_profile"] is False
         assert b"balanceChart" not in response.content
