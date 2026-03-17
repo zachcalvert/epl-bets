@@ -202,9 +202,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "matches.tasks.fetch_live_scores",
         "schedule": timedelta(seconds=60),
     },
-    "fetch-odds-30m": {
+    "fetch-odds-2x-matchdays": {
         "task": "betting.tasks.fetch_odds",
-        "schedule": timedelta(minutes=30),
+        # Twice daily (9 AM and 5 PM UTC) on Fri/Sat/Sun/Mon only
+        "schedule": crontab(hour="9,17", minute=0, day_of_week="fri,sat,sun,mon"),
     },
     "prefetch-hype-data-6h": {
         "task": "matches.tasks.prefetch_upcoming_hype_data",
