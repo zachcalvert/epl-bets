@@ -2,6 +2,7 @@ import logging
 
 import httpx
 from django.conf import settings
+from django.core.cache import cache
 from django.db import models
 from django.db.models import Case, F, Q, Value, When
 from django.db.models.functions import Cast
@@ -72,18 +73,28 @@ def get_public_identity(user):
 
 BOARD_TYPES = ("balance", "profit", "win_rate", "streak")
 WIN_RATE_MIN_BETS = 10
+LEADERBOARD_CACHE_TTL = 30  # seconds
 
 
 def get_leaderboard_entries(limit=10, board_type="balance"):
+    cache_key = f"leaderboard:{board_type}:{limit}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     if board_type == "balance":
-        return _get_balance_leaderboard(limit)
+        result = _get_balance_leaderboard(limit)
     elif board_type == "profit":
-        return _get_profit_leaderboard(limit)
+        result = _get_profit_leaderboard(limit)
     elif board_type == "win_rate":
-        return _get_win_rate_leaderboard(limit)
+        result = _get_win_rate_leaderboard(limit)
     elif board_type == "streak":
-        return _get_streak_leaderboard(limit)
-    return _get_balance_leaderboard(limit)
+        result = _get_streak_leaderboard(limit)
+    else:
+        result = _get_balance_leaderboard(limit)
+
+    cache.set(cache_key, result, LEADERBOARD_CACHE_TTL)
+    return result
 
 
 def _annotate_identity(entries):

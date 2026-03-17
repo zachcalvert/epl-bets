@@ -36,7 +36,7 @@ class TestRunBotStrategies:
 
         call_kwargs = mock_dispatch.call_args.kwargs
         assert "countdown" in call_kwargs
-        assert 60 <= call_kwargs["countdown"] <= 600
+        assert 120 <= call_kwargs["countdown"] <= 1800
 
     def test_returns_early_when_no_bots(self):
         UserFactory()  # Non-bot only

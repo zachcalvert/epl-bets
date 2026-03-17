@@ -25,5 +25,7 @@ def configure_test_settings(settings):
 
 
 @pytest.fixture(autouse=True)
-def clear_cache_between_tests():
+def clear_cache_between_tests(configure_test_settings):
+    cache.clear()
+    yield
     cache.clear()

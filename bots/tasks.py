@@ -27,7 +27,7 @@ def run_bot_strategies():
     count = 0
 
     for bot in bot_users:
-        delay = random.randint(60, 600)  # 1-10 minutes
+        delay = random.randint(120, 1800)  # 2-30 minutes
         execute_bot_strategy.apply_async(args=[bot.pk], countdown=delay)
         count += 1
 
