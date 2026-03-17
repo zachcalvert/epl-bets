@@ -6,6 +6,7 @@ import pytest
 
 from betting.models import BetSlip
 from bots.strategies import (
+    AllInAliceStrategy,
     ChaosAgentStrategy,
     DrawSpecialistStrategy,
     FrontrunnerStrategy,
@@ -459,6 +460,84 @@ class TestHomerBotStrategy:
         parlays = strategy.pick_parlays([match], odds, Decimal("1000"))
 
         assert parlays == []
+
+
+@pytest.mark.django_db
+class TestAllInAliceStrategy:
+    def test_picks_strongest_favorite(self):
+        m1 = MatchFactory()
+        m2 = MatchFactory()
+        odds = _odds_map(
+            (m1.pk, 1.50, 4.00, 6.00),  # favorite 1.50
+            (m2.pk, 1.20, 5.00, 8.00),  # favorite 1.20 — strongest
+        )
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([m1, m2], odds, Decimal("500"))
+
+        assert len(picks) == 1
+        assert picks[0].match_id == m2.pk
+        assert picks[0].selection == "HOME_WIN"
+
+    def test_stakes_entire_balance(self):
+        match = MatchFactory()
+        odds = _odds_map((match.pk, 1.30, 4.00, 7.00))
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([match], odds, Decimal("5000"))
+
+        assert picks[0].stake == Decimal("5000")
+
+    def test_stake_capped_at_10000(self):
+        match = MatchFactory()
+        odds = _odds_map((match.pk, 1.30, 4.00, 7.00))
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([match], odds, Decimal("25000"))
+
+        assert picks[0].stake == Decimal("10000")
+
+    def test_returns_exactly_one_pick(self):
+        matches = [MatchFactory() for _ in range(5)]
+        odds = _odds_map(*[(m.pk, 1.50, 3.20, 4.00) for m in matches])
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets(matches, odds, Decimal("1000"))
+
+        assert len(picks) == 1
+
+    def test_picks_away_win_when_away_is_strongest(self):
+        match = MatchFactory()
+        odds = _odds_map((match.pk, 5.00, 3.50, 1.15))
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([match], odds, Decimal("1000"))
+
+        assert picks[0].selection == "AWAY_WIN"
+
+    def test_returns_empty_when_no_odds(self):
+        match = MatchFactory()
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([match], {}, Decimal("1000"))
+
+        assert picks == []
+
+    def test_returns_empty_when_no_matches(self):
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([], {}, Decimal("1000"))
+
+        assert picks == []
+
+    def test_minimum_stake_is_floor(self):
+        match = MatchFactory()
+        odds = _odds_map((match.pk, 1.30, 4.00, 7.00))
+        strategy = AllInAliceStrategy()
+
+        picks = strategy.pick_bets([match], odds, Decimal("0.50"))
+
+        assert picks[0].stake == Decimal("1.00")
 
 
 class TestClampStake:

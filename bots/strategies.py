@@ -284,6 +284,45 @@ class HomerBotStrategy(BotStrategy):
         return picks
 
 
+class AllInAliceStrategy(BotStrategy):
+    """Picks the single strongest favorite of the week and goes all in.
+
+    One bet per run — the match with the lowest odds (most likely outcome).
+    Stakes entire balance, capped at 10,000.
+    """
+
+    MAX_STAKE = Decimal("10000")
+
+    def pick_bets(self, available_matches, odds_map, balance):
+        best_match_id = None
+        best_selection = None
+        best_odds = None
+
+        for match in available_matches:
+            odds = odds_map.get(match.pk)
+            if not odds:
+                continue
+
+            outcomes = {
+                "HOME_WIN": odds["home_win"],
+                "DRAW": odds["draw"],
+                "AWAY_WIN": odds["away_win"],
+            }
+            favorite = min(outcomes, key=outcomes.get)
+            favorite_odds = outcomes[favorite]
+
+            if best_odds is None or favorite_odds < best_odds:
+                best_odds = favorite_odds
+                best_selection = favorite
+                best_match_id = match.pk
+
+        if best_match_id is None:
+            return []
+
+        stake = _clamp_stake(balance, ceiling=self.MAX_STAKE)
+        return [BetPick(match_id=best_match_id, selection=best_selection, stake=stake)]
+
+
 class ChaosAgentStrategy(BotStrategy):
     """Random match, random selection, random stake. Pure chaos.
 

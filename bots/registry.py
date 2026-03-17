@@ -1,6 +1,7 @@
 """Bot registry — maps bot accounts to their strategy classes."""
 
 from bots.strategies import (
+    AllInAliceStrategy,
     ChaosAgentStrategy,
     DrawSpecialistStrategy,
     FrontrunnerStrategy,
@@ -40,6 +41,11 @@ BOT_PROFILES = [
         "email": "chaoscharlie@bots.eplbets.local",
         "display_name": "Chaos Charlie",
         "strategy": ChaosAgentStrategy,
+    },
+    {
+        "email": "allinalice@bots.eplbets.local",
+        "display_name": "All In Alice",
+        "strategy": AllInAliceStrategy,
     },
 ]
 
