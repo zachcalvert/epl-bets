@@ -2,10 +2,12 @@
 and all instrumented balance modification points."""
 
 import json
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from betting.balance import log_transaction
 from betting.models import (
@@ -102,7 +104,7 @@ class TestBalanceHistoryAPI:
 
         assert response.status_code == 403
 
-    def test_returns_own_balance_history(self, client):
+    def test_returns_single_point_for_user_with_only_todays_transactions(self, client):
         user = UserFactory()
         ub = UserBalanceFactory(user=user, balance="1000.00")
         ub.refresh_from_db()
@@ -112,11 +114,29 @@ class TestBalanceHistoryAPI:
         response = client.get(reverse("balance_history_api", args=[user.pk]))
 
         assert response.status_code == 200
-        data = json.loads(response.content)
-        assert len(data["data"]) == 1
-        assert data["data"][0]["y"] == 1500.0
+        data = json.loads(response.content)["data"]
+        # Only today has a transaction; no carry-backward into days with no history
+        assert len(data) == 1
+        assert data[0]["y"] == 1500.0
 
-    def test_returns_transactions_in_chronological_order(self, client):
+    def test_carries_forward_balance_on_days_with_no_activity(self, client):
+        user = UserFactory()
+        ub = UserBalanceFactory(user=user, balance="1000.00")
+        ub.refresh_from_db()
+        log_transaction(ub, Decimal("200.00"), BalanceTransaction.Type.BET_WIN)
+        # Backdate the transaction so it falls outside today — 5 days ago
+        five_days_ago = timezone.now() - timedelta(days=5)
+        BalanceTransaction.objects.filter(user=user).update(created_at=five_days_ago)
+        client.force_login(user)
+
+        response = client.get(reverse("balance_history_api", args=[user.pk]))
+
+        data = json.loads(response.content)["data"]
+        # Should have 6 points (day -5 through today), each carrying forward 1200
+        assert len(data) == 6
+        assert all(point["y"] == 1200.0 for point in data)
+
+    def test_returns_chronological_dates(self, client):
         user = UserFactory()
         ub = UserBalanceFactory(user=user, balance="800.00")
         ub.refresh_from_db()
@@ -127,9 +147,9 @@ class TestBalanceHistoryAPI:
         response = client.get(reverse("balance_history_api", args=[user.pk]))
 
         data = json.loads(response.content)["data"]
-        assert len(data) == 2
-        assert data[0]["y"] == 600.0
-        assert data[1]["y"] == 1020.0
+        dates = [p["t"] for p in data]
+        assert dates == sorted(dates)
+        assert data[-1]["y"] == 1020.0
 
     def test_returns_empty_list_when_no_transactions(self, client):
         user = UserFactory()

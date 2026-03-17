@@ -151,7 +151,7 @@
                         borderColor: rgb,
                         backgroundColor: rgbA,
                         fill: true,
-                        tension: 0,
+                        tension: 0.1,
                         pointRadius: 0,
                         pointHitRadius: 8,
                         borderWidth: 2
@@ -164,9 +164,13 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: { tooltipFormat: 'MMM d, yyyy h:mm a' },
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'EEE MMM d',
+                                displayFormats: { day: 'MMM d' }
+                            },
                             grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#9ca3af', maxTicksLimit: 8 }
+                            ticks: { color: '#9ca3af', maxTicksLimit: 10 }
                         },
                         y: {
                             grid: { color: 'rgba(255,255,255,0.05)' },

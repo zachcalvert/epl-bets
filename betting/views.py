@@ -1,5 +1,6 @@
 import logging
 import random
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -514,21 +515,35 @@ class ProfileView(TemplateView):
 
 
 class BalanceHistoryAPI(LoginRequiredMixin, View):
-    """Return balance history as JSON for chart rendering."""
+    """Return daily balance history (last 10 days) as JSON for chart rendering."""
+
+    WINDOW_DAYS = 10
 
     def get(self, request, user_pk):
         if request.user.pk != user_pk:
             return JsonResponse({"error": "Forbidden"}, status=403)
 
-        transactions = (
+        all_txns = list(
             BalanceTransaction.objects.filter(user_id=user_pk)
             .order_by("created_at")
             .values_list("created_at", "balance_after")
         )
-        data = [
-            {"t": t[0].isoformat(), "y": float(t[1])}
-            for t in transactions
-        ]
+
+        if not all_txns:
+            return JsonResponse({"data": []})
+
+        today = timezone.now().date()
+        data = []
+        for i in range(self.WINDOW_DAYS - 1, -1, -1):
+            day = today - timedelta(days=i)
+            # Walk backwards through transactions to find the last balance on or before this day
+            day_balance = next(
+                (bal for ts, bal in reversed(all_txns) if ts.date() <= day),
+                None,
+            )
+            if day_balance is not None:
+                data.append({"t": day.isoformat(), "y": float(day_balance)})
+
         return JsonResponse({"data": data})
 
 
