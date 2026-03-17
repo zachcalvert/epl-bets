@@ -324,7 +324,7 @@ class TestBotServicesLogTransactions:
 
     def test_place_bot_parlay_creates_placement_transaction(self):
         bot = BotUserFactory()
-        ub = UserBalanceFactory(user=bot, balance="500.00")
+        UserBalanceFactory(user=bot, balance="500.00")
         m1, m2 = MatchFactory(status=Match.Status.SCHEDULED), MatchFactory(status=Match.Status.SCHEDULED)
         OddsFactory(match=m1, home_win="2.00")
         OddsFactory(match=m2, away_win="3.00")
