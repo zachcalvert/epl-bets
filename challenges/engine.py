@@ -12,7 +12,6 @@ from decimal import Decimal
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db import models, transaction
-from django.db.models import F
 from django.utils import timezone
 
 from challenges.models import Challenge, ChallengeTemplate, UserChallenge
@@ -240,7 +239,8 @@ def update_challenge_progress(user, event_type, context):
 
 def _apply_progress(uc, increment):
     """Atomically update progress and handle completion."""
-    from betting.models import UserBalance
+    from betting.balance import log_transaction
+    from betting.models import BalanceTransaction, UserBalance
 
     with transaction.atomic():
         uc_locked = (
@@ -257,9 +257,13 @@ def _apply_progress(uc, increment):
 
             # Credit reward
             reward = uc_locked.challenge.template.reward_amount
-            balance, _ = UserBalance.objects.get_or_create(user=uc_locked.user)
-            UserBalance.objects.filter(pk=balance.pk).update(
-                balance=F("balance") + reward
+            balance, _ = UserBalance.objects.select_for_update().get_or_create(
+                user=uc_locked.user
+            )
+            log_transaction(
+                balance, reward,
+                BalanceTransaction.Type.CHALLENGE_REWARD,
+                f"Challenge: {uc_locked.challenge.template.name}",
             )
             uc_locked.reward_credited = True
 

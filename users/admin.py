@@ -4,7 +4,8 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import ngettext
 
-from betting.models import BetSlip, UserBalance
+from betting.balance import log_transaction
+from betting.models import BalanceTransaction, BetSlip, UserBalance
 from rewards.models import Reward
 
 from .models import User
@@ -56,10 +57,16 @@ class UserAdmin(BaseUserAdmin):
                 )
 
                 # Zero out balance
-                UserBalance.objects.filter(user=user).update(
-                    balance=0,
-                    updated_at=timezone.now(),
-                )
+                try:
+                    balance = UserBalance.objects.select_for_update().get(user=user)
+                    if balance.balance != 0:
+                        log_transaction(
+                            balance, -balance.balance,
+                            BalanceTransaction.Type.ADMIN_RESET,
+                            "Admin simulate bankruptcy",
+                        )
+                except UserBalance.DoesNotExist:
+                    pass
 
             count += 1
 

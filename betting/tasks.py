@@ -4,7 +4,8 @@ from decimal import Decimal
 from celery import shared_task
 from django.db import transaction
 
-from betting.models import BetSlip, Parlay, ParlayLeg, UserBalance
+from betting.balance import log_transaction
+from betting.models import BalanceTransaction, BetSlip, Parlay, ParlayLeg, UserBalance
 from betting.services import sync_odds
 from betting.stats import record_bet_result
 from matches.models import Match
@@ -134,8 +135,11 @@ def _evaluate_parlay(parlay_id):
                 parlay.save(update_fields=["status", "payout"])
 
                 balance = UserBalance.objects.select_for_update().get(user=parlay.user)
-                balance.balance += parlay.stake
-                balance.save(update_fields=["balance"])
+                log_transaction(
+                    balance, parlay.stake,
+                    BalanceTransaction.Type.PARLAY_VOID,
+                    f"Parlay {parlay.id_hash} voided",
+                )
                 logger.info("_evaluate_parlay: parlay %d VOID — refunded %s", parlay_id, parlay.stake)
                 return
 
@@ -147,8 +151,11 @@ def _evaluate_parlay(parlay_id):
             parlay.save(update_fields=["status", "payout", "combined_odds"])
 
             balance = UserBalance.objects.select_for_update().get(user=parlay.user)
-            balance.balance += payout
-            balance.save(update_fields=["balance"])
+            log_transaction(
+                balance, payout,
+                BalanceTransaction.Type.PARLAY_WIN,
+                f"Parlay {parlay.id_hash} won",
+            )
             logger.info(
                 "_evaluate_parlay: parlay %d WON — payout %s (combined odds %s)",
                 parlay_id,
@@ -215,8 +222,11 @@ def settle_match_bets(self, match_id):
                 bet.save(update_fields=["status", "payout"])
 
                 balance = UserBalance.objects.select_for_update().get(user=bet.user)
-                balance.balance += bet.stake
-                balance.save(update_fields=["balance"])
+                log_transaction(
+                    balance, bet.stake,
+                    BalanceTransaction.Type.BET_VOID,
+                    f"Bet {bet.id_hash} voided",
+                )
 
         logger.info(
             "settle_match_bets: voided %d bets for %s match %d",
@@ -272,8 +282,11 @@ def settle_match_bets(self, match_id):
                 bet.save(update_fields=["status", "payout"])
 
                 balance = UserBalance.objects.select_for_update().get(user=bet.user)
-                balance.balance += payout
-                balance.save(update_fields=["balance"])
+                log_transaction(
+                    balance, payout,
+                    BalanceTransaction.Type.BET_WIN,
+                    f"Bet {bet.id_hash} won",
+                )
                 won_count += 1
             else:
                 payout = Decimal("0")

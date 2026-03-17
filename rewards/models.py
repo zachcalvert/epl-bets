@@ -8,7 +8,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
-from betting.models import UserBalance
+from betting.balance import log_transaction
+from betting.models import BalanceTransaction, UserBalance
 from core.models import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -52,11 +53,13 @@ class Reward(BaseModel):
                 dist = RewardDistribution.objects.create(reward=self, user=user)
                 new_distributions.append(dist)
 
-                balance, _ = UserBalance.objects.get_or_create(
+                balance, _ = UserBalance.objects.select_for_update().get_or_create(
                     user=user, defaults={"balance": Decimal("1000.00")}
                 )
-                UserBalance.objects.filter(pk=balance.pk).update(
-                    balance=models.F("balance") + self.amount
+                log_transaction(
+                    balance, self.amount,
+                    BalanceTransaction.Type.REWARD,
+                    f"Reward: {self.name}",
                 )
 
         if new_distributions:

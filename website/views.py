@@ -9,7 +9,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from betting.forms import CurrencyForm, DisplayNameForm
-from betting.models import Badge, UserBadge, UserBalance, UserStats
+from betting.models import Badge, BalanceTransaction, UserBadge, UserBalance, UserStats
 from betting.services import get_public_identity, get_user_rank, mask_email
 from website.forms import LoginForm, SignupForm
 from website.models import SiteSettings
@@ -144,7 +144,14 @@ class SignupView(View):
                 email=form.cleaned_data["email"],
                 password=form.cleaned_data["password"],
             )
-            UserBalance.objects.create(user=user)
+            balance = UserBalance.objects.create(user=user)
+            BalanceTransaction.objects.create(
+                user=user,
+                amount=balance.balance,
+                balance_after=balance.balance,
+                transaction_type=BalanceTransaction.Type.SIGNUP,
+                description="Initial signup bonus",
+            )
         login(request, user)
         return redirect("matches:dashboard")
 
