@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from betting.balance import log_transaction
 from betting.context_processors import parlay_slip as _parlay_slip_ctx
 from betting.forms import PlaceBetForm, PlaceParlayForm
 from betting.models import (
@@ -21,6 +22,7 @@ from betting.models import (
     PARLAY_MIN_LEGS,
     Badge,
     Bailout,
+    BalanceTransaction,
     Bankruptcy,
     BetSlip,
     Odds,
@@ -304,8 +306,15 @@ class PlaceBetView(LoginRequiredMixin, View):
                         },
                     )
 
-                balance.balance -= stake
-                balance.save(update_fields=["balance"])
+                match_label = (
+                    f"{match.home_team.short_name or match.home_team.name}"
+                    f" vs {match.away_team.short_name or match.away_team.name}"
+                )
+                log_transaction(
+                    balance, -stake,
+                    BalanceTransaction.Type.BET_PLACEMENT,
+                    f"Bet on {match_label}",
+                )
 
                 bet = BetSlip.objects.create(
                     user=request.user,
@@ -317,6 +326,20 @@ class PlaceBetView(LoginRequiredMixin, View):
         except UserBalance.DoesNotExist:
             # Auto-create balance if missing (shouldn't happen with signup flow)
             balance = UserBalance.objects.create(user=request.user, balance=Decimal("1000.00") - stake)
+            BalanceTransaction.objects.create(
+                user=request.user,
+                amount=Decimal("1000.00"),
+                balance_after=Decimal("1000.00"),
+                transaction_type=BalanceTransaction.Type.SIGNUP,
+                description="Initial signup bonus",
+            )
+            BalanceTransaction.objects.create(
+                user=request.user,
+                amount=-stake,
+                balance_after=balance.balance,
+                transaction_type=BalanceTransaction.Type.BET_PLACEMENT,
+                description=f"Bet on {match.home_team.short_name or match.home_team.name} vs {match.away_team.short_name or match.away_team.name}",
+            )
             bet = BetSlip.objects.create(
                 user=request.user,
                 match=match,
@@ -481,7 +504,32 @@ class ProfileView(TemplateView):
             all_badges.append(badge)
         ctx["all_badges"] = all_badges
 
+        # Balance chart: only show on own profile
+        ctx["is_own_profile"] = (
+            self.request.user.is_authenticated
+            and self.request.user.pk == profile_user.pk
+        )
+
         return ctx
+
+
+class BalanceHistoryAPI(LoginRequiredMixin, View):
+    """Return balance history as JSON for chart rendering."""
+
+    def get(self, request, user_pk):
+        if request.user.pk != user_pk:
+            return JsonResponse({"error": "Forbidden"}, status=403)
+
+        transactions = (
+            BalanceTransaction.objects.filter(user_id=user_pk)
+            .order_by("created_at")
+            .values_list("created_at", "balance_after")
+        )
+        data = [
+            {"t": t[0].isoformat(), "y": float(t[1])}
+            for t in transactions
+        ]
+        return JsonResponse({"data": data})
 
 
 class QuickBetFormView(LoginRequiredMixin, View):
@@ -556,8 +604,11 @@ class BailoutView(LoginRequiredMixin, View):
                 amount=amount,
             )
 
-            balance.balance += amount
-            balance.save(update_fields=["balance"])
+            log_transaction(
+                balance, Decimal(amount),
+                BalanceTransaction.Type.BAILOUT,
+                "Bankruptcy bailout",
+            )
 
         return JsonResponse({
             "success": True,
@@ -786,8 +837,11 @@ class PlaceParlayView(LoginRequiredMixin, View):
                 if balance.balance < stake:
                     return _error(f"Insufficient balance. You have {format_currency(balance.balance, request.user.currency)}.")
 
-                balance.balance -= stake
-                balance.save(update_fields=["balance"])
+                log_transaction(
+                    balance, -stake,
+                    BalanceTransaction.Type.PARLAY_PLACEMENT,
+                    f"Parlay with {len(leg_data)} legs",
+                )
 
                 parlay = Parlay.objects.create(
                     user=request.user,

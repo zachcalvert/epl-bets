@@ -224,6 +224,50 @@ class UserBalance(BaseModel):
         return f"{self.user}: {self.balance}"
 
 
+class BalanceTransaction(BaseModel):
+    class Type(models.TextChoices):
+        SIGNUP = "SIGNUP", _("Signup bonus")
+        BET_PLACEMENT = "BET_PLACEMENT", _("Bet placed")
+        BET_WIN = "BET_WIN", _("Bet won")
+        BET_VOID = "BET_VOID", _("Bet voided")
+        PARLAY_PLACEMENT = "PARLAY_PLACEMENT", _("Parlay placed")
+        PARLAY_WIN = "PARLAY_WIN", _("Parlay won")
+        PARLAY_VOID = "PARLAY_VOID", _("Parlay voided")
+        CHALLENGE_REWARD = "CHALLENGE_REWARD", _("Challenge reward")
+        REWARD = "REWARD", _("Reward")
+        BAILOUT = "BAILOUT", _("Bailout")
+        ADMIN_RESET = "ADMIN_RESET", _("Admin reset")
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="balance_transactions",
+        verbose_name=_("user"),
+    )
+    amount = models.DecimalField(
+        _("amount"), max_digits=10, decimal_places=2
+    )
+    balance_after = models.DecimalField(
+        _("balance after"), max_digits=10, decimal_places=2
+    )
+    transaction_type = models.CharField(
+        _("type"), max_length=20, choices=Type.choices
+    )
+    description = models.CharField(
+        _("description"), max_length=200, blank=True, default=""
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        sign = "+" if self.amount >= 0 else ""
+        return f"{self.user}: {sign}{self.amount} ({self.get_transaction_type_display()})"
+
+
 class UserStats(BaseModel):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

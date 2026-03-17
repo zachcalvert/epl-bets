@@ -10,8 +10,10 @@ from decimal import Decimal
 from django.db import IntegrityError, transaction
 from django.db.models import Min
 
+from betting.balance import log_transaction
 from betting.models import (
     Bailout,
+    BalanceTransaction,
     Bankruptcy,
     BetSlip,
     Odds,
@@ -114,8 +116,15 @@ def place_bot_bet(user, match_id, selection, stake):
             if balance.balance < stake:
                 return None
 
-            balance.balance -= stake
-            balance.save(update_fields=["balance"])
+            match_label = (
+                f"{match.home_team.short_name or match.home_team.name}"
+                f" vs {match.away_team.short_name or match.away_team.name}"
+            )
+            log_transaction(
+                balance, -stake,
+                BalanceTransaction.Type.BET_PLACEMENT,
+                f"Bet on {match_label}",
+            )
 
             bet = BetSlip.objects.create(
                 user=user,
@@ -188,8 +197,11 @@ def place_bot_parlay(user, legs_data, stake):
             if balance.balance < stake:
                 return None
 
-            balance.balance -= stake
-            balance.save(update_fields=["balance"])
+            log_transaction(
+                balance, -stake,
+                BalanceTransaction.Type.PARLAY_PLACEMENT,
+                f"Parlay with {len(leg_info)} legs",
+            )
 
             parlay = Parlay.objects.create(
                 user=user,
@@ -253,7 +265,10 @@ def maybe_topup_bot(bot_user, min_balance=Decimal("50.00")):
             amount=amount,
         )
 
-        balance.balance += amount
-        balance.save(update_fields=["balance"])
+        log_transaction(
+            balance, amount,
+            BalanceTransaction.Type.BAILOUT,
+            "Bot bailout",
+        )
 
         logger.info("Bot %s topped up with %s credits", bot_user.display_name, amount)
