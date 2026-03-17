@@ -10,7 +10,7 @@ def create_allin_alice_bot(apps, schema_editor):
     UserStats = apps.get_model("betting", "UserStats")
     BalanceTransaction = apps.get_model("betting", "BalanceTransaction")
 
-    user, created = User.objects.get_or_create(
+    user, created = User.objects.update_or_create(
         email="allinalice@bots.eplbets.local",
         defaults={
             "display_name": "All In Alice",
@@ -19,27 +19,25 @@ def create_allin_alice_bot(apps, schema_editor):
         },
     )
 
-    if created:
+    if user.has_usable_password():
         user.set_unusable_password()
         user.save(update_fields=["password"])
 
     UserBalance.objects.get_or_create(user=user)
     UserStats.objects.get_or_create(user=user)
 
-    if not BalanceTransaction.objects.filter(user=user, transaction_type="SIGNUP").exists():
-        BalanceTransaction.objects.create(
+    # Only create the signup transaction when the user has no transactions at all,
+    # matching the guard used in 0008_backfill_signup_transactions.
+    if not BalanceTransaction.objects.filter(user=user).exists():
+        tx = BalanceTransaction.objects.create(
             user=user,
             amount=Decimal("1000.00"),
             balance_after=Decimal("1000.00"),
             transaction_type="SIGNUP",
             description="Initial signup bonus",
         )
-
-
-def reverse_allin_alice_bot(apps, schema_editor):
-    """Remove the All In Alice bot user created by this migration."""
-    User = apps.get_model("users", "User")
-    User.objects.filter(email="allinalice@bots.eplbets.local").delete()
+        # Backdate created_at to date_joined so balance history is ordered correctly.
+        BalanceTransaction.objects.filter(pk=tx.pk).update(created_at=user.date_joined)
 
 
 class Migration(migrations.Migration):
@@ -47,11 +45,12 @@ class Migration(migrations.Migration):
     dependencies = [
         ("bots", "0001_initial"),
         ("betting", "0009_reconstruct_balance_history"),
+        ("users", "0004_add_is_bot_to_user"),
     ]
 
     operations = [
         migrations.RunPython(
             create_allin_alice_bot,
-            reverse_code=reverse_allin_alice_bot,
+            reverse_code=migrations.RunPython.noop,
         ),
     ]
