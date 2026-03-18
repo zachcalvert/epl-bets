@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from betting.models import UserBalance
 from betting.tests.factories import BadgeFactory, UserBadgeFactory, UserBalanceFactory
+from matches.tests.factories import TeamFactory
 from users.avatars import AVATAR_COLORS, AVATAR_ICONS, FRAME_REGISTRY
 from users.tests.factories import UserFactory
 from website.models import SiteSettings
@@ -604,8 +605,8 @@ def test_avatar_update_saves_icon_and_color(client):
 @pytest.mark.django_db
 def test_avatar_update_saves_crest_url(client):
     user = UserFactory()
+    team = TeamFactory()
     client.force_login(user)
-    crest = "https://crests.football-data.org/57.png"
 
     client.post(
         reverse("website:avatar_update"),
@@ -613,13 +614,13 @@ def test_avatar_update_saves_crest_url(client):
             "avatar_icon": AVATAR_ICONS[0],
             "avatar_bg": AVATAR_COLORS[0],
             "avatar_frame": "",
-            "avatar_crest_url": crest,
+            "avatar_crest_url": team.crest_url,
         },
     )
 
     user.refresh_from_db()
 
-    assert user.avatar_crest_url == crest
+    assert user.avatar_crest_url == team.crest_url
 
 
 @pytest.mark.django_db

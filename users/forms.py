@@ -1,7 +1,7 @@
 from django import forms
+from matches.models import Team
 
 from betting.models import UserBadge
-from teams.models import Team
 
 from .avatars import AVATAR_COLORS, AVATAR_ICONS, get_frame_by_slug
 

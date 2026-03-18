@@ -1,6 +1,7 @@
 import pytest
 
 from betting.tests.factories import BadgeFactory, UserBadgeFactory
+from matches.tests.factories import TeamFactory
 from users.avatars import (
     AVATAR_COLORS,
     AVATAR_ICONS,
@@ -125,16 +126,32 @@ def test_avatar_form_valid_with_icon_and_color():
 
 def test_avatar_form_valid_with_crest_url():
     user = UserFactory()
+    team = TeamFactory()
     form = AvatarForm(
         data={
             "avatar_icon": AVATAR_ICONS[0],
             "avatar_bg": AVATAR_COLORS[0],
             "avatar_frame": "",
-            "avatar_crest_url": "https://crests.football-data.org/57.png",
+            "avatar_crest_url": team.crest_url,
         },
         user=user,
     )
     assert form.is_valid(), form.errors
+
+
+def test_avatar_form_rejects_unrecognised_crest_url():
+    user = UserFactory()
+    form = AvatarForm(
+        data={
+            "avatar_icon": AVATAR_ICONS[0],
+            "avatar_bg": AVATAR_COLORS[0],
+            "avatar_frame": "",
+            "avatar_crest_url": "https://evil.example.com/fake.png",
+        },
+        user=user,
+    )
+    assert form.is_valid() is False
+    assert "avatar_crest_url" in form.errors
 
 
 def test_avatar_form_rejects_invalid_icon():
