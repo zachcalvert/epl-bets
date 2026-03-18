@@ -9,10 +9,14 @@ class AvatarForm(forms.Form):
     avatar_icon = forms.ChoiceField(choices=[(i, i) for i in AVATAR_ICONS])
     avatar_bg = forms.ChoiceField(choices=[(c, c) for c in AVATAR_COLORS])
     avatar_frame = forms.CharField(required=False)
+    avatar_crest_url = forms.URLField(required=False)
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+
+    def clean_avatar_crest_url(self):
+        return self.cleaned_data.get("avatar_crest_url", "").strip()
 
     def clean_avatar_frame(self):
         slug = self.cleaned_data.get("avatar_frame", "").strip()

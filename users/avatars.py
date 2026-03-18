@@ -36,6 +36,7 @@ AVATAR_ICONS = [
 
 AVATAR_COLORS = [
     "#374151",  # Gray (default)
+    "#f1f5f9",  # Light (light mode bg)
     "#1e40af",  # Blue
     "#059669",  # Green
     "#7c3aed",  # Purple

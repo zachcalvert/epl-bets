@@ -11,6 +11,7 @@ from django.views.generic import TemplateView
 from betting.forms import CurrencyForm, DisplayNameForm
 from betting.models import Badge, BalanceTransaction, UserBadge, UserBalance, UserStats
 from betting.services import get_public_identity, get_user_rank, mask_email
+from matches.models import Team
 from users.avatars import AVATAR_COLORS, AVATAR_ICONS, get_unlocked_frames
 from users.forms import AvatarForm
 from website.forms import LoginForm, SignupForm
@@ -250,6 +251,10 @@ class AccountView(LoginRequiredMixin, View):
 
         # Avatar picker data
         avatar_frames = get_unlocked_frames(user)
+        avatar_teams = list(
+            Team.objects.exclude(crest_url="").order_by("short_name")
+            .values("short_name", "crest_url")
+        )
 
         return {
             "display_name_form": form or DisplayNameForm(instance=user),
@@ -265,6 +270,7 @@ class AccountView(LoginRequiredMixin, View):
             "avatar_icons": AVATAR_ICONS,
             "avatar_colors": AVATAR_COLORS,
             "avatar_frames": avatar_frames,
+            "avatar_teams": avatar_teams,
         }
 
     def get(self, request):
@@ -318,39 +324,46 @@ class CurrencyUpdateView(LoginRequiredMixin, View):
 
 
 class AvatarUpdateView(LoginRequiredMixin, View):
+    def _picker_context(self, user, extra=None):
+        ctx = {
+            "avatar_icons": AVATAR_ICONS,
+            "avatar_colors": AVATAR_COLORS,
+            "avatar_frames": get_unlocked_frames(user),
+            "avatar_teams": list(
+                Team.objects.exclude(crest_url="").order_by("short_name")
+                .values("short_name", "crest_url")
+            ),
+        }
+        if extra:
+            ctx.update(extra)
+        return ctx
+
     def post(self, request):
         form = AvatarForm(request.POST, user=request.user)
         if form.is_valid():
+            crest_url = form.cleaned_data["avatar_crest_url"]
+            request.user.avatar_crest_url = crest_url
             request.user.avatar_icon = form.cleaned_data["avatar_icon"]
             request.user.avatar_bg = form.cleaned_data["avatar_bg"]
             request.user.avatar_frame = form.cleaned_data["avatar_frame"]
             request.user.save(
-                update_fields=["avatar_icon", "avatar_bg", "avatar_frame"]
+                update_fields=[
+                    "avatar_icon", "avatar_bg", "avatar_frame", "avatar_crest_url"
+                ]
             )
             if request.htmx:
-                avatar_frames = get_unlocked_frames(request.user)
                 return render(
                     request,
                     "website/partials/avatar_settings_card.html",
-                    {
-                        "avatar_icons": AVATAR_ICONS,
-                        "avatar_colors": AVATAR_COLORS,
-                        "avatar_frames": avatar_frames,
-                        "avatar_save_success": True,
-                    },
+                    self._picker_context(request.user, {"avatar_save_success": True}),
                 )
             return redirect("website:account")
 
         if request.htmx:
-            avatar_frames = get_unlocked_frames(request.user)
             return render(
                 request,
                 "website/partials/avatar_settings_card.html",
-                {
-                    "avatar_icons": AVATAR_ICONS,
-                    "avatar_colors": AVATAR_COLORS,
-                    "avatar_frames": avatar_frames,
-                },
+                self._picker_context(request.user),
                 status=422,
             )
         return redirect("website:account")

@@ -979,6 +979,18 @@ button.htmx-request .htmx-indicator {
     line-height: 1;
 }
 
+.avatar-crest-img {
+    width: 72%;
+    height: 72%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Dark icon for light avatar backgrounds */
+.avatar[style*="--avatar-bg: #f1f5f9"] .avatar-icon {
+    color: rgba(30, 30, 46, 0.8);
+}
+
 /* Size variants */
 .avatar--sm  { width: 28px; height: 28px; }
 .avatar--sm .avatar-icon { font-size: 14px; }
