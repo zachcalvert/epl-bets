@@ -125,6 +125,16 @@
     </div>
 </div>
 
+<!-- Discussion — lazy-loaded -->
+<div hx-get="{% url 'discussions:comment_list' match.pk %}"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+    <div class="mt-4 mb-6 animate-pulse">
+        <div class="h-6 w-40 bg-gray-700 rounded mb-3"></div>
+        <div class="h-20 bg-gray-700/40 rounded"></div>
+    </div>
+</div>
+
 <details class="mt-6 rounded-lg border border-gray-700 bg-surface shadow-lg">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
         <div class="max-w-3xl">
