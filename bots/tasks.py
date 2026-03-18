@@ -1,11 +1,13 @@
-"""Celery tasks for running bot betting strategies."""
+"""Celery tasks for running bot betting strategies and generating bot comments."""
 
 import logging
 import random
 
 from celery import shared_task
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
+from bots.models import BotComment
 from bots.registry import get_strategy_for_bot
 from bots.services import (
     get_available_matches_for_bot,
@@ -18,6 +20,11 @@ from bots.services import (
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Bot betting tasks (existing)
+# ---------------------------------------------------------------------------
 
 
 @shared_task
@@ -84,6 +91,12 @@ def execute_bot_strategy(self, bot_user_id):
         result = place_bot_bet(user, pick.match_id, pick.selection, pick.stake)
         if result:
             bets_placed += 1
+            # Post-bet comment (~50% chance, staggered 30s-5min)
+            if random.random() < 0.5:
+                generate_bot_comment_task.apply_async(
+                    args=[user.pk, pick.match_id, BotComment.TriggerType.POST_BET, result.pk],
+                    countdown=random.randint(30, 300),
+                )
 
     # Place parlays
     parlays_placed = 0
@@ -96,3 +109,117 @@ def execute_bot_strategy(self, bot_user_id):
     summary = f"{user.display_name}: {bets_placed} bets, {parlays_placed} parlays"
     logger.info("Bot run complete: %s", summary)
     return summary
+
+
+# ---------------------------------------------------------------------------
+# Bot comment tasks
+# ---------------------------------------------------------------------------
+
+
+@shared_task
+def generate_bot_comment_task(bot_user_id, match_id, trigger_type, bet_slip_id=None):
+    """Generate and post a single bot comment. Dedup-safe via BotComment constraint."""
+    from betting.models import BetSlip
+    from bots.comment_service import generate_bot_comment
+    from matches.models import Match
+
+    try:
+        bot_user = User.objects.get(pk=bot_user_id, is_bot=True, is_active=True)
+    except User.DoesNotExist:
+        return "bot not found"
+
+    try:
+        match = Match.objects.select_related("home_team", "away_team").get(pk=match_id)
+    except Match.DoesNotExist:
+        return "match not found"
+
+    bet_slip = None
+    if bet_slip_id:
+        try:
+            bet_slip = BetSlip.objects.get(pk=bet_slip_id)
+        except BetSlip.DoesNotExist:
+            pass
+
+    comment = generate_bot_comment(bot_user, match, trigger_type, bet_slip)
+    if comment:
+        return f"posted: {comment.body[:60]}"
+    return "skipped (dedup or filter)"
+
+
+@shared_task
+def generate_prematch_comments():
+    """Find upcoming matches and dispatch pre-match hype comments for 1-2 bots each."""
+    from bots.comment_service import select_bots_for_match
+    from matches.models import Match
+
+    now = timezone.now()
+    upcoming = Match.objects.filter(
+        status__in=[Match.Status.SCHEDULED, Match.Status.TIMED],
+        kickoff__gte=now + timezone.timedelta(hours=1),
+        kickoff__lte=now + timezone.timedelta(hours=24),
+    ).select_related("home_team", "away_team")
+
+    dispatched = 0
+    for match in upcoming:
+        bots = select_bots_for_match(match, BotComment.TriggerType.PRE_MATCH)
+        for bot in bots:
+            delay = random.randint(60, 600)  # 1-10 min stagger
+            generate_bot_comment_task.apply_async(
+                args=[bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH],
+                countdown=delay,
+            )
+            dispatched += 1
+
+    logger.info("Dispatched %d pre-match comment tasks", dispatched)
+    return f"dispatched {dispatched} pre-match comments"
+
+
+@shared_task
+def generate_postmatch_comments():
+    """Find recently finished matches and dispatch post-match reaction comments."""
+    from betting.models import BetSlip
+    from bots.comment_service import select_bots_for_match
+    from matches.models import Match
+
+    now = timezone.now()
+    recently_finished = Match.objects.filter(
+        status=Match.Status.FINISHED,
+        updated_at__gte=now - timezone.timedelta(hours=2),
+    ).select_related("home_team", "away_team")
+
+    dispatched = 0
+    for match in recently_finished:
+        # Bots that placed bets get to react to the result
+        bot_bets = BetSlip.objects.filter(
+            user__is_bot=True,
+            user__is_active=True,
+            match=match,
+        ).select_related("user")
+
+        for bet in bot_bets:
+            if BotComment.objects.filter(
+                user=bet.user, match=match,
+                trigger_type=BotComment.TriggerType.POST_MATCH,
+            ).exists():
+                continue
+            delay = random.randint(60, 600)
+            generate_bot_comment_task.apply_async(
+                args=[bet.user.pk, match.pk, BotComment.TriggerType.POST_MATCH, bet.pk],
+                countdown=delay,
+            )
+            dispatched += 1
+
+        # Also pick 1 non-betting bot for color commentary
+        color_bots = select_bots_for_match(
+            match, BotComment.TriggerType.POST_MATCH, max_bots=1,
+        )
+        for bot in color_bots:
+            delay = random.randint(120, 900)
+            generate_bot_comment_task.apply_async(
+                args=[bot.pk, match.pk, BotComment.TriggerType.POST_MATCH],
+                countdown=delay,
+            )
+            dispatched += 1
+
+    logger.info("Dispatched %d post-match comment tasks", dispatched)
+    return f"dispatched {dispatched} post-match comments"

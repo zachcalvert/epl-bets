@@ -228,10 +228,19 @@ CELERY_BEAT_SCHEDULE = {
         "task": "bots.tasks.run_bot_strategies",
         "schedule": timedelta(minutes=35),
     },
+    "generate-prematch-comments-2h": {
+        "task": "bots.tasks.generate_prematch_comments",
+        "schedule": timedelta(hours=2),
+    },
+    "generate-postmatch-comments-30m": {
+        "task": "bots.tasks.generate_postmatch_comments",
+        "schedule": timedelta(minutes=30),
+    },
 }
 
 # External APIs
 FOOTBALL_DATA_API_KEY = env("FOOTBALL_DATA_API_KEY", default="")
 ODDS_API_KEY = env("ODDS_API_KEY", default="")
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 API_TIMEOUT = 30
 CURRENT_SEASON = "2025"
