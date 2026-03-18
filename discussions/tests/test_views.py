@@ -34,7 +34,7 @@ def test_comment_list_shows_empty_state_when_no_comments(client):
 
 def test_comment_list_shows_comments_for_match(client):
     match = MatchFactory()
-    comment = CommentFactory(match=match, body="Great match ahead")
+    CommentFactory(match=match, body="Great match ahead")
     CommentFactory(body="Comment on different match")
 
     response = client.get(reverse("discussions:comment_list", args=[match.pk]))
