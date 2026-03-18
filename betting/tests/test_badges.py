@@ -22,6 +22,7 @@ from betting.badges import (
     _underdog_hunter,
     check_and_award_badges,
 )
+from betting.models import BetSlip
 from betting.tests.factories import (
     BadgeFactory,
     BetSlipFactory,
@@ -29,6 +30,7 @@ from betting.tests.factories import (
     UserBadgeFactory,
     UserStatsFactory,
 )
+from matches.tests.factories import MatchFactory
 from users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -44,6 +46,7 @@ def make_ctx(**overrides):
         "leg_count": 0,
         "stake": Decimal("10.00"),
         "max_stake": Decimal("100.00"),
+        "matchday": None,
     }
     defaults.update(overrides)
     return BetContext(**defaults)
@@ -97,17 +100,47 @@ class TestCalledTheUpset:
 
 
 class TestPerfectMatchweek:
-    def test_true_when_won_and_no_losses(self):
-        ctx = make_ctx(won=True)
-        assert _perfect_matchweek(make_stats(total_losses=0), ctx) is True
+    def test_true_when_all_matchday_bets_won(self):
+        user = UserFactory()
+        match = MatchFactory(matchday=1)
+        BetSlipFactory(user=user, match=match, status=BetSlip.Status.WON)
+        stats = UserStatsFactory(user=user)
+        ctx = make_ctx(won=True, matchday=1)
+        assert _perfect_matchweek(stats, ctx) is True
 
-    def test_false_when_has_a_loss(self):
-        ctx = make_ctx(won=True)
-        assert _perfect_matchweek(make_stats(total_losses=1), ctx) is False
+    def test_false_when_any_matchday_bet_lost(self):
+        user = UserFactory()
+        match1 = MatchFactory(matchday=1)
+        match2 = MatchFactory(matchday=1)
+        BetSlipFactory(user=user, match=match1, status=BetSlip.Status.WON)
+        BetSlipFactory(user=user, match=match2, status=BetSlip.Status.LOST)
+        stats = UserStatsFactory(user=user)
+        ctx = make_ctx(won=True, matchday=1)
+        assert _perfect_matchweek(stats, ctx) is False
 
-    def test_false_when_lost(self):
-        ctx = make_ctx(won=False)
-        assert _perfect_matchweek(make_stats(total_losses=1), ctx) is False
+    def test_false_when_current_bet_lost(self):
+        user = UserFactory()
+        match = MatchFactory(matchday=1)
+        BetSlipFactory(user=user, match=match, status=BetSlip.Status.LOST)
+        stats = UserStatsFactory(user=user)
+        ctx = make_ctx(won=False, matchday=1)
+        assert _perfect_matchweek(stats, ctx) is False
+
+    def test_false_when_no_matchday(self):
+        stats = UserStatsFactory()
+        ctx = make_ctx(won=True, matchday=None)
+        assert _perfect_matchweek(stats, ctx) is False
+
+    def test_only_checks_current_matchday(self):
+        """A loss in a different matchday does not block the badge."""
+        user = UserFactory()
+        match_mw1 = MatchFactory(matchday=1)
+        match_mw2 = MatchFactory(matchday=2)
+        BetSlipFactory(user=user, match=match_mw1, status=BetSlip.Status.LOST)
+        BetSlipFactory(user=user, match=match_mw2, status=BetSlip.Status.WON)
+        stats = UserStatsFactory(user=user)
+        ctx = make_ctx(won=True, matchday=2)
+        assert _perfect_matchweek(stats, ctx) is True
 
 
 class TestParlayKing:
