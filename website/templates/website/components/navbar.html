@@ -51,7 +51,7 @@
                         aria-expanded="false"
                         aria-haspopup="true"
                     >
-                        <i class="ph-duotone ph-user-circle text-2xl"></i>
+                        {% include "website/components/avatar.html" with avatar_user=request.user avatar_size="sm" %}
                         <span id="user-balance" class="font-mono text-accent font-semibold" title="Demo balance">
                             {{ user.balance.balance|currency:user }}
                         </span>

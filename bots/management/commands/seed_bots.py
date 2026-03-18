@@ -23,6 +23,8 @@ class Command(BaseCommand):
                     "display_name": profile["display_name"],
                     "is_bot": True,
                     "is_active": True,
+                    "avatar_icon": profile.get("avatar_icon", "robot"),
+                    "avatar_bg": profile.get("avatar_bg", "#374151"),
                 },
             )
 

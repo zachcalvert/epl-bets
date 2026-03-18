@@ -1,0 +1,162 @@
+<section id="avatar-settings-card" class="rounded-lg border border-gray-700 bg-surface p-5">
+    <p class="text-xs font-semibold uppercase tracking-wider text-accent mb-1">Avatar</p>
+    <h2 class="text-xl font-bold text-white">Customize your look</h2>
+    <p class="mt-2 text-sm text-muted">Pick an icon, color, and frame. Frames unlock when you earn badges.</p>
+
+    {# Live preview #}
+    <div class="mt-4 flex items-center gap-4">
+        <div id="avatar-preview">
+            {% include "website/components/avatar.html" with avatar_user=request.user avatar_size="lg" %}
+        </div>
+        <div>
+            <p class="text-sm font-semibold text-white">Preview</p>
+            <p class="text-xs text-muted">Changes update live</p>
+        </div>
+    </div>
+
+    <form
+        method="post"
+        hx-post="{% url 'website:avatar_update' %}"
+        hx-target="#avatar-settings-card"
+        hx-swap="outerHTML"
+        class="mt-5 space-y-5"
+    >
+        {% csrf_token %}
+        <input type="hidden" name="avatar_icon" id="avatar-icon-input" value="{{ request.user.avatar_icon }}">
+        <input type="hidden" name="avatar_bg" id="avatar-bg-input" value="{{ request.user.avatar_bg }}">
+        <input type="hidden" name="avatar_frame" id="avatar-frame-input" value="{{ request.user.avatar_frame }}">
+
+        {# Icon picker #}
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Icon</label>
+            <div class="avatar-picker-grid">
+                {% for icon in avatar_icons %}
+                <button
+                    type="button"
+                    class="avatar-picker-btn{% if icon == request.user.avatar_icon %} selected{% endif %}"
+                    data-pick="icon"
+                    data-value="{{ icon }}"
+                    title="{{ icon }}"
+                >
+                    <i class="ph-duotone ph-{{ icon }}" style="font-size: 20px;"></i>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Color picker #}
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Background color</label>
+            <div class="flex flex-wrap gap-2">
+                {% for color in avatar_colors %}
+                <button
+                    type="button"
+                    class="avatar-color-btn{% if color == request.user.avatar_bg %} selected{% endif %}"
+                    data-pick="color"
+                    data-value="{{ color }}"
+                    style="background-color: {{ color }};"
+                    title="{{ color }}"
+                ></button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Frame picker #}
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Frame</label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {# No-frame option #}
+                <button
+                    type="button"
+                    class="avatar-frame-btn{% if not request.user.avatar_frame %} selected{% endif %}"
+                    data-pick="frame"
+                    data-value=""
+                    data-rarity=""
+                >
+                    <div class="avatar avatar--sm" style="--avatar-bg: {{ request.user.avatar_bg }};">
+                        <div class="avatar-inner">
+                            <i class="ph-duotone ph-{{ request.user.avatar_icon }} avatar-icon"></i>
+                        </div>
+                    </div>
+                    <span class="text-xs text-muted">None</span>
+                </button>
+
+                {% for frame in avatar_frames %}
+                <button
+                    type="button"
+                    class="avatar-frame-btn{% if frame.slug == request.user.avatar_frame %} selected{% endif %}{% if not frame.unlocked %} locked{% endif %}"
+                    data-pick="frame"
+                    data-value="{{ frame.slug }}"
+                    data-rarity="{{ frame.rarity }}"
+                    {% if not frame.unlocked %}disabled title="Unlock: earn the {{ frame.name }} badge"{% endif %}
+                >
+                    <div class="avatar avatar--sm avatar-frame avatar-frame--{{ frame.slug }}" style="--avatar-bg: {{ request.user.avatar_bg }};">
+                        <div class="avatar-inner">
+                            <i class="ph-duotone ph-{{ request.user.avatar_icon }} avatar-icon"></i>
+                        </div>
+                    </div>
+                    <span class="text-xs {% if frame.unlocked %}text-white{% else %}text-muted{% endif %}">{{ frame.name }}</span>
+                    <span class="text-xs text-muted capitalize">{{ frame.rarity }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button
+            type="submit"
+            class="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-dark transition-colors hover:bg-accent/90"
+        >
+            Save avatar
+        </button>
+
+        {% if avatar_save_success %}
+        <p class="text-accent text-sm">Avatar updated!</p>
+        {% endif %}
+    </form>
+
+    <script>
+    (function() {
+        const card = document.getElementById('avatar-settings-card');
+        const preview = document.getElementById('avatar-preview');
+        const iconInput = document.getElementById('avatar-icon-input');
+        const bgInput = document.getElementById('avatar-bg-input');
+        const frameInput = document.getElementById('avatar-frame-input');
+
+        card.addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-pick]');
+            if (!btn || btn.disabled) return;
+
+            const pick = btn.dataset.pick;
+            const value = btn.dataset.value;
+
+            if (pick === 'icon') {
+                iconInput.value = value;
+                card.querySelectorAll('[data-pick="icon"]').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            } else if (pick === 'color') {
+                bgInput.value = value;
+                card.querySelectorAll('[data-pick="color"]').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            } else if (pick === 'frame') {
+                frameInput.value = value;
+                card.querySelectorAll('[data-pick="frame"]').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            }
+
+            updatePreview();
+        });
+
+        function updatePreview() {
+            const icon = iconInput.value;
+            const bg = bgInput.value;
+            const frame = frameInput.value;
+            let cls = 'avatar avatar--lg';
+            if (frame) cls += ' avatar-frame avatar-frame--' + frame;
+            preview.innerHTML = '<div class="' + cls + '" style="--avatar-bg: ' + bg + ';">' +
+                '<div class="avatar-inner">' +
+                '<i class="ph-duotone ph-' + icon + ' avatar-icon"></i>' +
+                '</div></div>';
+        }
+    })();
+    </script>
+</section>

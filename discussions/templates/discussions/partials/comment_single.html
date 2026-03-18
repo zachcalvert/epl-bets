@@ -5,10 +5,7 @@
         <!-- Header: user info + bet badge + timestamp -->
         <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Avatar placeholder -->
-                <div class="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-muted shrink-0">
-                    {{ comment.user.display_name|default:comment.user.email|slice:":1"|upper }}
-                </div>
+                {% include "website/components/avatar.html" with avatar_user=comment.user avatar_size="sm" %}
                 <span class="text-sm font-semibold text-white">
                     {{ comment.user.display_name|default:comment.user.email|truncatechars:20 }}
                 </span>

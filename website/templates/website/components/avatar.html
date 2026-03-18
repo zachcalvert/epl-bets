@@ -1,0 +1,7 @@
+{# Avatar component — include with avatar_user (User) and avatar_size ("sm"|"md"|"lg") #}
+<div class="avatar avatar--{{ avatar_size|default:'sm' }}{% if avatar_user.avatar_frame %} avatar-frame avatar-frame--{{ avatar_user.avatar_frame }}{% endif %}"
+     style="--avatar-bg: {{ avatar_user.avatar_bg|default:'#374151' }};">
+    <div class="avatar-inner">
+        <i class="ph-duotone ph-{{ avatar_user.avatar_icon|default:'user-circle' }} avatar-icon"></i>
+    </div>
+</div>

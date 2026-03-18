@@ -11,6 +11,8 @@ from django.views.generic import TemplateView
 from betting.forms import CurrencyForm, DisplayNameForm
 from betting.models import Badge, BalanceTransaction, UserBadge, UserBalance, UserStats
 from betting.services import get_public_identity, get_user_rank, mask_email
+from users.avatars import AVATAR_COLORS, AVATAR_ICONS, get_unlocked_frames
+from users.forms import AvatarForm
 from website.forms import LoginForm, SignupForm
 from website.models import SiteSettings
 from website.theme import THEME_SESSION_KEY, get_theme, normalize_theme
@@ -246,6 +248,9 @@ class AccountView(LoginRequiredMixin, View):
             badge.earned = earned_map.get(badge.pk)
             all_badges.append(badge)
 
+        # Avatar picker data
+        avatar_frames = get_unlocked_frames(user)
+
         return {
             "display_name_form": form or DisplayNameForm(instance=user),
             "currency_form": currency_form or CurrencyForm(instance=user),
@@ -257,6 +262,9 @@ class AccountView(LoginRequiredMixin, View):
             "balance": balance,
             "stats": stats,
             "all_badges": all_badges,
+            "avatar_icons": AVATAR_ICONS,
+            "avatar_colors": AVATAR_COLORS,
+            "avatar_frames": avatar_frames,
         }
 
     def get(self, request):
@@ -304,6 +312,45 @@ class CurrencyUpdateView(LoginRequiredMixin, View):
                 request,
                 "website/partials/currency_settings_card.html",
                 {"currency_form": form},
+                status=422,
+            )
+        return redirect("website:account")
+
+
+class AvatarUpdateView(LoginRequiredMixin, View):
+    def post(self, request):
+        form = AvatarForm(request.POST, user=request.user)
+        if form.is_valid():
+            request.user.avatar_icon = form.cleaned_data["avatar_icon"]
+            request.user.avatar_bg = form.cleaned_data["avatar_bg"]
+            request.user.avatar_frame = form.cleaned_data["avatar_frame"]
+            request.user.save(
+                update_fields=["avatar_icon", "avatar_bg", "avatar_frame"]
+            )
+            if request.htmx:
+                avatar_frames = get_unlocked_frames(request.user)
+                return render(
+                    request,
+                    "website/partials/avatar_settings_card.html",
+                    {
+                        "avatar_icons": AVATAR_ICONS,
+                        "avatar_colors": AVATAR_COLORS,
+                        "avatar_frames": avatar_frames,
+                        "avatar_save_success": True,
+                    },
+                )
+            return redirect("website:account")
+
+        if request.htmx:
+            avatar_frames = get_unlocked_frames(request.user)
+            return render(
+                request,
+                "website/partials/avatar_settings_card.html",
+                {
+                    "avatar_icons": AVATAR_ICONS,
+                    "avatar_colors": AVATAR_COLORS,
+                    "avatar_frames": avatar_frames,
+                },
                 status=422,
             )
         return redirect("website:account")
