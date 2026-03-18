@@ -1,9 +1,8 @@
 from django import forms
-from matches.models import Team
 
 from betting.models import UserBadge
-
-from .avatars import AVATAR_COLORS, AVATAR_ICONS, get_frame_by_slug
+from matches.models import Team
+from users.avatars import AVATAR_COLORS, AVATAR_ICONS, get_frame_by_slug
 
 
 class AvatarForm(forms.Form):
