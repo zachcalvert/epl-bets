@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 MAX_SINGLE_STAKE = Decimal("1000.00")
 
 
-def record_bet_result(user, *, won, stake, payout, odds=None, is_parlay=False, leg_count=0):
+def record_bet_result(user, *, won, stake, payout, odds=None, is_parlay=False, leg_count=0, matchday=None):
     """
     Update UserStats after a single bet or parlay settles, then check badges.
 
@@ -69,6 +69,7 @@ def record_bet_result(user, *, won, stake, payout, odds=None, is_parlay=False, l
             leg_count=leg_count,
             stake=stake,
             max_stake=MAX_SINGLE_STAKE,
+            matchday=matchday,
         )
         newly_earned = check_and_award_badges(user, stats, ctx)
 

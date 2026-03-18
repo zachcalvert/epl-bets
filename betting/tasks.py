@@ -279,6 +279,7 @@ def settle_match_bets(self, match_id):
             stake=bet.stake,
             payout=bet.payout or Decimal("0"),
             odds=bet.odds_at_placement,
+            matchday=match.matchday,
         )
 
     logger.info(

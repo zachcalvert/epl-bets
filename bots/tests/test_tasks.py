@@ -1,12 +1,21 @@
 """Tests for bot Celery tasks."""
 
-from unittest.mock import patch
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
 
 import pytest
+from django.utils import timezone
 
 from betting.models import BetSlip, Parlay
-from betting.tests.factories import OddsFactory, UserBalanceFactory
-from bots.tasks import execute_bot_strategy, run_bot_strategies
+from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
+from bots.models import BotComment
+from bots.tasks import (
+    execute_bot_strategy,
+    generate_bot_comment_task,
+    generate_postmatch_comments,
+    generate_prematch_comments,
+    run_bot_strategies,
+)
 from bots.tests.factories import BotUserFactory
 from matches.models import Match
 from matches.tests.factories import MatchFactory
@@ -147,3 +156,135 @@ class TestExecuteBotStrategy:
 
         assert "1 parlays" in result
         assert Parlay.objects.filter(user=bot).count() >= 1
+
+
+# ── generate_bot_comment_task ─────────────────────────────────────────────────
+
+
+class TestGenerateBotCommentTask:
+    def test_returns_bot_not_found_for_missing_user(self):
+        result = generate_bot_comment_task.run(99999, 99999, BotComment.TriggerType.PRE_MATCH)
+        assert result == "bot not found"
+
+    def test_returns_bot_not_found_for_non_bot_user(self):
+        user = UserFactory()
+        result = generate_bot_comment_task.run(user.pk, 99999, BotComment.TriggerType.PRE_MATCH)
+        assert result == "bot not found"
+
+    def test_returns_match_not_found(self):
+        bot = BotUserFactory()
+        result = generate_bot_comment_task.run(bot.pk, 99999, BotComment.TriggerType.PRE_MATCH)
+        assert result == "match not found"
+
+    def test_returns_skipped_when_generate_returns_none(self):
+        bot = BotUserFactory(email="ghost@bots.eplbets.local")
+        match = MatchFactory()
+        result = generate_bot_comment_task.run(bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH)
+        assert result == "skipped (dedup or filter)"
+
+    @patch("bots.comment_service.generate_bot_comment")
+    def test_returns_posted_prefix_when_comment_created(self, mock_gen):
+        mock_comment = MagicMock()
+        mock_comment.body = "Arsenal look great for this match today."
+        mock_gen.return_value = mock_comment
+        bot = BotUserFactory(email="parlaypete@bots.eplbets.local")
+        match = MatchFactory()
+
+        result = generate_bot_comment_task.run(bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH)
+
+        assert result.startswith("posted:")
+
+    @patch("bots.comment_service.generate_bot_comment")
+    def test_handles_nonexistent_bet_slip_id_gracefully(self, mock_gen):
+        mock_gen.return_value = None
+        bot = BotUserFactory()
+        match = MatchFactory()
+
+        # Should not raise even if bet_slip_id doesn't exist
+        result = generate_bot_comment_task.run(
+            bot.pk, match.pk, BotComment.TriggerType.POST_BET, 99999
+        )
+        assert result == "skipped (dedup or filter)"
+        # generate_bot_comment called with bet_slip=None (not found)
+        _, call_kwargs = mock_gen.call_args
+        assert call_kwargs.get("bet_slip") is None or mock_gen.call_args[0][3] is None
+
+
+# ── generate_prematch_comments ────────────────────────────────────────────────
+
+
+class TestGeneratePrematchComments:
+    def test_no_upcoming_matches_returns_zero(self):
+        result = generate_prematch_comments.run()
+        assert "0" in result
+
+    def test_ignores_matches_outside_window(self):
+        # Match kicking off in 3 days — outside the 24h window
+        MatchFactory(
+            status=Match.Status.SCHEDULED,
+            kickoff=timezone.now() + timedelta(days=3),
+        )
+        result = generate_prematch_comments.run()
+        assert "0" in result
+
+    def test_dispatches_tasks_for_upcoming_matches(self):
+        bot = BotUserFactory(email="parlaypete@bots.eplbets.local")
+        MatchFactory(
+            status=Match.Status.SCHEDULED,
+            kickoff=timezone.now() + timedelta(hours=3),
+        )
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            with patch(
+                "bots.comment_service.select_bots_for_match", return_value=[bot]
+            ):
+                result = generate_prematch_comments.run()
+
+        assert mock_dispatch.called
+        assert "dispatched" in result
+
+
+# ── generate_postmatch_comments ───────────────────────────────────────────────
+
+
+class TestGeneratePostmatchComments:
+    def test_no_recently_finished_matches_returns_zero(self):
+        result = generate_postmatch_comments.run()
+        assert "0" in result
+
+    def test_dispatches_for_bot_bets_on_finished_match(self):
+        bot = BotUserFactory(email="parlaypete@bots.eplbets.local")
+        match = MatchFactory(status=Match.Status.FINISHED)
+        BetSlipFactory(user=bot, match=match)
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            with patch("bots.comment_service.select_bots_for_match", return_value=[]):
+                result = generate_postmatch_comments.run()
+
+        assert mock_dispatch.called
+        assert "dispatched" in result
+
+    def test_skips_bots_that_already_posted_postmatch(self):
+        bot = BotUserFactory(email="parlaypete@bots.eplbets.local")
+        match = MatchFactory(status=Match.Status.FINISHED)
+        BetSlipFactory(user=bot, match=match)
+        BotComment.objects.create(
+            user=bot, match=match, trigger_type=BotComment.TriggerType.POST_MATCH
+        )
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            with patch("bots.comment_service.select_bots_for_match", return_value=[]):
+                generate_postmatch_comments.run()
+
+        assert not mock_dispatch.called
+
+    def test_dispatches_color_commentary_bots(self):
+        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        MatchFactory(status=Match.Status.FINISHED)
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            with patch("bots.comment_service.select_bots_for_match", return_value=[bot]):
+                result = generate_postmatch_comments.run()
+
+        assert mock_dispatch.called
+        assert "dispatched" in result

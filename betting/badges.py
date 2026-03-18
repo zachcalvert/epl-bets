@@ -23,6 +23,8 @@ import logging
 from dataclasses import dataclass
 from decimal import Decimal
 
+from betting.models import BetSlip
+
 logger = logging.getLogger(__name__)
 
 # ── Badge definitions ────────────────────────────────────────────────────────
@@ -111,6 +113,7 @@ class BetContext:
     leg_count: int
     stake: Decimal
     max_stake: Decimal
+    matchday: int | None = None
 
 
 # ── Criteria ─────────────────────────────────────────────────────────────────
@@ -126,16 +129,20 @@ def _called_the_upset(stats, ctx):
 
 
 def _perfect_matchweek(stats, ctx):
-    """True if the user has no losses this matchweek among all settled bets."""
+    """True if the user won every settled single bet in the current matchday."""
+    if not ctx.won or ctx.matchday is None:
+        return False
 
-    # Determine current matchweek boundaries from the settled bet's match
-    # We approximate: if the user has ever lost a bet, this badge isn't theirs yet.
-    # A more precise check queries bets grouped by matchweek — but to keep it
-    # simple and fast we check whether they currently have zero losses.
-    # (The badge awards on reaching 0 losses overall at settlement time.)
-    # Since losses are permanent, once they lose they can never earn this
-    # without a full reset — so we check: after this win, do they have 0 losses?
-    return ctx.won and stats.total_losses == 0
+    settled_statuses = list(
+        BetSlip.objects.filter(
+            user=stats.user,
+            match__matchday=ctx.matchday,
+            status__in=[BetSlip.Status.WON, BetSlip.Status.LOST],
+        ).values_list("status", flat=True)
+    )
+    return len(settled_statuses) >= 1 and all(
+        s == BetSlip.Status.WON for s in settled_statuses
+    )
 
 
 def _parlay_king(stats, ctx):

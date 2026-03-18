@@ -192,17 +192,18 @@ CELERY_BEAT_SCHEDULE = {
         "task": "matches.tasks.fetch_teams",
         "schedule": crontab(hour=3, minute=0),  # 3 AM daily
     },
-    "fetch-fixtures-6h": {
+    "fetch-fixtures-daily": {
         "task": "matches.tasks.fetch_fixtures",
-        "schedule": timedelta(hours=6),
+        "schedule": crontab(hour=3, minute=0),  # 3 AM daily
     },
     "fetch-standings-6h": {
         "task": "matches.tasks.fetch_standings",
         "schedule": timedelta(hours=6),
     },
-    "fetch-live-scores-60s": {
+    "fetch-live-scores-15m-on-matchdays": {
         "task": "matches.tasks.fetch_live_scores",
-        "schedule": timedelta(seconds=60),
+        # Twice daily (9 AM and 5 PM UTC) on Fri/Sat/Sun/Mon only
+        "schedule": crontab(minute="0,15,30,45", day_of_week="fri,sat,sun,mon"),
     },
     "fetch-odds-2x-matchdays": {
         "task": "betting.tasks.fetch_odds",
@@ -225,17 +226,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "challenges.tasks.expire_challenges",
         "schedule": timedelta(minutes=15),
     },
-    "run-bot-strategies-35m": {
+    "run-bot-strategies-24-hours": {
         "task": "bots.tasks.run_bot_strategies",
-        "schedule": timedelta(minutes=35),
+        "schedule": timedelta(hours=24),
     },
     "generate-prematch-comments-2h": {
         "task": "bots.tasks.generate_prematch_comments",
         "schedule": timedelta(hours=2),
     },
-    "generate-postmatch-comments-30m": {
+    "generate-postmatch-comments-15-on-matchdays": {
         "task": "bots.tasks.generate_postmatch_comments",
-        "schedule": timedelta(minutes=30),
+        "schedule": crontab(minute="0,15,30,45", day_of_week="fri,sat,sun,mon"),
     },
 }
 
