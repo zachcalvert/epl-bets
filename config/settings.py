@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "challenges",
     "bots",
     "discussions",
+    "flags",
     "website",
 ]
 
