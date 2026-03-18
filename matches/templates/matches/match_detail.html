@@ -91,40 +91,6 @@
     </div>
 {% endif %}
 
-<!-- Odds comparison -->
-<div class="mt-4 mb-6">
-    <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <h3 class="text-xl font-bold text-white">Odds Comparison</h3>
-            <p class="mt-1 text-xs text-muted">
-                {% if latest_odds_refresh %}
-                    Best prices synced {{ latest_odds_refresh|relative_time }}
-                {% else %}
-                    Waiting for bookmakers to publish this market
-                {% endif %}
-            </p>
-        </div>
-        <div class="text-xs text-muted">
-            {% if latest_odds_refresh %}
-                Table refreshed {{ latest_odds_refresh|relative_time }}
-            {% else %}
-                Match state updated {{ match_updated_at|relative_time }}
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="overflow-x-auto" id="odds-table"
-         hx-get="{% url 'matches:match_odds_partial' match.pk %}"
-         hx-trigger="every 30s"
-         hx-swap="innerHTML"
-         hx-indicator="#match-odds-loading">
-        {% include "matches/partials/odds_table_body.html" %}
-    </div>
-    <div id="match-odds-loading" class="htmx-indicator text-center py-1">
-        <span class="spinner spinner-sm text-accent"></span>
-    </div>
-</div>
-
 <!-- Discussion — lazy-loaded -->
 <div hx-get="{% url 'discussions:comment_list' match.pk %}"
      hx-trigger="load"
@@ -134,6 +100,36 @@
         <div class="h-20 bg-gray-700/40 rounded"></div>
     </div>
 </div>
+
+<!-- Odds comparison -->
+<details class="mt-4 mb-6 rounded-lg border border-gray-700 bg-surface shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
+        <div>
+            <h3 class="text-lg font-bold text-white">Odds Comparison</h3>
+            <p class="mt-0.5 text-xs text-muted">
+                {% if latest_odds_refresh %}
+                    Best prices synced {{ latest_odds_refresh|relative_time }}
+                {% else %}
+                    Waiting for bookmakers to publish this market
+                {% endif %}
+            </p>
+        </div>
+        <span class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted">Expand</span>
+    </summary>
+
+    <div class="border-t border-gray-700 px-5 py-4 sm:px-6">
+        <div class="overflow-x-auto" id="odds-table"
+             hx-get="{% url 'matches:match_odds_partial' match.pk %}"
+             hx-trigger="every 30s"
+             hx-swap="innerHTML"
+             hx-indicator="#match-odds-loading">
+            {% include "matches/partials/odds_table_body.html" %}
+        </div>
+        <div id="match-odds-loading" class="htmx-indicator text-center py-1">
+            <span class="spinner spinner-sm text-accent"></span>
+        </div>
+    </div>
+</details>
 
 <details class="mt-6 rounded-lg border border-gray-700 bg-surface shadow-lg">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">

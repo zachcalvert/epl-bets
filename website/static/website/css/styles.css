@@ -501,6 +501,17 @@
     opacity: 1;
 }
 
+/* Indicators inside buttons use display:none so they don't shift button text */
+button .htmx-indicator {
+    display: none;
+}
+.htmx-request button .htmx-indicator,
+button.htmx-request .htmx-indicator {
+    display: inline-flex;
+    align-items: center;
+    opacity: 1;
+}
+
 /* Smooth HTMX swap transitions */
 .htmx-swapping {
     opacity: 0;
