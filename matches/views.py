@@ -8,49 +8,6 @@ from betting.models import BetSlip, Odds
 from betting.services import BOARD_TYPES, get_leaderboard_entries, get_user_rank
 from matches.models import Match, Standing
 from matches.services import fetch_match_hype_data
-from website.transparency import (
-    GLOBAL_SCOPE,
-    get_events,
-    match_scope,
-    page_scope,
-    record_event,
-)
-
-
-def _build_transparency_context(scope, *, limit=8, categories=None):
-    events = get_events(scope, limit=limit)
-    latest_event = events[0] if events else None
-
-    counts = {category: 0 for category in (categories or ["htmx", "websocket", "celery"])}
-    for event in events:
-        category = event["category"]
-        if category in counts:
-            counts[category] += 1
-
-    tracked_categories = [category for category, count in counts.items() if count]
-    if not tracked_categories:
-        tracked_categories = list(counts.keys())
-
-    return {
-        "under_the_hood_events": events,
-        "under_the_hood_latest": latest_event,
-        "under_the_hood_counts": counts,
-        "under_the_hood_tracked_categories": tracked_categories,
-    }
-
-
-def _get_dashboard_transparency_context():
-    return _build_transparency_context(
-        page_scope("dashboard"),
-        categories=["htmx", "websocket", "celery"],
-    )
-
-
-def _get_match_transparency_context(match_id):
-    return _build_transparency_context(
-        match_scope(match_id),
-        categories=["htmx", "websocket", "celery", "betting"],
-    )
 
 
 def _get_default_matchday(season):
@@ -142,8 +99,6 @@ class DashboardView(TemplateView):
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
         ctx["leaderboard_rendered_at"] = timezone.now()
-        ctx.update(_get_dashboard_transparency_context())
-
         # League table preview (top 8 teams)
         ctx["standings"] = (
             Standing.objects.filter(season=settings.CURRENT_SEASON)
@@ -151,15 +106,6 @@ class DashboardView(TemplateView):
             .order_by("position")[:8]
         )
 
-        return ctx
-
-
-class DashboardUnderTheHoodPartialView(TemplateView):
-    template_name = "matches/partials/dashboard_under_the_hood.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(_get_dashboard_transparency_context())
         return ctx
 
 
@@ -171,17 +117,6 @@ class LeaderboardPartialView(TemplateView):
         ctx["leaderboard"] = get_leaderboard_entries()
         ctx["user_rank"] = get_user_rank(self.request.user, ctx["leaderboard"])
         ctx["leaderboard_rendered_at"] = timezone.now()
-        record_event(
-            scope=page_scope("dashboard"),
-            scopes=[GLOBAL_SCOPE],
-            category="htmx",
-            source="leaderboard_partial",
-            action="partial_refreshed",
-            summary="Homepage leaderboard refreshed from the server.",
-            detail=f"Returned {len(ctx['leaderboard'])} ranked balances.",
-            status="info",
-            route=self.request.path,
-        )
         return ctx
 
 
@@ -407,22 +342,6 @@ class MatchDetailView(DetailView):
         ctx["home_standing"] = standing_map.get(match.home_team_id)
         ctx["away_standing"] = standing_map.get(match.away_team_id)
 
-        ctx.update(_get_match_transparency_context(match.pk))
-        return ctx
-
-
-class MatchUnderTheHoodPartialView(DetailView):
-    model = Match
-    template_name = "matches/partials/match_under_the_hood.html"
-    context_object_name = "match"
-
-    def get_queryset(self):
-        return Match.objects.select_related("home_team", "away_team")
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(_get_match_transparency_context(self.object.pk))
-        ctx["rendered_at"] = timezone.now()
         return ctx
 
 
@@ -473,17 +392,4 @@ class MatchOddsPartialView(MatchDetailView):
     template_name = "matches/partials/odds_table_body.html"
 
     def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        record_event(
-            scope=page_scope("match_detail"),
-            scopes=[GLOBAL_SCOPE, match_scope(self.object.pk)],
-            category="htmx",
-            source="match_odds_partial",
-            action="partial_refreshed",
-            summary="Match odds table refreshed.",
-            detail=f"Rendered {len(ctx['odds'])} bookmaker rows for match {self.object.pk}.",
-            status="info",
-            route=self.request.path,
-            entity_ref=self.object.pk,
-        )
-        return ctx
+        return super().get_context_data(**kwargs)

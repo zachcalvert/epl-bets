@@ -38,41 +38,8 @@ from challenges.engine import update_challenge_progress
 from matches.models import Match
 from rewards.models import RewardDistribution
 from website.templatetags.currency_tags import format_currency
-from website.transparency import (
-    GLOBAL_SCOPE,
-    get_events,
-    match_scope,
-    page_scope,
-    record_event,
-)
 
 logger = logging.getLogger(__name__)
-
-
-def _get_odds_board_transparency_context():
-    events = get_events(page_scope("odds_board"), limit=8)
-    latest_event = events[0] if events else None
-
-    counts = {
-        "htmx": 0,
-        "celery": 0,
-        "betting": 0,
-    }
-    for event in events:
-        category = event["category"]
-        if category in counts:
-            counts[category] += 1
-
-    tracked_categories = [category for category, count in counts.items() if count]
-    if not tracked_categories:
-        tracked_categories = list(counts.keys())
-
-    return {
-        "under_the_hood_events": events,
-        "under_the_hood_latest": latest_event,
-        "under_the_hood_counts": counts,
-        "under_the_hood_tracked_categories": tracked_categories,
-    }
 
 
 def _get_latest_odds_refresh(match_ids):
@@ -131,17 +98,6 @@ class OddsBoardView(TemplateView):
         ctx["matches"] = matches_with_odds
         ctx["last_odds_refresh"] = _get_latest_odds_refresh(match_ids)
         ctx["rendered_at"] = timezone.now()
-        ctx.update(_get_odds_board_transparency_context())
-        return ctx
-
-
-class OddsBoardUnderTheHoodPartialView(TemplateView):
-    template_name = "betting/partials/odds_board_under_the_hood.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(_get_odds_board_transparency_context())
-        ctx["rendered_at"] = timezone.now()
         return ctx
 
 
@@ -151,19 +107,7 @@ class OddsBoardPartialView(OddsBoardView):
     template_name = "betting/partials/odds_board_body.html"
 
     def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        record_event(
-            scope=page_scope("odds_board"),
-            scopes=[GLOBAL_SCOPE],
-            category="htmx",
-            source="odds_board_partial",
-            action="partial_refreshed",
-            summary="Odds board refreshed with the latest stored prices.",
-            detail=f"Rendered {len(ctx['matches'])} upcoming matches.",
-            status="info",
-            route=self.request.path,
-        )
-        return ctx
+        return super().get_context_data(**kwargs)
 
 
 def _get_match_sentiment(match):
@@ -350,18 +294,6 @@ class PlaceBetView(LoginRequiredMixin, View):
             )
 
         potential_payout = stake * best_odds_val
-        record_event(
-            scope=match_scope(match.pk),
-            scopes=[GLOBAL_SCOPE, page_scope("match_detail")],
-            category="betting",
-            source="place_bet",
-            action="bet_placed",
-            summary=f"Bet placed on {match.home_team.short_name or match.home_team.name} vs {match.away_team.short_name or match.away_team.name}.",
-            detail=f"Selection {selection} at {best_odds_val} for {format_currency(stake, request.user.currency)}.",
-            status="success",
-            route=request.path,
-            entity_ref=match.pk,
-        )
 
         # Update challenge progress (runs after any active transaction commits)
         _user = request.user
@@ -880,18 +812,6 @@ class PlaceParlayView(LoginRequiredMixin, View):
 
         # Clear session slip
         _save_slip(request, [])
-
-        record_event(
-            scope=page_scope("odds_board"),
-            scopes=[GLOBAL_SCOPE],
-            category="betting",
-            source="place_parlay",
-            action="parlay_placed",
-            summary=f"Parlay placed with {len(leg_data)} legs @ {combined_odds}x.",
-            detail=f"Stake: {format_currency(stake, request.user.currency)}. Potential payout: {format_currency(potential_payout, request.user.currency)}.",
-            status="success",
-            route=request.path,
-        )
 
         # Update challenge progress
         _user = request.user

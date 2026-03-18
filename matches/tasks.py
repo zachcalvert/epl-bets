@@ -17,7 +17,6 @@ from matches.services import (
     sync_standings,
     sync_teams,
 )
-from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 logger = logging.getLogger(__name__)
 
@@ -85,17 +84,6 @@ def fetch_live_scores(self):
             stale_updated = _refresh_stale_matches(stale_matches)
             updated += stale_updated
 
-        record_event(
-            scope=page_scope("dashboard"),
-            scopes=[GLOBAL_SCOPE],
-            category="celery",
-            source="fetch_live_scores",
-            action="scores_synced",
-            summary="Live score sync completed.",
-            detail=f"Updated {updated} matches and created {created} live records.",
-            status="success",
-        )
-
         # Broadcast changes via channel layer
         if updated > 0 or created > 0:
             _broadcast_score_changes(pre_sync)
@@ -157,17 +145,6 @@ def _broadcast_score_changes(pre_sync):
             logger.info("Broadcasting score update for match %d", pk)
             send("live_scores", {"type": "score_update", "match_id": pk})
             send(f"match_{pk}", {"type": "match_score_update", "match_id": pk})
-            record_event(
-                scope=match_scope(pk),
-                scopes=[GLOBAL_SCOPE, page_scope("dashboard"), page_scope("match_detail")],
-                category="websocket",
-                source="score_broadcast",
-                action="score_broadcast",
-                summary=f"Live score broadcast sent for match {pk}.",
-                detail=f"Score/state changed from {old} to {new_state}.",
-                status="info",
-                entity_ref=pk,
-            )
 
             # Trigger bet settlement when a match finishes
             old_status = old[2] if old else None

@@ -10,7 +10,6 @@ from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFact
 from matches.models import Match
 from matches.tests.factories import MatchFactory, MatchStatsFactory, StandingFactory
 from users.tests.factories import UserFactory
-from website.transparency import get_events, match_scope, page_scope, record_event
 
 pytestmark = pytest.mark.django_db
 
@@ -132,50 +131,6 @@ def test_dashboard_view_omits_signed_in_user_rank_when_user_is_in_top_10(client)
     assert "Your rank" not in response.content.decode()
 
 
-def test_dashboard_view_renders_under_the_hood_summary_from_recent_events(client):
-    record_event(
-        scope=page_scope("dashboard"),
-        category="websocket",
-        source="score_broadcast",
-        action="score_broadcast",
-        summary="Live score broadcast sent for match 42.",
-        detail="Score changed from 0-0 to 1-0.",
-        status="info",
-    )
-
-    response = client.get(reverse("matches:dashboard"))
-
-    assert response.status_code == 200
-    assert "Under the Hood" in response.content.decode()
-    assert "Live score broadcast sent for match 42." in response.content.decode()
-
-
-def test_dashboard_under_the_hood_partial_renders_recent_events(client):
-    record_event(
-        scope=page_scope("dashboard"),
-        category="celery",
-        source="fetch_live_scores",
-        action="scores_synced",
-        summary="Live score sync completed.",
-        detail="Updated 2 matches and created 0 live records.",
-        status="success",
-    )
-
-    response = client.get(
-        reverse("matches:dashboard_under_the_hood"),
-        HTTP_HX_REQUEST="true",
-    )
-
-    assert response.status_code == 200
-    assert any(
-        template.name == "matches/partials/dashboard_under_the_hood.html"
-        for template in response.templates
-    )
-    assert "Recent dashboard events" in response.content.decode()
-    assert "Live score sync completed." in response.content.decode()
-    assert "See Architecture" in response.content.decode()
-
-
 def test_dashboard_renders_matchday_tabs_with_active_id(client):
     MatchFactory(kickoff=timezone.now() + timedelta(days=1), matchday=15)
 
@@ -254,25 +209,6 @@ def test_match_detail_view_includes_best_odds_and_form_for_authenticated_user(cl
     assert "form" in response.context
 
 
-def test_match_detail_view_renders_under_the_hood_summary_from_match_events(client):
-    match = MatchFactory()
-    record_event(
-        scope=match_scope(match.pk),
-        category="betting",
-        source="place_bet",
-        action="bet_placed",
-        summary="Bet placed on Arsenal vs Chelsea.",
-        detail="Selection HOME_WIN at 2.10 for 10.00 credits.",
-        status="success",
-    )
-
-    response = client.get(reverse("matches:match_detail", args=[match.pk]))
-
-    assert response.status_code == 200
-    assert "Under the Hood" in response.content.decode()
-    assert "Bet placed on Arsenal vs Chelsea." in response.content.decode()
-
-
 def test_match_detail_view_omits_form_for_anonymous_user(client):
     match = MatchFactory()
 
@@ -292,33 +228,6 @@ def test_match_odds_partial_uses_partial_template(client):
         template.name == "matches/partials/odds_table_body.html"
         for template in response.templates
     )
-    assert get_events(match_scope(match.pk))[0]["action"] == "partial_refreshed"
-
-
-def test_match_under_the_hood_partial_renders_match_scoped_events(client):
-    match = MatchFactory()
-    record_event(
-        scope=match_scope(match.pk),
-        category="websocket",
-        source="score_broadcast",
-        action="score_broadcast",
-        summary=f"Live score broadcast sent for match {match.pk}.",
-        detail="Score/state changed from (0, 0, 'IN_PLAY') to (1, 0, 'IN_PLAY').",
-        status="info",
-    )
-
-    response = client.get(
-        reverse("matches:match_under_the_hood", args=[match.pk]),
-        HTTP_HX_REQUEST="true",
-    )
-
-    assert response.status_code == 200
-    assert any(
-        template.name == "matches/partials/match_under_the_hood.html"
-        for template in response.templates
-    )
-    assert "Recent match events" in response.content.decode()
-    assert f"Live score broadcast sent for match {match.pk}." in response.content.decode()
 
 
 def test_leaderboard_partial_renders_partial_template_and_content(client):
@@ -336,7 +245,6 @@ def test_leaderboard_partial_renders_partial_template_and_content(client):
     )
     assert "le****@example.com" in response.content.decode()
     assert "leader@example.com" not in response.content.decode()
-    assert get_events(page_scope("dashboard"))[0]["source"] == "leaderboard_partial"
 
 
 def test_leaderboard_partial_renders_display_name_when_available(client):

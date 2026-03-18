@@ -19,28 +19,4 @@
     <span class="spinner spinner-sm text-accent"></span>
     <span class="text-xs text-muted ml-2">Refreshing odds&hellip;</span>
 </div>
-
-<details class="mt-6 rounded-lg border border-gray-700 bg-surface shadow-lg">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
-        <div class="max-w-3xl">
-            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Under the Hood</p>
-            {% if under_the_hood_latest %}
-                <p class="mt-1 text-sm text-white">{{ under_the_hood_latest.summary }}</p>
-            {% else %}
-                <p class="mt-1 text-sm text-muted">Open to see the live event trail behind this odds board.</p>
-            {% endif %}
-        </div>
-        <span class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted">Expand</span>
-    </summary>
-
-    <div
-        id="odds-under-the-hood"
-        class="border-t border-gray-700 px-5 py-5 sm:px-6"
-        hx-get="{% url 'betting:odds_under_the_hood' %}"
-        hx-trigger="load, every 15s"
-        hx-swap="innerHTML"
-    >
-        {% include "betting/partials/odds_board_under_the_hood.html" %}
-    </div>
-</details>
 {% endblock %}

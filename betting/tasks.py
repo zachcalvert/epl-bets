@@ -9,7 +9,6 @@ from betting.models import BalanceTransaction, BetSlip, Parlay, ParlayLeg, UserB
 from betting.services import sync_odds
 from betting.stats import record_bet_result
 from matches.models import Match
-from website.transparency import GLOBAL_SCOPE, match_scope, page_scope, record_event
 
 logger = logging.getLogger(__name__)
 
@@ -177,16 +176,6 @@ def fetch_odds(self):
     try:
         created, updated = sync_odds()
         logger.info("fetch_odds: done created=%d updated=%d", created, updated)
-        record_event(
-            scope=page_scope("odds_board"),
-            scopes=[GLOBAL_SCOPE, page_scope("match_detail")],
-            category="celery",
-            source="fetch_odds",
-            action="odds_synced",
-            summary="Odds sync completed.",
-            detail=f"Created {created} bookmaker rows and updated {updated} existing rows.",
-            status="success",
-        )
     except Exception as exc:
         logger.exception("fetch_odds failed")
         raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
@@ -233,17 +222,6 @@ def settle_match_bets(self, match_id):
             pending_bets.count(),
             match.status,
             match_id,
-        )
-        record_event(
-            scope=match_scope(match_id),
-            scopes=[GLOBAL_SCOPE, page_scope("match_detail")],
-            category="betting",
-            source="settle_match_bets",
-            action="bets_voided",
-            summary=f"Bets voided for match {match_id}.",
-            detail=f"Refunded {pending_bets.count()} pending bets after status changed to {match.status}.",
-            status="warning",
-            entity_ref=match_id,
         )
         # Settle parlay legs for this voided match
         settle_parlay_legs(match, winning_selection=None)
@@ -308,17 +286,6 @@ def settle_match_bets(self, match_id):
         match_id,
         won_count,
         lost_count,
-    )
-    record_event(
-        scope=match_scope(match_id),
-        scopes=[GLOBAL_SCOPE, page_scope("match_detail")],
-        category="betting",
-        source="settle_match_bets",
-        action="bets_settled",
-        summary=f"Bet settlement finished for match {match_id}.",
-        detail=f"{won_count} winning slips and {lost_count} losing slips were processed.",
-        status="success",
-        entity_ref=match_id,
     )
     # Settle parlay legs for this match
     settle_parlay_legs(match, winning_selection)
