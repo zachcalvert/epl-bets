@@ -163,7 +163,12 @@ class CreateReplyView(LoginRequiredMixin, View):
 
         form = CommentForm(request.POST)
         if not form.is_valid():
-            return HttpResponse("Invalid comment.", status=422)
+            error_msg = form.errors["body"][0] if "body" in form.errors else "Invalid reply."
+            html = (
+                f'<div id="reply-error-{parent.id_hash}" hx-swap-oob="true" '
+                f'class="text-red-400 text-xs mt-1">{error_msg}</div>'
+            )
+            return HttpResponse(html, status=422)
 
         reply = Comment.objects.create(
             match=match,
@@ -205,7 +210,7 @@ class DeleteCommentView(LoginRequiredMixin, View):
             match = Match.objects.select_related("home_team", "away_team").get(
                 pk=match_pk
             )
-            user_ids = {r.user_id for r in comment.prefetched_replies}
+            user_ids = {comment.user_id} | {r.user_id for r in comment.prefetched_replies}
             bet_map = _build_bet_map(match_pk, user_ids) if user_ids else {}
             # Pass only the parent — _annotate_bet_positions handles its prefetched_replies
             _annotate_bet_positions([comment], bet_map, match)

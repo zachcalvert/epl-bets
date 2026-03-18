@@ -7,7 +7,7 @@
             <div class="flex items-center gap-2 flex-wrap">
                 <!-- Avatar placeholder -->
                 <div class="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-muted shrink-0">
-                    {{ comment.user.display_name|default:comment.user.email|truncatechars:1|upper }}
+                    {{ comment.user.display_name|default:comment.user.email|slice:":1"|upper }}
                 </div>
                 <span class="text-sm font-semibold text-white">
                     {{ comment.user.display_name|default:comment.user.email|truncatechars:20 }}
@@ -55,6 +55,7 @@
                         Reply
                     </button>
                 </div>
+                <div id="reply-error-{{ comment.id_hash }}" class="text-red-400 text-xs mt-1"></div>
             </form>
             {% endif %}
 

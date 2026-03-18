@@ -185,8 +185,7 @@ def test_comment_list_hides_deleted_comments_without_replies(client):
 
     content = response.content.decode()
     assert "Visible comment" in content
-    # Deleted top-level comments still appear in the list (as they could have replies),
-    # but their body text is replaced with "[Comment deleted]"
+    # Deleted top-level comments with no replies are hidden entirely by _visible_top_level_qs
     assert "Deleted comment" not in content
 
 
