@@ -136,7 +136,7 @@ def generate_bot_comment_task(bot_user_id, match_id, trigger_type, bet_slip_id=N
     bet_slip = None
     if bet_slip_id:
         try:
-            bet_slip = BetSlip.objects.get(pk=bet_slip_id)
+            bet_slip = BetSlip.objects.get(pk=bet_slip_id, user=bot_user, match=match)
         except BetSlip.DoesNotExist:
             pass
 
@@ -189,14 +189,23 @@ def generate_postmatch_comments():
 
     dispatched = 0
     for match in recently_finished:
-        # Bots that placed bets get to react to the result
-        bot_bets = BetSlip.objects.filter(
-            user__is_bot=True,
-            user__is_active=True,
-            match=match,
-        ).select_related("user")
+        # One reaction per bot user — pick their most recent bet on this match
+        seen_user_ids = set()
+        bot_bets = (
+            BetSlip.objects.filter(
+                user__is_bot=True,
+                user__is_active=True,
+                match=match,
+            )
+            .select_related("user")
+            .order_by("user_id", "-created_at")
+        )
 
         for bet in bot_bets:
+            if bet.user_id in seen_user_ids:
+                continue
+            seen_user_ids.add(bet.user_id)
+
             if BotComment.objects.filter(
                 user=bet.user, match=match,
                 trigger_type=BotComment.TriggerType.POST_MATCH,
@@ -209,9 +218,10 @@ def generate_postmatch_comments():
             )
             dispatched += 1
 
-        # Also pick 1 non-betting bot for color commentary
+        # Pick 1 non-betting bot for color commentary, excluding bots already enqueued
         color_bots = select_bots_for_match(
             match, BotComment.TriggerType.POST_MATCH, max_bots=1,
+            exclude_user_ids=seen_user_ids,
         )
         for bot in color_bots:
             delay = random.randint(120, 900)

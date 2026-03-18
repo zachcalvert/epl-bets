@@ -11,6 +11,7 @@ import re
 import anthropic
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 
 from betting.models import BetSlip, Odds
 from bots.models import BotComment
@@ -48,17 +49,7 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None):
     Returns the created Comment if successful, None otherwise.
     Dedup is enforced by the BotComment unique constraint.
     """
-    # Check dedup
-    if BotComment.objects.filter(
-        user=bot_user, match=match, trigger_type=trigger_type
-    ).exists():
-        logger.debug(
-            "BotComment already exists: %s / %s / %s",
-            bot_user.display_name, match, trigger_type,
-        )
-        return None
-
-    # Build prompts
+    # Build prompts (before touching the DB so we only claim the slot if we can generate)
     system_prompt = BOT_PERSONA_PROMPTS.get(bot_user.email)
     if not system_prompt:
         logger.warning("No persona prompt for bot %s", bot_user.email)
@@ -67,14 +58,30 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None):
     user_prompt = _build_user_prompt(match, trigger_type, bet_slip)
     full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
 
+    # Atomically claim this (user, match, trigger) slot.  If another worker
+    # already created the row, get_or_create returns created=False and we bail.
+    try:
+        bc, created = BotComment.objects.get_or_create(
+            user=bot_user,
+            match=match,
+            trigger_type=trigger_type,
+            defaults={"prompt_used": full_prompt},
+        )
+    except IntegrityError:
+        # Extremely unlikely race between get_or_create calls — treat as dedup.
+        logger.debug("Race on BotComment slot: %s / %s / %s", bot_user.display_name, match, trigger_type)
+        return None
+
+    if not created:
+        logger.debug("BotComment already exists: %s / %s / %s", bot_user.display_name, match, trigger_type)
+        return None
+
     # Call Claude API
     api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
     if not api_key:
         logger.error("ANTHROPIC_API_KEY not configured")
-        BotComment.objects.create(
-            user=bot_user, match=match, trigger_type=trigger_type,
-            prompt_used=full_prompt, error="ANTHROPIC_API_KEY not configured",
-        )
+        bc.error = "ANTHROPIC_API_KEY not configured"
+        bc.save(update_fields=["error", "updated_at"])
         return None
 
     try:
@@ -89,10 +96,8 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None):
         raw_text = response.content[0].text.strip()
     except Exception:
         logger.exception("Claude API call failed for bot %s", bot_user.display_name)
-        BotComment.objects.create(
-            user=bot_user, match=match, trigger_type=trigger_type,
-            prompt_used=full_prompt, error="API call failed",
-        )
+        bc.error = "API call failed"
+        bc.save(update_fields=["error", "updated_at"])
         return None
 
     # Post-hoc filter
@@ -102,23 +107,19 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None):
             "Bot comment filtered out (%s): %s — %r",
             reason, bot_user.display_name, raw_text[:100],
         )
-        BotComment.objects.create(
-            user=bot_user, match=match, trigger_type=trigger_type,
-            prompt_used=full_prompt, raw_response=raw_text, filtered=True,
-            error=reason,
-        )
+        bc.raw_response = raw_text
+        bc.filtered = True
+        bc.error = reason
+        bc.save(update_fields=["raw_response", "filtered", "error", "updated_at"])
         return None
 
-    # Post the comment
-    comment = Comment.objects.create(
-        match=match,
-        user=bot_user,
-        body=raw_text,
-    )
-    BotComment.objects.create(
-        user=bot_user, match=match, trigger_type=trigger_type,
-        prompt_used=full_prompt, raw_response=raw_text, comment=comment,
-    )
+    # Post the comment — create Comment then link it to the BotComment row
+    with transaction.atomic():
+        comment = Comment.objects.create(match=match, user=bot_user, body=raw_text)
+        bc.raw_response = raw_text
+        bc.comment = comment
+        bc.save(update_fields=["raw_response", "comment", "updated_at"])
+
     logger.info(
         "Bot %s posted %s comment on %s: %r",
         bot_user.display_name, trigger_type, match, raw_text[:80],
@@ -126,19 +127,25 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None):
     return comment
 
 
-def select_bots_for_match(match, trigger_type, max_bots=2):
-    """Pick 1-2 relevant bots for a match + trigger, excluding those who already commented."""
+def select_bots_for_match(match, trigger_type, max_bots=2, exclude_user_ids=None):
+    """Pick up to max_bots relevant bots for a match + trigger.
+
+    Excludes bots that already have a BotComment for this match+trigger, plus
+    any additional user IDs passed via exclude_user_ids (e.g. bots already
+    enqueued in the same task run).
+    """
     already_commented = set(
         BotComment.objects.filter(match=match, trigger_type=trigger_type)
         .values_list("user_id", flat=True)
     )
+    excluded = already_commented | (exclude_user_ids or set())
 
     odds_map = get_best_odds_map([match.pk])
     match_odds = odds_map.get(match.pk, {})
 
     candidates = []
     for bot in User.objects.filter(is_bot=True, is_active=True):
-        if bot.pk in already_commented:
+        if bot.pk in excluded:
             continue
         if bot.email not in BOT_PERSONA_PROMPTS:
             continue
