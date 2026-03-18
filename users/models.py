@@ -25,6 +25,10 @@ class User(AbstractUser):
         default=False,
         help_text="Designates bot/automated accounts.",
     )
+    avatar_icon = models.CharField(max_length=50, default="user-circle")
+    avatar_bg = models.CharField(max_length=7, default="#374151")
+    avatar_frame = models.CharField(max_length=50, blank=True, default="")
+    avatar_crest_url = models.URLField(blank=True, default="")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

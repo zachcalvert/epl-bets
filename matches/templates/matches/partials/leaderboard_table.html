@@ -34,7 +34,8 @@
                     </div>
                 </td>
                 <td class="px-2 sm:px-3 py-3">
-                    <a href="{% url 'profile' entry.user.pk %}" class="text-sm font-semibold text-white hover:text-accent transition-colors">
+                    <a href="{% url 'profile' entry.user.pk %}" class="flex items-center gap-2 text-sm font-semibold text-white hover:text-accent transition-colors">
+                        {% include "website/components/avatar.html" with avatar_user=entry.user avatar_size="sm" %}
                         {{ entry.display_identity }}
                     </a>
                 </td>

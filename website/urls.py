@@ -2,6 +2,7 @@ from django.urls import path
 
 from website.views import (
     AccountView,
+    AvatarUpdateView,
     ComponentDetailView,
     CurrencyUpdateView,
     HowItWorksView,
@@ -15,6 +16,7 @@ app_name = "website"
 
 urlpatterns = [
     path("account/", AccountView.as_view(), name="account"),
+    path("account/avatar/", AvatarUpdateView.as_view(), name="avatar_update"),
     path("account/currency/", CurrencyUpdateView.as_view(), name="currency_update"),
     path("login/", LoginView.as_view(), name="login"),
     path("signup/", SignupView.as_view(), name="signup"),

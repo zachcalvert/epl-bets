@@ -952,3 +952,187 @@ button.htmx-request .htmx-indicator {
 *, *::before, *::after {
   transition: background-color 0.6s ease, color 0.5s ease, border-color 0.7s ease;
 }
+
+/* ── Avatars ─────────────────────────────────────────────────────────────── */
+
+.avatar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.avatar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background-color: var(--avatar-bg, #374151);
+    width: 100%;
+    height: 100%;
+}
+
+.avatar-icon {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1;
+}
+
+.avatar-crest-img {
+    width: 72%;
+    height: 72%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Dark icon for light avatar backgrounds */
+.avatar[style*="--avatar-bg: #f1f5f9"] .avatar-icon {
+    color: rgba(30, 30, 46, 0.8);
+}
+
+/* Size variants */
+.avatar--sm  { width: 28px; height: 28px; }
+.avatar--sm .avatar-icon { font-size: 14px; }
+
+.avatar--md  { width: 40px; height: 40px; }
+.avatar--md .avatar-icon { font-size: 20px; }
+
+.avatar--lg  { width: 64px; height: 64px; }
+.avatar--lg .avatar-icon { font-size: 32px; }
+
+/* ── Frames ──────────────────────────────────────────────────────────────── */
+
+.avatar-frame { padding: 2px; }
+.avatar--lg.avatar-frame { padding: 3px; }
+
+/* Common — subtle gray */
+.avatar-frame--first-blood { border: 2px solid #9ca3af; }
+.avatar-frame--century     { border: 2px dashed #9ca3af; }
+
+/* Uncommon — green glow */
+.avatar-frame--called-the-upset {
+    border: 2px solid #4ade80;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.3);
+}
+.avatar-frame--high-roller {
+    border: 2px solid #4ade80;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.4), inset 0 0 4px rgba(74, 222, 128, 0.1);
+}
+
+/* Rare — blue + animation */
+.avatar-frame--perfect-matchweek {
+    border: 2px solid #60a5fa;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+    animation: frame-pulse 2s ease-in-out infinite;
+}
+.avatar-frame--sharp-eye {
+    border: 2px solid #60a5fa;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.35), 0 0 4px rgba(147, 197, 253, 0.2);
+}
+.avatar-frame--underdog-hunter {
+    border: 3px double #60a5fa;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.35);
+}
+
+/* Epic — purple + animated glow */
+.avatar-frame--parlay-king {
+    border: 2px solid #c084fc;
+    box-shadow: 0 0 14px rgba(192, 132, 252, 0.5), 0 0 6px rgba(168, 85, 247, 0.3);
+    animation: frame-glow 2.5s ease-in-out infinite;
+}
+.avatar-frame--streak-master {
+    border: 2px solid #c084fc;
+    box-shadow: 0 0 16px rgba(192, 132, 252, 0.55), 0 0 8px rgba(139, 92, 246, 0.3);
+    animation: frame-glow 2s ease-in-out infinite;
+}
+
+@keyframes frame-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(96, 165, 250, 0.4); }
+    50%      { box-shadow: 0 0 14px rgba(96, 165, 250, 0.6); }
+}
+
+@keyframes frame-glow {
+    0%, 100% { box-shadow: 0 0 14px rgba(192, 132, 252, 0.5); }
+    50%      { box-shadow: 0 0 22px rgba(192, 132, 252, 0.75), 0 0 8px rgba(168, 85, 247, 0.4); }
+}
+
+/* ── Avatar picker (account page) ────────────────────────────────────────── */
+
+.avatar-picker-grid {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+}
+
+.avatar-picker-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background: rgb(var(--color-dark));
+    color: rgb(var(--color-muted));
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.avatar-picker-btn:hover {
+    border-color: rgb(var(--color-accent) / 0.5);
+    transform: scale(1.1);
+}
+
+.avatar-picker-btn.selected {
+    border-color: rgb(var(--color-accent));
+    color: white;
+}
+
+.avatar-color-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.avatar-color-btn:hover {
+    transform: scale(1.15);
+}
+
+.avatar-color-btn.selected {
+    border-color: white;
+    box-shadow: 0 0 0 2px rgb(var(--color-accent));
+}
+
+.avatar-frame-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--theme-border-soft, rgba(255,255,255,0.08));
+    background: rgb(var(--color-dark));
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+    text-align: center;
+}
+
+.avatar-frame-btn:hover:not(.locked) {
+    border-color: rgb(var(--color-accent) / 0.5);
+    transform: scale(1.05);
+}
+
+.avatar-frame-btn.selected {
+    border-color: rgb(var(--color-accent));
+}
+
+.avatar-frame-btn.locked {
+    opacity: 0.38;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
