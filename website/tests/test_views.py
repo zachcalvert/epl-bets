@@ -4,7 +4,8 @@ import pytest
 from django.urls import reverse
 
 from betting.models import UserBalance
-from betting.tests.factories import UserBalanceFactory
+from betting.tests.factories import BadgeFactory, UserBadgeFactory, UserBalanceFactory
+from users.avatars import AVATAR_COLORS, AVATAR_ICONS, FRAME_REGISTRY
 from users.tests.factories import UserFactory
 from website.models import SiteSettings
 from website.views import ARCHITECTURE_COMPONENTS, FLOW_PATHS
@@ -563,3 +564,161 @@ def test_currency_update_view_rejects_invalid_currency_without_htmx(client):
     assert response.status_code == 302
     assert response.url == reverse("website:account")
     assert user.currency == "GBP"
+
+
+# ── AvatarUpdateView ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_avatar_update_redirects_anonymous_user(client):
+    response = client.post(reverse("website:avatar_update"), data={})
+
+    assert response.status_code == 302
+    assert reverse("website:login") in response.url
+
+
+@pytest.mark.django_db
+def test_avatar_update_saves_icon_and_color(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:avatar_update"),
+        data={
+            "avatar_icon": AVATAR_ICONS[1],
+            "avatar_bg": AVATAR_COLORS[1],
+            "avatar_frame": "",
+            "avatar_crest_url": "",
+        },
+    )
+
+    user.refresh_from_db()
+
+    assert response.status_code == 302
+    assert user.avatar_icon == AVATAR_ICONS[1]
+    assert user.avatar_bg == AVATAR_COLORS[1]
+    assert user.avatar_frame == ""
+    assert user.avatar_crest_url == ""
+
+
+@pytest.mark.django_db
+def test_avatar_update_saves_crest_url(client):
+    user = UserFactory()
+    client.force_login(user)
+    crest = "https://crests.football-data.org/57.png"
+
+    client.post(
+        reverse("website:avatar_update"),
+        data={
+            "avatar_icon": AVATAR_ICONS[0],
+            "avatar_bg": AVATAR_COLORS[0],
+            "avatar_frame": "",
+            "avatar_crest_url": crest,
+        },
+    )
+
+    user.refresh_from_db()
+
+    assert user.avatar_crest_url == crest
+
+
+@pytest.mark.django_db
+def test_avatar_update_saves_unlocked_frame(client):
+    frame_def = FRAME_REGISTRY[0]
+    user = UserFactory()
+    badge = BadgeFactory(slug=frame_def["required_badge_slug"])
+    UserBadgeFactory(user=user, badge=badge)
+    client.force_login(user)
+
+    client.post(
+        reverse("website:avatar_update"),
+        data={
+            "avatar_icon": AVATAR_ICONS[0],
+            "avatar_bg": AVATAR_COLORS[0],
+            "avatar_frame": frame_def["slug"],
+            "avatar_crest_url": "",
+        },
+    )
+
+    user.refresh_from_db()
+
+    assert user.avatar_frame == frame_def["slug"]
+
+
+@pytest.mark.django_db
+def test_avatar_update_rejects_locked_frame(client):
+    frame_def = FRAME_REGISTRY[0]
+    user = UserFactory()  # no badges earned
+    client.force_login(user)
+
+    client.post(
+        reverse("website:avatar_update"),
+        data={
+            "avatar_icon": AVATAR_ICONS[0],
+            "avatar_bg": AVATAR_COLORS[0],
+            "avatar_frame": frame_def["slug"],
+            "avatar_crest_url": "",
+        },
+    )
+
+    user.refresh_from_db()
+
+    assert user.avatar_frame == ""  # unchanged from default
+
+
+@pytest.mark.django_db
+def test_avatar_update_htmx_returns_partial(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:avatar_update"),
+        data={
+            "avatar_icon": AVATAR_ICONS[0],
+            "avatar_bg": AVATAR_COLORS[0],
+            "avatar_frame": "",
+            "avatar_crest_url": "",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert any(
+        t.name == "website/partials/avatar_settings_card.html"
+        for t in response.templates
+    )
+
+
+@pytest.mark.django_db
+def test_avatar_update_htmx_partial_includes_save_success(client):
+    user = UserFactory()
+    client.force_login(user)
+
+    response = client.post(
+        reverse("website:avatar_update"),
+        data={
+            "avatar_icon": AVATAR_ICONS[0],
+            "avatar_bg": AVATAR_COLORS[0],
+            "avatar_frame": "",
+            "avatar_crest_url": "",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert b"Avatar updated" in response.content
+
+
+@pytest.mark.django_db
+def test_account_view_context_includes_avatar_data(client):
+    user = UserFactory()
+    UserBalanceFactory(user=user)
+    client.force_login(user)
+
+    response = client.get(reverse("website:account"))
+
+    assert "avatar_icons" in response.context
+    assert "avatar_colors" in response.context
+    assert "avatar_frames" in response.context
+    assert "avatar_teams" in response.context
+    assert len(response.context["avatar_icons"]) > 0
+    assert len(response.context["avatar_colors"]) > 0

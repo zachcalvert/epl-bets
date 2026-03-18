@@ -9,7 +9,7 @@ class AvatarForm(forms.Form):
     avatar_icon = forms.ChoiceField(choices=[(i, i) for i in AVATAR_ICONS])
     avatar_bg = forms.ChoiceField(choices=[(c, c) for c in AVATAR_COLORS])
     avatar_frame = forms.CharField(required=False)
-    avatar_crest_url = forms.URLField(required=False)
+    avatar_crest_url = forms.URLField(required=False, assume_scheme="https")
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
