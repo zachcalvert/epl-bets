@@ -398,6 +398,15 @@ class MatchDetailView(DetailView):
             Match.Status.FINISHED,
         )
 
+        # Standings for header league-position display
+        standings = Standing.objects.filter(
+            season=settings.CURRENT_SEASON,
+            team__in=[match.home_team, match.away_team],
+        ).select_related("team")
+        standing_map = {s.team_id: s for s in standings}
+        ctx["home_standing"] = standing_map.get(match.home_team_id)
+        ctx["away_standing"] = standing_map.get(match.away_team_id)
+
         ctx.update(_get_match_transparency_context(match.pk))
         return ctx
 

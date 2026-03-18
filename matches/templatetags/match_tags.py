@@ -95,6 +95,17 @@ def format_odds(value):
 
 
 @register.filter
+def ordinal(value):
+    """Convert an integer to its ordinal string: 1 → '1st', 2 → '2nd', etc."""
+    try:
+        n = int(value)
+    except (ValueError, TypeError):
+        return value
+    suffix = "th" if 11 <= (n % 100) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+@register.filter
 def relative_time(value):
     dt = _coerce_datetime(value)
     if dt is None:
