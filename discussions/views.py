@@ -1,5 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Prefetch
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -13,11 +13,29 @@ from matches.models import Match
 COMMENTS_PER_PAGE = 20
 
 
+def _visible_top_level_qs(match):
+    """Top-level comments that should appear in the list and be counted.
+
+    A comment is visible if it is not deleted, or if it is deleted but still
+    has at least one non-deleted reply (shown as a "[Comment deleted]" placeholder
+    to preserve the reply thread).
+    """
+    has_visible_replies = Exists(
+        Comment.objects.filter(parent=OuterRef("pk"), is_deleted=False)
+    )
+    return (
+        Comment.objects.filter(match=match, parent__isnull=True)
+        .annotate(has_visible_replies=has_visible_replies)
+        .filter(Q(is_deleted=False) | Q(has_visible_replies=True))
+    )
+
+
 def _build_bet_map(match_pk, user_ids):
-    """Build a dict mapping user_id -> most recent BetSlip.Selection for this match."""
+    """Return a dict mapping user_id -> their most recent BetSlip.Selection."""
     bets = (
         BetSlip.objects.filter(match_id=match_pk, user_id__in=user_ids)
-        .order_by("created_at")
+        .order_by("user_id", "-created_at")
+        .distinct("user_id")
         .values("user_id", "selection")
     )
     return {b["user_id"]: b["selection"] for b in bets}
@@ -44,27 +62,27 @@ class CommentListView(View):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team"), pk=match_pk
         )
-        offset = int(request.GET.get("offset", 0))
+        try:
+            offset = max(0, int(request.GET.get("offset", 0)))
+        except (TypeError, ValueError):
+            offset = 0
 
         replies_qs = (
             Comment.objects.filter(is_deleted=False)
             .select_related("user")
             .order_by("created_at")
         )
+        visible_qs = _visible_top_level_qs(match)
         comments = list(
-            Comment.objects.filter(match=match, parent__isnull=True)
-            .select_related("user")
+            visible_qs.select_related("user")
             .prefetch_related(
                 Prefetch("replies", queryset=replies_qs, to_attr="prefetched_replies")
             )
             .order_by("created_at")[offset : offset + COMMENTS_PER_PAGE]
         )
 
-        total_count = Comment.objects.filter(
-            match=match, parent__isnull=True
-        ).count()
+        total_count = visible_qs.count()
 
-        # Collect user IDs and build bet position map
         user_ids = {c.user_id for c in comments}
         for c in comments:
             user_ids.update(r.user_id for r in c.prefetched_replies)
@@ -84,7 +102,6 @@ class CommentListView(View):
             "request": request,
         }
 
-        # Paginated requests return just the comment items + updated load-more
         if offset > 0:
             html = render_to_string(
                 "discussions/partials/comment_page.html", context, request=request
@@ -116,19 +133,17 @@ class CreateCommentView(LoginRequiredMixin, View):
             body=form.cleaned_data["body"],
         )
 
-        # Annotate bet position
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         comment.prefetched_replies = []
         _annotate_bet_positions([comment], bet_map, match)
 
-        new_count = Comment.objects.filter(match=match, parent__isnull=True).count()
+        new_count = _visible_top_level_qs(match).count()
 
         html = render_to_string(
             "discussions/partials/comment_single.html",
             {"comment": comment, "match": match, "is_reply": False},
             request=request,
         )
-        # OOB swap to update comment count
         html += render_to_string(
             "discussions/partials/comment_count_oob.html",
             {"comment_count": new_count},
@@ -143,7 +158,6 @@ class CreateReplyView(LoginRequiredMixin, View):
         )
         parent = get_object_or_404(Comment, pk=comment_pk, match=match)
 
-        # Enforce one-level threading
         if parent.parent_id is not None:
             return HttpResponse("Cannot reply to a reply.", status=400)
 
@@ -158,7 +172,6 @@ class CreateReplyView(LoginRequiredMixin, View):
             body=form.cleaned_data["body"],
         )
 
-        # Annotate bet position
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         reply.prefetched_replies = []
         _annotate_bet_positions([reply], bet_map, match)
@@ -194,9 +207,8 @@ class DeleteCommentView(LoginRequiredMixin, View):
             )
             user_ids = {r.user_id for r in comment.prefetched_replies}
             bet_map = _build_bet_map(match_pk, user_ids) if user_ids else {}
-            _annotate_bet_positions(
-                [comment] + comment.prefetched_replies, bet_map, match
-            )
+            # Pass only the parent — _annotate_bet_positions handles its prefetched_replies
+            _annotate_bet_positions([comment], bet_map, match)
             html = render_to_string(
                 "discussions/partials/comment_single.html",
                 {"comment": comment, "match": match, "is_reply": False},
@@ -205,11 +217,11 @@ class DeleteCommentView(LoginRequiredMixin, View):
         else:
             html = ""
 
-        # OOB update count if top-level comment removed entirely
         if not has_replies and comment.parent_id is None:
-            new_count = Comment.objects.filter(
-                match_id=match_pk, parent__isnull=True
-            ).count()
+            match = get_object_or_404(
+                Match.objects.select_related("home_team", "away_team"), pk=match_pk
+            )
+            new_count = _visible_top_level_qs(match).count()
             html += render_to_string(
                 "discussions/partials/comment_count_oob.html",
                 {"comment_count": new_count},

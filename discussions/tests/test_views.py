@@ -487,9 +487,8 @@ def test_delete_comment_updates_count_oob(client):
 
     content = response.content.decode()
     assert 'hx-swap-oob="true"' in content
-    # Count should reflect remaining non-deleted top-level comments
-    # (the deleted one still exists in DB but we show updated count)
-    assert "(2)" in content
+    # Count should reflect only visible (non-deleted) top-level comments
+    assert "(1)" in content
 
 
 def test_delete_reply_does_not_update_count(client):
