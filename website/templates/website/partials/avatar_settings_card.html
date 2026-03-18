@@ -16,6 +16,7 @@
 
     <form
         method="post"
+        action="{% url 'website:avatar_update' %}"
         hx-post="{% url 'website:avatar_update' %}"
         hx-target="#avatar-settings-card"
         hx-swap="outerHTML"

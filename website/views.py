@@ -323,16 +323,22 @@ class CurrencyUpdateView(LoginRequiredMixin, View):
         return redirect("website:account")
 
 
+def get_avatar_teams():
+    return list(
+        Team.objects.exclude(crest_url="").order_by("short_name").values(
+            "short_name",
+            "crest_url",
+        )
+    )
+
+
 class AvatarUpdateView(LoginRequiredMixin, View):
     def _picker_context(self, user, extra=None):
         ctx = {
             "avatar_icons": AVATAR_ICONS,
             "avatar_colors": AVATAR_COLORS,
             "avatar_frames": get_unlocked_frames(user),
-            "avatar_teams": list(
-                Team.objects.exclude(crest_url="").order_by("short_name")
-                .values("short_name", "crest_url")
-            ),
+            "avatar_teams": get_avatar_teams(),
         }
         if extra:
             ctx.update(extra)
@@ -348,7 +354,10 @@ class AvatarUpdateView(LoginRequiredMixin, View):
             request.user.avatar_frame = form.cleaned_data["avatar_frame"]
             request.user.save(
                 update_fields=[
-                    "avatar_icon", "avatar_bg", "avatar_frame", "avatar_crest_url"
+                    "avatar_icon",
+                    "avatar_bg",
+                    "avatar_frame",
+                    "avatar_crest_url",
                 ]
             )
             if request.htmx:

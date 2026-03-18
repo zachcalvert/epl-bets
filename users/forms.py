@@ -1,6 +1,7 @@
 from django import forms
 
 from betting.models import UserBadge
+from teams.models import Team
 
 from .avatars import AVATAR_COLORS, AVATAR_ICONS, get_frame_by_slug
 
@@ -16,7 +17,12 @@ class AvatarForm(forms.Form):
         self.user = user
 
     def clean_avatar_crest_url(self):
-        return self.cleaned_data.get("avatar_crest_url", "").strip()
+        value = self.cleaned_data.get("avatar_crest_url", "").strip()
+        if not value:
+            return ""
+        if not Team.objects.filter(crest_url=value).exists():
+            raise forms.ValidationError("Invalid crest URL.")
+        return value
 
     def clean_avatar_frame(self):
         slug = self.cleaned_data.get("avatar_frame", "").strip()
