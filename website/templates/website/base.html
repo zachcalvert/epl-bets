@@ -86,6 +86,13 @@
     </div>
     {% endif %}
 
+    <!-- Reload on bfcache restore — Tailwind CDN doesn't re-run after back/forward navigation -->
+    <script>
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted) { window.location.reload(); }
+        });
+    </script>
+
     <!-- Global HTMX CSRF + error handler -->
     <script>
         document.body.addEventListener('htmx:configRequest', function(e) {
