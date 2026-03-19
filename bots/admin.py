@@ -7,5 +7,5 @@ from bots.models import BotComment
 class BotCommentAdmin(admin.ModelAdmin):
     list_display = ("user", "match", "trigger_type", "filtered", "created_at")
     list_filter = ("trigger_type", "filtered")
-    list_select_related = ("user", "match")
+    list_select_related = ("user", "match", "match__home_team", "match__away_team")
     readonly_fields = ("prompt_used", "raw_response")

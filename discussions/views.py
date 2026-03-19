@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import HttpResponse, HttpResponseForbidden
@@ -9,6 +11,8 @@ from betting.models import BetSlip
 from discussions.forms import CommentForm
 from discussions.models import Comment
 from matches.models import Match
+
+logger = logging.getLogger(__name__)
 
 COMMENTS_PER_PAGE = 20
 
@@ -133,11 +137,15 @@ class CreateCommentView(LoginRequiredMixin, View):
             body=form.cleaned_data["body"],
         )
 
-        # Maybe trigger a bot reply to this human comment
+        # Maybe trigger a bot reply to this human comment.
+        # Wrapped in try/except so broker failures don't break the user's post.
         if not request.user.is_bot:
-            from bots.tasks import maybe_reply_to_human_comment
+            try:
+                from bots.tasks import maybe_reply_to_human_comment
 
-            maybe_reply_to_human_comment.delay(comment.pk)
+                maybe_reply_to_human_comment.delay(comment.pk)
+            except Exception:
+                logger.warning("Failed to dispatch bot reply task", exc_info=True)
 
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         comment.prefetched_replies = []
@@ -185,10 +193,14 @@ class CreateReplyView(LoginRequiredMixin, View):
 
         # Maybe trigger a bot reply to the parent thread (not the reply itself,
         # since the UI only renders one level of nesting).
+        # Wrapped in try/except so broker failures don't break the user's post.
         if not request.user.is_bot:
-            from bots.tasks import maybe_reply_to_human_comment
+            try:
+                from bots.tasks import maybe_reply_to_human_comment
 
-            maybe_reply_to_human_comment.delay(parent.pk)
+                maybe_reply_to_human_comment.delay(parent.pk)
+            except Exception:
+                logger.warning("Failed to dispatch bot reply task", exc_info=True)
 
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         reply.prefetched_replies = []
