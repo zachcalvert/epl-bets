@@ -214,6 +214,11 @@ def maybe_reply_to_human_comment(comment_id):
     return f"dispatched reply from {bot.display_name}"
 
 
+# Per-run dispatch caps — keeps Celery queue and API costs manageable.
+MAX_PREMATCH_DISPATCHES = 20
+MAX_POSTMATCH_DISPATCHES = 30
+
+
 @shared_task
 def generate_prematch_comments():
     """Find upcoming matches and dispatch pre-match hype comments for 1-2 bots each."""
@@ -229,8 +234,12 @@ def generate_prematch_comments():
 
     dispatched = 0
     for match in upcoming:
+        if dispatched >= MAX_PREMATCH_DISPATCHES:
+            break
         bots = select_bots_for_match(match, BotComment.TriggerType.PRE_MATCH)
         for bot in bots:
+            if dispatched >= MAX_PREMATCH_DISPATCHES:
+                break
             delay = random.randint(60, 600)  # 1-10 min stagger
             generate_bot_comment_task.apply_async(
                 args=[bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH],
@@ -238,7 +247,7 @@ def generate_prematch_comments():
             )
             dispatched += 1
 
-    logger.info("Dispatched %d pre-match comment tasks", dispatched)
+    logger.info("Dispatched %d pre-match comment tasks (cap %d)", dispatched, MAX_PREMATCH_DISPATCHES)
     return f"dispatched {dispatched} pre-match comments"
 
 
@@ -257,6 +266,9 @@ def generate_postmatch_comments():
 
     dispatched = 0
     for match in recently_finished:
+        if dispatched >= MAX_POSTMATCH_DISPATCHES:
+            break
+
         # One reaction per bot user — pick their most recent bet on this match
         seen_user_ids = set()
         bot_bets = (
@@ -270,6 +282,8 @@ def generate_postmatch_comments():
         )
 
         for bet in bot_bets:
+            if dispatched >= MAX_POSTMATCH_DISPATCHES:
+                break
             if bet.user_id in seen_user_ids:
                 continue
             seen_user_ids.add(bet.user_id)
@@ -286,6 +300,9 @@ def generate_postmatch_comments():
             )
             dispatched += 1
 
+        if dispatched >= MAX_POSTMATCH_DISPATCHES:
+            break
+
         # Pick 1 non-betting bot for color commentary, excluding bots already enqueued
         color_bots = select_bots_for_match(
             match, BotComment.TriggerType.POST_MATCH, max_bots=1,
@@ -299,7 +316,7 @@ def generate_postmatch_comments():
             )
             dispatched += 1
 
-    logger.info("Dispatched %d post-match comment tasks", dispatched)
+    logger.info("Dispatched %d post-match comment tasks (cap %d)", dispatched, MAX_POSTMATCH_DISPATCHES)
     return f"dispatched {dispatched} post-match comments"
 
 
