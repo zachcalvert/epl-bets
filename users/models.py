@@ -29,6 +29,10 @@ class User(AbstractUser):
     avatar_bg = models.CharField(max_length=7, default="#374151")
     avatar_frame = models.CharField(max_length=50, blank=True, default="")
     avatar_crest_url = models.URLField(blank=True, default="")
+    show_activity_toasts = models.BooleanField(
+        default=True,
+        help_text="Show live activity feed toasts on every page.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

@@ -7,6 +7,7 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from activity.services import queue_activity_event
 from bots.models import BotComment
 from bots.registry import get_strategy_for_bot
 from bots.services import (
@@ -91,6 +92,12 @@ def execute_bot_strategy(self, bot_user_id):
         result = place_bot_bet(user, pick.match_id, pick.selection, pick.stake)
         if result:
             bets_placed += 1
+            queue_activity_event(
+                "bot_bet",
+                f"{user.display_name} placed a bet on {result.match}",
+                url=f"/matches/{pick.match_id}/",
+                icon="coin",
+            )
             # Post-bet comment (~50% chance, staggered 30s-5min)
             if random.random() < 0.5:
                 generate_bot_comment_task.apply_async(
@@ -105,6 +112,12 @@ def execute_bot_strategy(self, bot_user_id):
         result = place_bot_parlay(user, pp.legs, pp.stake)
         if result:
             parlays_placed += 1
+            queue_activity_event(
+                "bot_bet",
+                f"{user.display_name} placed a {len(pp.legs)}-leg parlay",
+                url=f"/matches/{pp.legs[0]['match_id']}/",
+                icon="coins",
+            )
 
     summary = f"{user.display_name}: {bets_placed} bets, {parlays_placed} parlays"
     logger.info("Bot run complete: %s", summary)
@@ -143,6 +156,13 @@ def generate_bot_comment_task(bot_user_id, match_id, trigger_type, bet_slip_id=N
     comment = generate_bot_comment(bot_user, match, trigger_type, bet_slip)
     if not comment:
         return "skipped (dedup or filter)"
+
+    queue_activity_event(
+        "bot_comment",
+        f"{bot_user.display_name} commented on {match}",
+        url=f"/matches/{match.pk}/",
+        icon="chat-circle",
+    )
 
     # After posting a non-reply comment, maybe trigger a reply from another bot
     if trigger_type != BotComment.TriggerType.REPLY:
