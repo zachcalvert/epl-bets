@@ -190,27 +190,31 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 CELERY_BEAT_SCHEDULE = {
-    "fetch-teams-daily": {
+    "fetch-teams-monthly": {
         "task": "matches.tasks.fetch_teams",
-        "schedule": crontab(hour=3, minute=0),  # 3 AM daily
+        "schedule": crontab(hour=3, minute=0, day_of_month=1),  # 1st of month
     },
     "fetch-fixtures-daily": {
         "task": "matches.tasks.fetch_fixtures",
         "schedule": crontab(hour=3, minute=0),  # 3 AM daily
     },
-    "fetch-standings-6h": {
+    "fetch-standings-daily-midweek": {
         "task": "matches.tasks.fetch_standings",
-        "schedule": timedelta(hours=6),
+        "schedule": crontab(hour=3, minute=0, day_of_week="tue,wed,thu"),
+    },
+    "fetch-standings-3h-matchdays": {
+        "task": "matches.tasks.fetch_standings",
+        "schedule": crontab(hour="0,3,6,9,12,15,18,21", minute=0, day_of_week="fri,sat,sun,mon"),
     },
     "fetch-live-scores-15m-on-matchdays": {
         "task": "matches.tasks.fetch_live_scores",
-        # Twice daily (9 AM and 5 PM UTC) on Fri/Sat/Sun/Mon only
-        "schedule": crontab(minute="0,15,30,45", day_of_week="fri,sat,sun,mon"),
+        # Every 15 min on matchdays, only during match hours (11 AM – 11 PM UTC)
+        "schedule": crontab(minute="0,15,30,45", hour="11-23", day_of_week="fri,sat,sun,mon"),
     },
-    "fetch-odds-2x-matchdays": {
+    "fetch-odds-4x-thu-mon": {
         "task": "betting.tasks.fetch_odds",
-        # Twice daily (9 AM and 5 PM UTC) on Fri/Sat/Sun/Mon only
-        "schedule": crontab(hour="9,17", minute=0, day_of_week="fri,sat,sun,mon"),
+        # 4x daily Thu evening through Mon morning
+        "schedule": crontab(hour="6,12,17,22", minute=0, day_of_week="thu,fri,sat,sun,mon"),
     },
     "prefetch-hype-data-6h": {
         "task": "matches.tasks.prefetch_upcoming_hype_data",
@@ -228,17 +232,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "challenges.tasks.expire_challenges",
         "schedule": timedelta(minutes=15),
     },
-    "run-bot-strategies-24-hours": {
+    "run-bot-strategies-daily-thu-sat": {
         "task": "bots.tasks.run_bot_strategies",
-        "schedule": timedelta(hours=24),
+        "schedule": crontab(hour=8, minute=0, day_of_week="thu,fri,sat"),
     },
-    "generate-prematch-comments-2h": {
+    "generate-prematch-comments-2h-thu-sat": {
         "task": "bots.tasks.generate_prematch_comments",
-        "schedule": timedelta(hours=2),
+        "schedule": crontab(hour="8,10,12,14,16,18,20,22", minute=0, day_of_week="thu,fri,sat"),
     },
-    "generate-postmatch-comments-15-on-matchdays": {
+    "generate-postmatch-comments-30m-matchdays": {
         "task": "bots.tasks.generate_postmatch_comments",
-        "schedule": crontab(minute="0,15,30,45", day_of_week="fri,sat,sun,mon"),
+        "schedule": crontab(minute="0,30", hour="14-23", day_of_week="fri,sat,sun,mon"),
     },
     # Board bot posts
     "board-postgw-wrapup-sunday": {
