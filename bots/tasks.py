@@ -315,13 +315,10 @@ def generate_postmatch_comments():
             exclude_user_ids=seen_user_ids,
         )
         for bot in color_bots:
-            existing_bet = BetSlip.objects.filter(
-                user=bot, match=match,
-            ).order_by("-created_at").first()
-            bet_slip_id = existing_bet.pk if existing_bet else None
+            # Color bots are explicitly excluded bettors, so there's no bet to look up.
             delay = random.randint(120, 900)
             generate_bot_comment_task.apply_async(
-                args=[bot.pk, match.pk, BotComment.TriggerType.POST_MATCH, bet_slip_id],
+                args=[bot.pk, match.pk, BotComment.TriggerType.POST_MATCH, None],
                 countdown=delay,
             )
             dispatched += 1
