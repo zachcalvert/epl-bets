@@ -9,12 +9,15 @@ from betting.models import BetSlip
 from betting.tests.factories import BetSlipFactory, OddsFactory
 from bots.comment_service import (
     _filter_comment,
+    _homer_team_mentioned,
     _is_bot_relevant,
     generate_bot_comment,
     select_bots_for_match,
+    select_reply_bot,
 )
 from bots.models import BotComment
 from bots.tests.factories import BotUserFactory
+from discussions.models import Comment
 from matches.tests.factories import MatchFactory, TeamFactory
 
 pytestmark = pytest.mark.django_db
@@ -258,26 +261,28 @@ class TestIsBotRelevant:
             assert _is_bot_relevant(bot, match, {}) is True
 
     def test_homer_bot_relevant_when_their_team_is_playing(self):
-        from bots.models import HomerBotConfig
+        team = TeamFactory(tla="ARS")
+        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        match = MatchFactory(home_team=team)
 
-        bot = BotUserFactory(email="homer.arsenal@bots.eplbets.local")
-        match = MatchFactory()
-        HomerBotConfig.objects.create(user=bot, team=match.home_team)
+        assert _is_bot_relevant(bot, match, {}) is True
+
+    def test_homer_bot_relevant_when_their_team_is_away(self):
+        team = TeamFactory(tla="ARS")
+        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        match = MatchFactory(away_team=team)
 
         assert _is_bot_relevant(bot, match, {}) is True
 
     def test_homer_bot_not_relevant_when_team_not_in_match(self):
-        from bots.models import HomerBotConfig
-
-        bot = BotUserFactory(email="homer.chelsea@bots.eplbets.local")
-        other_team = TeamFactory()
-        match = MatchFactory()
-        HomerBotConfig.objects.create(user=bot, team=other_team)
+        TeamFactory(tla="CHE")
+        bot = BotUserFactory(email="chelsea-homer@bots.eplbets.local")
+        match = MatchFactory()  # random teams, not Chelsea
 
         assert _is_bot_relevant(bot, match, {}) is False
 
-    def test_bot_without_homer_config_returns_false(self):
-        bot = BotUserFactory(email="homer.orphan@bots.eplbets.local")
+    def test_unknown_bot_returns_false(self):
+        bot = BotUserFactory(email="mystery@bots.eplbets.local")
         match = MatchFactory()
 
         assert _is_bot_relevant(bot, match, {}) is False
@@ -342,3 +347,155 @@ class TestFilterComment:
             f"{tla} should win this match comfortably.", match
         )
         assert ok is True
+
+
+# ── select_reply_bot ─────────────────────────────────────────────────────────
+
+
+class TestSelectReplyBot:
+    def test_returns_none_when_reply_cap_reached(self):
+        match = MatchFactory()
+        comment = Comment.objects.create(
+            match=match,
+            user=BotUserFactory(email=FRONTRUNNER),
+            body="free money.",
+        )
+        # Fill up 4 reply slots
+        for i in range(4):
+            bot = BotUserFactory(email=f"filler{i}@bots.eplbets.local")
+            BotComment.objects.create(
+                user=bot, match=match, trigger_type=BotComment.TriggerType.REPLY,
+            )
+
+        result = select_reply_bot(match, comment)
+        assert result is None
+
+    def test_returns_affinity_bot_for_bot_comment(self):
+        # ChalkEater posts, heartbreak_fc has beef with them
+        frontrunner = BotUserFactory(email=FRONTRUNNER)
+        underdog = BotUserFactory(email="underdog@bots.eplbets.local")
+        match = MatchFactory()
+        comment = Comment.objects.create(
+            match=match, user=frontrunner, body="free money, easy match.",
+        )
+
+        result = select_reply_bot(match, comment)
+        assert result is not None
+        assert result.pk == underdog.pk
+
+    def test_does_not_reply_to_self(self):
+        bot = BotUserFactory(email=PARLAY_PETE)
+        match = MatchFactory()
+        comment = Comment.objects.create(
+            match=match, user=bot, body="hear me out, 5 leg parlay this time.",
+        )
+
+        # Only parlay_graveyard exists, so no one can reply
+        result = select_reply_bot(match, comment)
+        assert result is None
+
+    def test_skips_bot_that_already_replied(self):
+        frontrunner = BotUserFactory(email=FRONTRUNNER)
+        underdog = BotUserFactory(email="underdog@bots.eplbets.local")
+        match = MatchFactory()
+        comment = Comment.objects.create(
+            match=match, user=frontrunner, body="free money.",
+        )
+        # underdog already used REPLY slot for this match
+        BotComment.objects.create(
+            user=underdog, match=match, trigger_type=BotComment.TriggerType.REPLY,
+        )
+
+        result = select_reply_bot(match, comment)
+        assert result is None
+
+    def test_homer_bot_replies_when_team_mentioned(self):
+        team = TeamFactory(tla="ARS", name="Arsenal FC")
+        homer = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        other_bot = BotUserFactory(email=PARLAY_PETE)
+        match = MatchFactory(home_team=team)
+        comment = Comment.objects.create(
+            match=match, user=other_bot, body="Arsenal are going to bottle this.",
+        )
+
+        result = select_reply_bot(match, comment)
+        assert result is not None
+        assert result.pk == homer.pk
+
+
+# ── _homer_team_mentioned ────────────────────────────────────────────────────
+
+
+class TestHomerTeamMentioned:
+    def test_returns_true_when_team_name_in_text(self):
+        TeamFactory(tla="ARS", name="Arsenal FC")
+        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+
+        assert _homer_team_mentioned(bot, "Arsenal FC are looking great") is True
+
+    def test_returns_true_when_tla_in_text(self):
+        TeamFactory(tla="LIV", name="Liverpool FC")
+        bot = BotUserFactory(email="liverpool-homer@bots.eplbets.local")
+
+        assert _homer_team_mentioned(bot, "LIV should win this") is True
+
+    def test_returns_false_when_no_mention(self):
+        TeamFactory(tla="CHE", name="Chelsea FC")
+        bot = BotUserFactory(email="chelsea-homer@bots.eplbets.local")
+
+        assert _homer_team_mentioned(bot, "Great match ahead") is False
+
+    def test_returns_false_for_non_homer_bot(self):
+        bot = BotUserFactory(email=FRONTRUNNER)
+
+        assert _homer_team_mentioned(bot, "anything") is False
+
+
+# ── generate_bot_comment with REPLY trigger ──────────────────────────────────
+
+
+class TestGenerateBotReply:
+    @patch("bots.comment_service.anthropic.Anthropic")
+    def test_reply_creates_comment_with_parent(self, mock_cls, settings):
+        settings.ANTHROPIC_API_KEY = "test-key"
+        mock_cls.return_value.messages.create.return_value = make_api_response(
+            "variance. enjoy your lucky bet while it lasts."
+        )
+        replying_bot = BotUserFactory(email="valuehunter@bots.eplbets.local")
+        other_bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        match = MatchFactory()
+        parent = Comment.objects.create(
+            match=match, user=other_bot, body="I KNEW IT. RIGGED.",
+        )
+
+        reply = generate_bot_comment(
+            replying_bot, match, BotComment.TriggerType.REPLY,
+            parent_comment=parent,
+        )
+
+        assert reply is not None
+        assert reply.parent == parent
+        assert reply.body == "variance. enjoy your lucky bet while it lasts."
+
+    @patch("bots.comment_service.anthropic.Anthropic")
+    def test_reply_prompt_includes_parent_text(self, mock_cls, settings):
+        settings.ANTHROPIC_API_KEY = "test-key"
+        mock_cls.return_value.messages.create.return_value = make_api_response(
+            "correct process, terrible result."
+        )
+        replying_bot = BotUserFactory(email="valuehunter@bots.eplbets.local")
+        other_bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        match = MatchFactory()
+        parent = Comment.objects.create(
+            match=match, user=other_bot, body="RIGGED I tell you.",
+        )
+
+        generate_bot_comment(
+            replying_bot, match, BotComment.TriggerType.REPLY,
+            parent_comment=parent,
+        )
+
+        call_kwargs = mock_cls.return_value.messages.create.call_args.kwargs
+        user_prompt = call_kwargs["messages"][0]["content"]
+        assert "RIGGED I tell you." in user_prompt
+        assert other_bot.display_name in user_prompt

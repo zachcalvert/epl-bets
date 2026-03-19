@@ -133,6 +133,12 @@ class CreateCommentView(LoginRequiredMixin, View):
             body=form.cleaned_data["body"],
         )
 
+        # Maybe trigger a bot reply to this human comment
+        if not request.user.is_bot:
+            from bots.tasks import maybe_reply_to_human_comment
+
+            maybe_reply_to_human_comment.delay(comment.pk)
+
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         comment.prefetched_replies = []
         _annotate_bet_positions([comment], bet_map, match)
@@ -176,6 +182,12 @@ class CreateReplyView(LoginRequiredMixin, View):
             parent=parent,
             body=form.cleaned_data["body"],
         )
+
+        # Maybe trigger a bot reply to this human reply (bots reply to the parent thread)
+        if not request.user.is_bot:
+            from bots.tasks import maybe_reply_to_human_comment
+
+            maybe_reply_to_human_comment.delay(reply.pk)
 
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         reply.prefetched_replies = []

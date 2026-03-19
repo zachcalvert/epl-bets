@@ -1,48 +1,8 @@
-from decimal import Decimal
-
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.models import BaseModel
-from matches.models import Team
-from users.models import User
-
-
-class HomerBotConfig(models.Model):
-    """Configuration for a Homer Bot instance.
-
-    Links a bot user to the team they unconditionally support.
-    Multiple Homer bots can coexist, each backing a different club.
-    """
-
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name="homer_config",
-        limit_choices_to={"is_bot": True},
-    )
-    team = models.ForeignKey(
-        Team,
-        on_delete=models.CASCADE,
-        related_name="homer_bots",
-    )
-    draw_underdog_threshold = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=Decimal("3.50"),
-        help_text=(
-            "Away-win odds at or above this value trigger a DRAW bet instead of AWAY_WIN. "
-            "Represents the point at which even a homer accepts a draw is the best realistic outcome."
-        ),
-    )
-
-    class Meta:
-        verbose_name = "Homer Bot config"
-        verbose_name_plural = "Homer Bot configs"
-
-    def __str__(self):
-        return f"{self.user.display_name} → {self.team.name}"
 
 
 class BotComment(BaseModel):
@@ -52,6 +12,7 @@ class BotComment(BaseModel):
         PRE_MATCH = "PRE_MATCH", _("Pre-match hype")
         POST_BET = "POST_BET", _("Post-bet reaction")
         POST_MATCH = "POST_MATCH", _("Post-match reaction")
+        REPLY = "REPLY", _("Reply to comment")
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -85,6 +46,14 @@ class BotComment(BaseModel):
         _("filtered out"),
         default=False,
         help_text=_("True if the post-hoc filter rejected this comment."),
+    )
+    parent_comment = models.ForeignKey(
+        "discussions.Comment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bot_replies",
+        verbose_name=_("replied to"),
     )
     error = models.TextField(_("error"), blank=True)
 

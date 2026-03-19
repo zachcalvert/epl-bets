@@ -1,10 +1,11 @@
 from django.contrib import admin
 
-from bots.models import HomerBotConfig
+from bots.models import BotComment
 
 
-@admin.register(HomerBotConfig)
-class HomerBotConfigAdmin(admin.ModelAdmin):
-    list_display = ("user", "team", "draw_underdog_threshold")
-    list_select_related = ("user", "team")
-    autocomplete_fields = ("user", "team")
+@admin.register(BotComment)
+class BotCommentAdmin(admin.ModelAdmin):
+    list_display = ("user", "match", "trigger_type", "filtered", "created_at")
+    list_filter = ("trigger_type", "filtered")
+    list_select_related = ("user", "match")
+    readonly_fields = ("prompt_used", "raw_response")

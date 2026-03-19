@@ -1,10 +1,7 @@
 """Tests for the bot strategy registry."""
 
-from decimal import Decimal
-
 import pytest
 
-from bots.models import HomerBotConfig
 from bots.registry import get_strategy_for_bot
 from bots.strategies import (
     FrontrunnerStrategy,
@@ -16,30 +13,24 @@ from matches.tests.factories import TeamFactory
 
 @pytest.mark.django_db
 class TestGetStrategyForBot:
-    def test_returns_homer_strategy_for_user_with_config(self):
-        team = TeamFactory()
-        user = BotUserFactory()
-        HomerBotConfig.objects.create(user=user, team=team)
+    def test_returns_homer_strategy_for_registered_homer_bot(self):
+        team = TeamFactory(tla="ARS")
+        user = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
 
         strategy = get_strategy_for_bot(user)
 
         assert isinstance(strategy, HomerBotStrategy)
         assert strategy.team_id == team.pk
 
-    def test_homer_strategy_uses_configured_threshold(self):
-        team = TeamFactory()
-        user = BotUserFactory()
-        HomerBotConfig.objects.create(
-            user=user,
-            team=team,
-            draw_underdog_threshold=Decimal("4.00"),
-        )
+    def test_homer_strategy_returns_none_when_team_not_in_db(self):
+        # No team with TLA "ARS" exists
+        user = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
 
         strategy = get_strategy_for_bot(user)
 
-        assert strategy.draw_underdog_threshold == Decimal("4.00")
+        assert strategy is None
 
-    def test_returns_static_strategy_for_non_homer_bot(self):
+    def test_returns_static_strategy_for_core_bot(self):
         user = BotUserFactory(email="frontrunner@bots.eplbets.local")
 
         strategy = get_strategy_for_bot(user)
@@ -52,14 +43,3 @@ class TestGetStrategyForBot:
         strategy = get_strategy_for_bot(user)
 
         assert strategy is None
-
-    def test_homer_config_takes_priority_over_static_map(self):
-        """A user whose email is in the static map but also has a HomerBotConfig
-        should get the Homer strategy — config wins."""
-        team = TeamFactory()
-        user = BotUserFactory(email="frontrunner@bots.eplbets.local")
-        HomerBotConfig.objects.create(user=user, team=team)
-
-        strategy = get_strategy_for_bot(user)
-
-        assert isinstance(strategy, HomerBotStrategy)
