@@ -23,9 +23,9 @@
                    class="nav-link {% if url_name == 'dashboard' %}nav-link-active{% endif %}">
                     Dashboard
                 </a>
-                <a href="{% url 'matches:table' %}"
-                   class="nav-link {% if url_name == 'table' %}nav-link-active{% endif %}">
-                    Table
+                <a href="{% url 'board:board' %}"
+                   class="nav-link {% if url_name == 'board' %}nav-link-active{% endif %}">
+                    Board
                 </a>
                 <a href="{% url 'matches:leaderboard' %}"
                    class="nav-link {% if url_name == 'leaderboard' %}nav-link-active{% endif %}">
@@ -139,7 +139,7 @@
             <!-- Site navigation -->
             <div class="space-y-1">
                 <a href="{% url 'matches:dashboard' %}" class="mobile-nav-link {% if url_name == 'dashboard' %}nav-link-active{% endif %}">Dashboard</a>
-                <a href="{% url 'matches:table' %}" class="mobile-nav-link {% if url_name == 'table' %}nav-link-active{% endif %}">Table</a>
+                <a href="{% url 'board:board' %}" class="mobile-nav-link {% if url_name == 'board' %}nav-link-active{% endif %}">Board</a>
                 <a href="{% url 'matches:leaderboard' %}" class="mobile-nav-link {% if url_name == 'leaderboard' %}nav-link-active{% endif %}">Leaderboard</a>
                 <a href="{% url 'betting:odds' %}" class="mobile-nav-link {% if url_name == 'odds' %}nav-link-active{% endif %}">Odds</a>
             </div>

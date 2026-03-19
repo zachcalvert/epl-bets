@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "rewards",
     "challenges",
     "bots",
+    "board",
     "discussions",
     "flags",
     "website",
@@ -238,6 +239,27 @@ CELERY_BEAT_SCHEDULE = {
     "generate-postmatch-comments-15-on-matchdays": {
         "task": "bots.tasks.generate_postmatch_comments",
         "schedule": crontab(minute="0,15,30,45", day_of_week="fri,sat,sun,mon"),
+    },
+    # Board bot posts
+    "board-postgw-wrapup-sunday": {
+        "task": "board.tasks.generate_postgw_board_post",
+        "schedule": crontab(hour=21, minute=0, day_of_week="sun"),
+    },
+    "board-midweek-prediction-wednesday": {
+        "task": "board.tasks.generate_midweek_prediction_post",
+        "schedule": crontab(hour=10, minute=0, day_of_week="wed"),
+    },
+    "board-weekend-preview-friday": {
+        "task": "board.tasks.generate_weekend_preview_post",
+        "schedule": crontab(hour=9, minute=0, day_of_week="fri"),
+    },
+    "board-season-outlook-monthly": {
+        "task": "board.tasks.generate_season_outlook_post",
+        "schedule": crontab(hour=12, minute=0, day_of_month=1),
+    },
+    "board-feature-request-biweekly": {
+        "task": "board.tasks.generate_bot_feature_request_post",
+        "schedule": crontab(hour=14, minute=0, day_of_week="tue"),  # every other tue (stubbed)
     },
 }
 

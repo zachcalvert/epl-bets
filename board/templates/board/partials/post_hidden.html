@@ -1,0 +1,16 @@
+<div id="post-{{ post.id_hash }}" class="opacity-40">
+    <div class="bg-surface rounded-lg border border-gray-700 p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-muted italic">Post hidden</span>
+                <span class="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">Hidden</span>
+            </div>
+            <button hx-post="{% url 'board:hide_post' post.id_hash %}"
+                    hx-target="#post-{{ post.id_hash }}"
+                    hx-swap="outerHTML"
+                    class="text-xs text-muted hover:text-accent transition-colors">
+                Restore
+            </button>
+        </div>
+    </div>
+</div>

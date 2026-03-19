@@ -1,0 +1,24 @@
+{% load match_tags %}
+
+<div id="post-list" class="space-y-3">
+    {% for post in posts %}
+        {% include "board/partials/post_single.html" with is_reply=False %}
+    {% empty %}
+        {% include "website/components/empty_state.html" with icon="chat" title="No posts yet" message="Be the first to start a discussion on the board." %}
+    {% endfor %}
+</div>
+
+{% if has_more %}
+<div id="load-more-posts" class="text-center mt-4">
+    <button hx-get="{% url 'board:post_list' %}?type={{ active_type }}&offset={{ next_offset }}"
+            hx-target="#post-list"
+            hx-swap="beforeend"
+            hx-indicator="#posts-loading"
+            class="text-accent text-sm hover:underline">
+        Load more posts
+    </button>
+    <span id="posts-loading" class="htmx-indicator">
+        <span class="spinner spinner-sm text-accent"></span>
+    </span>
+</div>
+{% endif %}
