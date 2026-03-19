@@ -290,3 +290,7 @@ def settle_match_bets(self, match_id):
     )
     # Settle parlay legs for this match
     settle_parlay_legs(match, winning_selection)
+
+    # TODO: trigger bot reactions on settlement — e.g. celebratory/rage
+    # board posts or match comments when a bot's bet wins/loses big.
+    # This would make the community feel more alive after results come in.
