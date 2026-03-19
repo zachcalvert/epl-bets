@@ -263,7 +263,7 @@ def _apply_progress(uc, increment):
             log_transaction(
                 balance, reward,
                 BalanceTransaction.Type.CHALLENGE_REWARD,
-                f"Challenge: {uc_locked.challenge.template.name}",
+                f"Challenge: {uc_locked.challenge.template.title}",
             )
             uc_locked.reward_credited = True
 
