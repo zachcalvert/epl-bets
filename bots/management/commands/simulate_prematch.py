@@ -5,8 +5,6 @@ to brag about it. Targets the N soonest upcoming matches so comments are
 guaranteed to reference live, relevant fixtures.
 """
 
-import logging
-
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -24,7 +22,6 @@ from bots.tasks import generate_bot_comment_task
 from matches.models import Match
 
 User = get_user_model()
-logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
