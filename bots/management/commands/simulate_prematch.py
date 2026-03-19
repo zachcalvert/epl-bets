@@ -37,6 +37,11 @@ class Command(BaseCommand):
             default=3,
             help="Number of upcoming matches to target, soonest first (default: 3)",
         )
+        parser.add_argument(
+            "--reset-bets",
+            action="store_true",
+            help="Cancel existing pending bot bets on target matches before placing new ones",
+        )
 
     def handle(self, *args, **options):
         n = options["matches"]
@@ -70,6 +75,16 @@ class Command(BaseCommand):
         if not odds_map:
             self.stdout.write(self.style.WARNING("No odds found for these matches — aborting."))
             return
+
+        # --- Optional: cancel existing pending bot bets on target matches ---
+        if options["reset_bets"]:
+            deleted, _ = BetSlip.objects.filter(
+                user__is_bot=True,
+                match_id__in=match_ids,
+                status=BetSlip.Status.PENDING,
+            ).delete()
+            if deleted:
+                self.stdout.write(f"Cancelled {deleted} existing pending bot bet(s).")
 
         # --- 2. Each bot places bets on the target matches ---
         self.stdout.write(self.style.MIGRATE_HEADING("\nPhase 1 — placing bets:"))

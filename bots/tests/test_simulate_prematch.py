@@ -168,6 +168,69 @@ class TestSimulatePreMatchMatchesFlag:
         assert BetSlip.objects.filter(user=bot, match=match).count() == 1
 
 
+class TestSimulatePreMatchResetBets:
+    def test_reset_bets_cancels_pending_bot_bets_on_target_matches(self):
+        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        UserBalanceFactory(user=bot, balance="500.00")
+        match = make_upcoming_match()
+        OddsFactory(match=match, home_win="1.40", draw="3.80", away_win="5.50")
+
+        BetSlip.objects.create(
+            user=bot,
+            match=match,
+            selection=BetSlip.Selection.HOME_WIN,
+            odds_at_placement="1.40",
+            stake="10.00",
+            status=BetSlip.Status.PENDING,
+        )
+
+        with patch("bots.tasks.generate_bot_comment_task.delay"):
+            call_command("simulate_prematch", matches=1, reset_bets=True)
+
+        # Old pending slip gone; bot should have placed a fresh one
+        assert BetSlip.objects.filter(user=bot, match=match, status=BetSlip.Status.PENDING).exists()
+
+    def test_reset_bets_reports_cancelled_count(self, capsys):
+        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        UserBalanceFactory(user=bot, balance="500.00")
+        match = make_upcoming_match()
+        OddsFactory(match=match, home_win="1.40", draw="3.80", away_win="5.50")
+
+        BetSlip.objects.create(
+            user=bot,
+            match=match,
+            selection=BetSlip.Selection.HOME_WIN,
+            odds_at_placement="1.40",
+            stake="10.00",
+            status=BetSlip.Status.PENDING,
+        )
+
+        with patch("bots.tasks.generate_bot_comment_task.delay"):
+            call_command("simulate_prematch", matches=1, reset_bets=True)
+
+        assert "Cancelled 1 existing pending bot bet(s)" in capsys.readouterr().out
+
+    def test_without_reset_bets_preserves_existing_slips(self):
+        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        UserBalanceFactory(user=bot, balance="500.00")
+        match = make_upcoming_match()
+        OddsFactory(match=match, home_win="1.40", draw="3.80", away_win="5.50")
+
+        BetSlip.objects.create(
+            user=bot,
+            match=match,
+            selection=BetSlip.Selection.HOME_WIN,
+            odds_at_placement="1.40",
+            stake="10.00",
+            status=BetSlip.Status.PENDING,
+        )
+
+        with patch("bots.tasks.generate_bot_comment_task.delay"):
+            call_command("simulate_prematch", matches=1)  # no --reset-bets
+
+        assert BetSlip.objects.filter(user=bot, match=match).count() == 1
+
+
 class TestSimulatePreMatchOutput:
     def test_output_lists_target_matches(self, capsys):
         match = make_upcoming_match()
