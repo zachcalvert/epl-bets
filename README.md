@@ -78,12 +78,26 @@ docker compose run --rm web python manage.py seed_all --offline
 docker compose run --rm web python manage.py seed_all --skip-odds
 ```
 
+## Utility Commands
+
+| Command | What it does | Options |
+|---------|--------------|---------|
+| `simulate_prematch` | Bots place bets and post comments on upcoming matches | `--matches N` (default: 3), `--reset-bets` (cancel pending bot bets first) |
+| `reset_bot_comments` | Delete all bot-generated comments | `--yes` (skip confirmation) |
+
+Example:
+```bash
+# Simulate bot activity on the 5 soonest matches
+docker compose run --rm web python manage.py simulate_prematch --matches 5
+```
+
 ## API Keys
 
-Two free APIs power the data:
+Three free APIs power the app:
 
 - **[football-data.org](https://www.football-data.org/)** — Fixtures, scores, standings (free tier: 10 req/min)
 - **[The Odds API](https://the-odds-api.com/)** — Real bookmaker odds (free tier: 500 credits/month)
+- **[Anthropic Claude API](https://console.anthropic.com/)** — Bot commentary generation (pay-as-you-go)
 
 Add your keys to `.env` after copying `.env.example`.
 
