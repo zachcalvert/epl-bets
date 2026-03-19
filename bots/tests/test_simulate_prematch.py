@@ -122,7 +122,7 @@ class TestSimulatePreMatchMatchesFlag:
         bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
         UserBalanceFactory(user=bot, balance="500.00")
 
-        with patch("bots.tasks.generate_bot_comment_task.delay") as mock_delay, \
+        with patch("bots.tasks.generate_bot_comment_task.delay") as _, \
              patch("bots.comment_service.select_bots_for_match", return_value=[bot]) as mock_select:
             call_command("simulate_prematch", matches=2)
 
@@ -152,7 +152,7 @@ class TestSimulatePreMatchMatchesFlag:
         OddsFactory(match=match, home_win="1.40", draw="3.80", away_win="5.50")
 
         # Pre-place a bet so the bot already has a pending slip
-        existing_bet = BetSlip.objects.create(
+        BetSlip.objects.create(
             user=bot,
             match=match,
             selection=BetSlip.Selection.HOME_WIN,
