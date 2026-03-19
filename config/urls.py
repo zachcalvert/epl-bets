@@ -11,6 +11,7 @@ urlpatterns = [
     path("api/balance-history/<int:user_pk>/", BalanceHistoryAPI.as_view(), name="balance_history_api"),
     path("odds/", include("betting.urls")),
     path("profile/<int:user_pk>/", ProfileView.as_view(), name="profile"),
+    path("board/", include("board.urls")),
     path("", include("discussions.urls")),
     path("", include("challenges.urls")),
     path("", include("rewards.urls")),

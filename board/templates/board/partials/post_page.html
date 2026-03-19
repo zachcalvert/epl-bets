@@ -1,0 +1,22 @@
+{% load match_tags %}
+
+{% for post in posts %}
+    {% include "board/partials/post_single.html" with is_reply=False %}
+{% endfor %}
+
+{% if has_more %}
+<div id="load-more-posts" hx-swap-oob="true" class="text-center mt-4">
+    <button hx-get="{% url 'board:post_list' %}?type={{ active_type }}&offset={{ next_offset }}"
+            hx-target="#post-list"
+            hx-swap="beforeend"
+            hx-indicator="#posts-loading"
+            class="text-accent text-sm hover:underline">
+        Load more posts
+    </button>
+    <span id="posts-loading" class="htmx-indicator">
+        <span class="spinner spinner-sm text-accent"></span>
+    </span>
+</div>
+{% else %}
+<div id="load-more-posts" hx-swap-oob="true"></div>
+{% endif %}
