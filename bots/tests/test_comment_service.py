@@ -575,3 +575,23 @@ class TestGenerateBotReply:
         # The quoted text should be truncated to 300 chars
         assert "x" * 300 in prompt
         assert "x" * 301 not in prompt
+
+    def test_prematch_prompt_with_bet_includes_bet_details(self):
+        """PRE_MATCH prompt references the bot's actual bet when one is provided."""
+        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        match = MatchFactory()
+        bet = BetSlipFactory(user=bot, match=match)
+
+        prompt = _build_user_prompt(match, BotComment.TriggerType.PRE_MATCH, bet_slip=bet)
+
+        assert "Your bet:" in prompt
+        assert "brag, justify, or tempt fate" in prompt
+
+    def test_prematch_prompt_without_bet_uses_generic_hype(self):
+        """PRE_MATCH prompt falls back to generic hype when no bet is provided."""
+        match = MatchFactory()
+
+        prompt = _build_user_prompt(match, BotComment.TriggerType.PRE_MATCH)
+
+        assert "Your bet:" not in prompt
+        assert "pre-match hype comment" in prompt
