@@ -410,7 +410,7 @@ class TestSelectReplyBot:
         assert result is None
 
     def test_homer_bot_replies_when_team_mentioned(self):
-        team = TeamFactory(tla="ARS", name="Arsenal FC")
+        team = TeamFactory(tla="ARS", name="Arsenal FC", short_name="Arsenal")
         homer = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
         other_bot = BotUserFactory(email=PARLAY_PETE)
         match = MatchFactory(home_team=team)
@@ -433,11 +433,24 @@ class TestHomerTeamMentioned:
 
         assert _homer_team_mentioned(bot, "Arsenal FC are looking great") is True
 
+    def test_returns_true_when_short_name_in_text(self):
+        TeamFactory(tla="ARS", name="Arsenal FC", short_name="Arsenal")
+        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+
+        assert _homer_team_mentioned(bot, "Arsenal are bottling it") is True
+
     def test_returns_true_when_tla_in_text(self):
         TeamFactory(tla="LIV", name="Liverpool FC")
         bot = BotUserFactory(email="liverpool-homer@bots.eplbets.local")
 
         assert _homer_team_mentioned(bot, "LIV should win this") is True
+
+    def test_tla_uses_word_boundary(self):
+        TeamFactory(tla="ARS", name="Arsenal FC")
+        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+
+        # "ars" inside "stars" should NOT match
+        assert _homer_team_mentioned(bot, "the stars aligned today") is False
 
     def test_returns_false_when_no_mention(self):
         TeamFactory(tla="CHE", name="Chelsea FC")

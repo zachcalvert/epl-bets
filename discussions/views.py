@@ -183,11 +183,12 @@ class CreateReplyView(LoginRequiredMixin, View):
             body=form.cleaned_data["body"],
         )
 
-        # Maybe trigger a bot reply to this human reply (bots reply to the parent thread)
+        # Maybe trigger a bot reply to the parent thread (not the reply itself,
+        # since the UI only renders one level of nesting).
         if not request.user.is_bot:
             from bots.tasks import maybe_reply_to_human_comment
 
-            maybe_reply_to_human_comment.delay(reply.pk)
+            maybe_reply_to_human_comment.delay(parent.pk)
 
         bet_map = _build_bet_map(match_pk, {request.user.pk})
         reply.prefetched_replies = []

@@ -151,9 +151,12 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None, parent_co
         bc.save(update_fields=["raw_response", "filtered", "error", "updated_at"])
         return None
 
-    # Post the comment — create Comment then link it to the BotComment row
-    # Replies are nested under the parent comment (top-level only — no reply-to-reply).
-    reply_parent = parent_comment if trigger_type == BotComment.TriggerType.REPLY else None
+    # Post the comment — create Comment then link it to the BotComment row.
+    # Replies always nest under the top-level comment (no reply-to-reply)
+    # so we normalize: if parent_comment is itself a reply, use its parent instead.
+    reply_parent = None
+    if trigger_type == BotComment.TriggerType.REPLY and parent_comment:
+        reply_parent = parent_comment.parent or parent_comment
     with transaction.atomic():
         comment = Comment.objects.create(
             match=match, user=bot_user, body=raw_text, parent=reply_parent,
@@ -241,7 +244,12 @@ def select_reply_bot(match, target_comment):
             elif _homer_team_mentioned(bot, target_comment.body):
                 candidates.append(bot)
     else:
-        # Human comment: any relevant bot, 30% chance per candidate
+        # Human comment: ~30% chance of ANY bot reply (single coin flip),
+        # then pick from relevant bots.  Without the gate the probability
+        # compounds across all eligible bots and approaches 100%.
+        if random.random() >= 0.3:
+            return None
+
         odds_map = get_best_odds_map([match.pk])
         match_odds = odds_map.get(match.pk, {})
         for bot in User.objects.filter(is_bot=True, is_active=True):
@@ -249,7 +257,7 @@ def select_reply_bot(match, target_comment):
                 continue
             if bot.email not in BOT_PERSONA_PROMPTS:
                 continue
-            if _is_bot_relevant(bot, match, match_odds) and random.random() < 0.3:
+            if _is_bot_relevant(bot, match, match_odds):
                 candidates.append(bot)
 
     if not candidates:
@@ -270,13 +278,18 @@ def _homer_team_mentioned(bot, text):
         return False
 
     text_lower = text.lower()
-    team_terms = {
-        team.name.lower(),
-        (team.short_name or "").lower(),
-        (team.tla or "").lower(),
-    }
-    team_terms.discard("")
-    return any(term in text_lower for term in team_terms)
+
+    # Full team name and short name can use substring match (long enough to be safe)
+    for term in (team.name.lower(), (team.short_name or "").lower()):
+        if term and term in text_lower:
+            return True
+
+    # TLAs are short (3 chars) — use word boundary to avoid "ARS" matching "stars"
+    tla = (team.tla or "").lower()
+    if tla and re.search(rf"\b{re.escape(tla)}\b", text_lower):
+        return True
+
+    return False
 
 
 def _is_bot_relevant(bot, match, match_odds):
@@ -310,14 +323,15 @@ def _is_bot_relevant(bot, match, match_odds):
         # Always eligible
         return True
     else:
-        # Homer bots — only relevant if their team is playing
+        # Homer bots — only relevant if their team is playing.
+        # Compare TLA directly against already-loaded match teams to avoid N+1 queries.
         profile = PROFILE_MAP.get(email)
         if profile and profile.get("team_tla"):
-            from matches.models import Team
-
-            team = Team.objects.filter(tla=profile["team_tla"]).first()
-            if team:
-                return match.home_team_id == team.pk or match.away_team_id == team.pk
+            tla = profile["team_tla"]
+            return (
+                getattr(match.home_team, "tla", None) == tla
+                or getattr(match.away_team, "tla", None) == tla
+            )
         return False
 
     return False
