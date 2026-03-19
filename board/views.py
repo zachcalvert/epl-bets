@@ -1,5 +1,3 @@
-import logging
-
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseForbidden
@@ -11,14 +9,14 @@ from django.views import View
 from board.forms import BoardPostForm
 from board.models import BoardPost, PostType
 
-logger = logging.getLogger(__name__)
-
 POSTS_PER_PAGE = 20
 
 
-def _visible_top_level_qs(post_type=None):
-    """Top-level, non-hidden posts — optionally filtered by type."""
-    qs = BoardPost.objects.filter(parent__isnull=True, is_hidden=False)
+def _visible_top_level_qs(post_type=None, user=None):
+    """Top-level posts — superusers see hidden posts too."""
+    qs = BoardPost.objects.filter(parent__isnull=True)
+    if not (user and user.is_superuser):
+        qs = qs.filter(is_hidden=False)
     if post_type and post_type in PostType.values:
         qs = qs.filter(post_type=post_type)
     return qs
@@ -48,7 +46,7 @@ class PostListView(View):
             .select_related("author")
             .order_by("created_at")
         )
-        visible_qs = _visible_top_level_qs(post_type)
+        visible_qs = _visible_top_level_qs(post_type, user=request.user)
         posts = list(
             visible_qs.select_related("author")
             .prefetch_related(
@@ -77,6 +75,10 @@ class PostListView(View):
         else:
             html = render_to_string(
                 "board/partials/post_list.html", context, request=request
+            )
+            html += render_to_string(
+                "board/partials/post_count_oob.html",
+                {"post_count": total_count},
             )
         return HttpResponse(html)
 
@@ -115,10 +117,13 @@ class CreatePostView(LoginRequiredMixin, View):
 
 class CreateReplyView(LoginRequiredMixin, View):
     def post(self, request, id_hash):
-        parent = get_object_or_404(BoardPost, id_hash=id_hash, parent__isnull=True)
+        parent = get_object_or_404(BoardPost, id_hash=id_hash)
 
         if parent.parent_id is not None:
             return HttpResponse("Cannot reply to a reply.", status=400)
+
+        if parent.is_hidden:
+            return HttpResponse("Cannot reply to a hidden post.", status=400)
 
         body = request.POST.get("body", "").strip()
         if not body:

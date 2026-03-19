@@ -5,14 +5,10 @@ standings, last gameweek results, upcoming fixtures, and current matchday.
 Consumed by all bot post generators in board/tasks.py.
 """
 
-import logging
-
 from django.conf import settings
 from django.utils import timezone
 
 from matches.models import Match, Standing
-
-logger = logging.getLogger(__name__)
 
 
 def get_board_context():

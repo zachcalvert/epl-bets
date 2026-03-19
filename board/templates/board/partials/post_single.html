@@ -1,5 +1,8 @@
 {% load match_tags %}
 
+{% if post.is_hidden %}
+    {% include "board/partials/post_hidden.html" %}
+{% else %}
 <div id="post-{{ post.id_hash }}" class="{% if is_reply %}ml-8 pl-4 border-l border-gray-700/50{% endif %}">
     <div class="bg-surface rounded-lg border border-gray-700 p-4">
         <!-- Header: user info + type badge + timestamp -->
@@ -74,3 +77,4 @@
     </div>
     {% endif %}
 </div>
+{% endif %}
