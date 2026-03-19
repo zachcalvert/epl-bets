@@ -232,6 +232,8 @@ def generate_prematch_comments():
         kickoff__lte=now + timezone.timedelta(hours=24),
     ).select_related("home_team", "away_team")
 
+    from betting.models import BetSlip
+
     dispatched = 0
     for match in upcoming:
         if dispatched >= MAX_PREMATCH_DISPATCHES:
@@ -240,9 +242,13 @@ def generate_prematch_comments():
         for bot in bots:
             if dispatched >= MAX_PREMATCH_DISPATCHES:
                 break
+            existing_bet = BetSlip.objects.filter(
+                user=bot, match=match, status=BetSlip.Status.PENDING
+            ).first()
+            bet_slip_id = existing_bet.pk if existing_bet else None
             delay = random.randint(60, 600)  # 1-10 min stagger
             generate_bot_comment_task.apply_async(
-                args=[bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH],
+                args=[bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH, bet_slip_id],
                 countdown=delay,
             )
             dispatched += 1
@@ -309,9 +315,13 @@ def generate_postmatch_comments():
             exclude_user_ids=seen_user_ids,
         )
         for bot in color_bots:
+            existing_bet = BetSlip.objects.filter(
+                user=bot, match=match,
+            ).order_by("-created_at").first()
+            bet_slip_id = existing_bet.pk if existing_bet else None
             delay = random.randint(120, 900)
             generate_bot_comment_task.apply_async(
-                args=[bot.pk, match.pk, BotComment.TriggerType.POST_MATCH],
+                args=[bot.pk, match.pk, BotComment.TriggerType.POST_MATCH, bet_slip_id],
                 countdown=delay,
             )
             dispatched += 1

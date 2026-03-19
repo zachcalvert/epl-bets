@@ -452,8 +452,19 @@ def _build_user_prompt(match, trigger_type, bet_slip=None, parent_comment=None):
         lines.append("Write a comment reacting to the final result of this match.")
 
     elif trigger_type == BotComment.TriggerType.PRE_MATCH:
-        lines.append("")
-        lines.append("Write a pre-match hype comment about this upcoming match.")
+        if bet_slip:
+            lines.append(
+                f"Your bet: {bet_slip.get_selection_display()} @ {bet_slip.odds_at_placement} "
+                f"for {bet_slip.stake} credits"
+            )
+            lines.append("")
+            lines.append(
+                "Write a pre-match comment hyping or defending your pick. "
+                "Reference your actual bet — brag, justify, or tempt fate."
+            )
+        else:
+            lines.append("")
+            lines.append("Write a pre-match hype comment about this upcoming match.")
 
     return "\n".join(lines)
 

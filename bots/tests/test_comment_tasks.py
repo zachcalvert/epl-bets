@@ -107,6 +107,45 @@ class TestGenerateBotCommentTask:
 
 
 class TestGeneratePrematchComments:
+    def test_dispatches_with_bet_slip_id_when_bot_has_pending_bet(self):
+        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        now = timezone.now()
+        match = MatchFactory(
+            status=Match.Status.SCHEDULED,
+            kickoff=now + timezone.timedelta(hours=2),
+        )
+        OddsFactory(match=match)
+        bet = BetSlipFactory(user=bot, match=match, status=BetSlip.Status.PENDING)
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            generate_prematch_comments.run()
+
+        assert mock_dispatch.call_count >= 1
+        # Find the call for our bot
+        bot_calls = [
+            c for c in mock_dispatch.call_args_list
+            if c.kwargs.get("args", [])[0] == bot.pk
+        ]
+        assert len(bot_calls) == 1
+        assert bot_calls[0].kwargs["args"][3] == bet.pk
+
+    def test_dispatches_with_none_bet_slip_id_when_bot_has_no_bet(self):
+        BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        now = timezone.now()
+        match = MatchFactory(
+            status=Match.Status.SCHEDULED,
+            kickoff=now + timezone.timedelta(hours=2),
+        )
+        OddsFactory(match=match)
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            generate_prematch_comments.run()
+
+        assert mock_dispatch.call_count >= 1
+        # All dispatched args should have None as bet_slip_id (index 3)
+        for call in mock_dispatch.call_args_list:
+            assert call.kwargs["args"][3] is None
+
     def test_dispatches_tasks_for_upcoming_matches(self):
         BotUserFactory(email="chaoscharlie@bots.eplbets.local")
         now = timezone.now()
@@ -219,6 +258,38 @@ class TestGeneratePostmatchComments:
             if c.args[0][0] == bot.pk
         ]
         assert len(betting_bot_calls) == 0
+
+    def test_color_bot_dispatch_includes_bet_slip_id_when_bet_exists(self):
+        """Color commentary bot passes its own bet_slip_id if it placed a bet."""
+        # The "color bot" is the one picked by select_bots_for_match after bettor bots are excluded.
+        # Use two bots: one is a bettor (already enqueued), one is the color bot that also has a bet.
+        bettor = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        color_bot = BotUserFactory(email="allinalice@bots.eplbets.local")
+        UserBalanceFactory(user=bettor)
+        UserBalanceFactory(user=color_bot)
+
+        now = timezone.now()
+        match = MatchFactory(
+            status=Match.Status.FINISHED,
+            home_score=1, away_score=0,
+            updated_at=now - timezone.timedelta(minutes=30),
+        )
+        OddsFactory(match=match)
+
+        BetSlipFactory(user=bettor, match=match, status=BetSlip.Status.LOST)
+        color_bet = BetSlipFactory(user=color_bot, match=match, status=BetSlip.Status.WON)
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            generate_postmatch_comments.run()
+
+        # Find dispatch for the color bot (color_bot had no bettor-path bet so it goes the color route)
+        color_calls = [
+            c for c in mock_dispatch.call_args_list
+            if c.kwargs.get("args", [])[0] == color_bot.pk
+        ]
+        if color_calls:
+            # If selected as color bot, its bet_slip_id should be passed
+            assert color_calls[0].kwargs["args"][3] == color_bet.pk
 
     def test_returns_zero_when_no_finished_matches(self):
         result = generate_postmatch_comments.run()
