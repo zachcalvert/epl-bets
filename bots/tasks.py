@@ -141,9 +141,77 @@ def generate_bot_comment_task(bot_user_id, match_id, trigger_type, bet_slip_id=N
             pass
 
     comment = generate_bot_comment(bot_user, match, trigger_type, bet_slip)
+    if not comment:
+        return "skipped (dedup or filter)"
+
+    # After posting a non-reply comment, maybe trigger a reply from another bot
+    if trigger_type != BotComment.TriggerType.REPLY:
+        _maybe_dispatch_reply(match, comment)
+
+    return f"posted: {comment.body[:60]}"
+
+
+@shared_task
+def generate_bot_reply_task(bot_user_id, match_id, parent_comment_id):
+    """Generate and post a bot reply to an existing comment."""
+    from bots.comment_service import generate_bot_comment
+    from discussions.models import Comment as DiscussionComment
+    from matches.models import Match
+
+    try:
+        bot_user = User.objects.get(pk=bot_user_id, is_bot=True, is_active=True)
+    except User.DoesNotExist:
+        return "bot not found"
+
+    try:
+        match = Match.objects.select_related("home_team", "away_team").get(pk=match_id)
+    except Match.DoesNotExist:
+        return "match not found"
+
+    try:
+        parent = DiscussionComment.objects.select_related("user").get(
+            pk=parent_comment_id, match=match,
+        )
+    except DiscussionComment.DoesNotExist:
+        return "parent comment not found"
+
+    comment = generate_bot_comment(
+        bot_user, match, BotComment.TriggerType.REPLY, parent_comment=parent,
+    )
     if comment:
-        return f"posted: {comment.body[:60]}"
+        return f"replied: {comment.body[:60]}"
     return "skipped (dedup or filter)"
+
+
+@shared_task
+def maybe_reply_to_human_comment(comment_id):
+    """Maybe dispatch a bot reply to a human-authored comment."""
+    from bots.comment_service import select_reply_bot
+    from discussions.models import Comment as DiscussionComment
+
+    try:
+        comment = DiscussionComment.objects.select_related(
+            "user", "match", "match__home_team", "match__away_team",
+        ).get(pk=comment_id)
+    except DiscussionComment.DoesNotExist:
+        return "comment not found"
+
+    if comment.user.is_bot:
+        return "skipped (bot author)"
+
+    if not comment.match:
+        return "skipped (no match)"
+
+    bot = select_reply_bot(comment.match, comment)
+    if not bot:
+        return "skipped (no candidate)"
+
+    delay = random.randint(120, 480)  # 2-8 min stagger
+    generate_bot_reply_task.apply_async(
+        args=[bot.pk, comment.match.pk, comment.pk],
+        countdown=delay,
+    )
+    return f"dispatched reply from {bot.display_name}"
 
 
 @shared_task
@@ -233,3 +301,27 @@ def generate_postmatch_comments():
 
     logger.info("Dispatched %d post-match comment tasks", dispatched)
     return f"dispatched {dispatched} post-match comments"
+
+
+# ---------------------------------------------------------------------------
+# Reply dispatch helper (called inline after a bot comment is posted)
+# ---------------------------------------------------------------------------
+
+
+def _maybe_dispatch_reply(match, comment):
+    """Maybe dispatch a bot reply to the given comment."""
+    from bots.comment_service import select_reply_bot
+
+    bot = select_reply_bot(match, comment)
+    if not bot:
+        return
+
+    delay = random.randint(120, 480)  # 2-8 min stagger
+    generate_bot_reply_task.apply_async(
+        args=[bot.pk, match.pk, comment.pk],
+        countdown=delay,
+    )
+    logger.info(
+        "Dispatched reply from %s to %s's comment on %s",
+        bot.display_name, comment.user.display_name, match,
+    )
