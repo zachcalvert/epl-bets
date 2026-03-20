@@ -1,4 +1,5 @@
 import pytest
+import respx
 from django.core.cache import cache
 
 
@@ -29,3 +30,15 @@ def clear_cache_between_tests(configure_test_settings):
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def _block_outbound_requests():
+    """Block all outbound HTTP requests in tests.
+
+    Any test that needs to mock an HTTP call should use respx or
+    unittest.mock to patch the client. If an unmocked call slips
+    through, this fixture will raise instead of hitting the network.
+    """
+    with respx.mock(assert_all_called=False) as _mock:
+        yield

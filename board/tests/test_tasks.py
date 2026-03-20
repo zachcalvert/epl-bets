@@ -13,6 +13,7 @@ from board.tasks import (
     generate_season_outlook_post,
     generate_weekend_preview_post,
 )
+from bots.models import BotProfile
 from bots.tests.factories import BotUserFactory
 
 pytestmark = pytest.mark.django_db
@@ -49,25 +50,16 @@ def test_get_last_board_poster_ignores_replies():
 # --- _select_bot ---
 
 
-@patch("board.tasks.BOT_PERSONA_PROMPTS", new_callable=dict)
-@patch("board.tasks.POST_TYPE_BOT_POOLS", new_callable=dict)
-def test_select_bot_returns_none_when_no_candidates(mock_pools, mock_prompts):
-    mock_pools[PostType.META] = []
-
+def test_select_bot_returns_none_when_no_candidates():
+    # No bots with matching strategy type for META (chaos_agent, parlay)
     result = _select_bot(PostType.META)
 
     assert result is None
 
 
-@patch("board.tasks.BOT_PERSONA_PROMPTS")
-@patch("board.tasks.POST_TYPE_BOT_POOLS")
-def test_select_bot_avoids_last_poster(mock_pools, mock_prompts):
-    bot1 = BotUserFactory(email="bot1@bots.eplbets.local")
-    bot2 = BotUserFactory(email="bot2@bots.eplbets.local")
-    mock_pools.__getitem__ = lambda self, k: [bot1.email, bot2.email]
-    mock_pools.__contains__ = lambda self, k: True
-    mock_pools.get = lambda self, k, d=None: [bot1.email, bot2.email]
-    mock_prompts.__contains__ = lambda self, k: k in [bot1.email, bot2.email]
+def test_select_bot_avoids_last_poster():
+    bot1 = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT)
+    bot2 = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.PARLAY)
 
     # Make bot1 the last poster
     BoardPost.objects.create(author=bot1, post_type=PostType.META, body="last")
@@ -77,14 +69,11 @@ def test_select_bot_avoids_last_poster(mock_pools, mock_prompts):
     assert result == bot2
 
 
-@patch("board.tasks.BOT_PERSONA_PROMPTS")
-@patch("board.tasks.POST_TYPE_BOT_POOLS")
-@patch("board.tasks.PROFILE_MAP")
-def test_select_bot_with_homer_tla_preference(mock_profile, mock_pools, mock_prompts):
-    bot = BotUserFactory(email="homer@bots.eplbets.local")
-    mock_profile.items.return_value = [("homer@bots.eplbets.local", {"team_tla": "ARS"})]
-    mock_pools.get.return_value = [bot.email]
-    mock_prompts.__contains__ = lambda self, k: True
+def test_select_bot_with_homer_tla_preference():
+    bot = BotUserFactory(
+        bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+        bot_profile__team_tla="ARS",
+    )
 
     result = _select_bot(PostType.RESULTS_TABLE, prefer_homer_tla="ARS")
 
@@ -158,9 +147,9 @@ def test_generate_board_post_filters_long_text(mock_ctx, mock_anthropic, setting
     assert post is None
 
 
-@patch("board.tasks.BOT_PERSONA_PROMPTS", {})
 def test_generate_board_post_returns_none_for_missing_persona():
-    bot = BotUserFactory(email="unknown@bots.eplbets.local")
+    # Create a bot user WITHOUT a bot_profile (no persona prompt)
+    bot = BotUserFactory(bot_profile=None)
 
     post = _generate_board_post(bot, PostType.META, "midweek_prediction")
 

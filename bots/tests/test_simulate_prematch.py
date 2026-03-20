@@ -93,8 +93,8 @@ class TestSimulatePreMatchHappyPath:
         assert matching_calls[0].args[3] == bet.pk
 
     def test_comment_task_receives_none_when_no_bet_placed(self):
-        """Bots with no strategy (unregistered email) still get comment tasks with no bet slip."""
-        bot = BotUserFactory(email="unknown@bots.eplbets.local")
+        """Bots with no profile still get comment tasks with no bet slip."""
+        bot = BotUserFactory(email="unknown@bots.eplbets.local", bot_profile=None)
         UserBalanceFactory(user=bot, balance="500.00")
         match = make_upcoming_match()
         OddsFactory(match=match, home_win="1.40", draw="3.80", away_win="5.50")

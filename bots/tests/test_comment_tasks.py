@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from betting.models import BetSlip
 from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
-from bots.models import BotComment
+from bots.models import BotComment, BotProfile
 from bots.tasks import (
     generate_bot_comment_task,
     generate_bot_reply_task,
@@ -108,7 +108,9 @@ class TestGenerateBotCommentTask:
 
 class TestGeneratePrematchComments:
     def test_dispatches_with_bet_slip_id_when_bot_has_pending_bet(self):
-        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         now = timezone.now()
         match = MatchFactory(
             status=Match.Status.SCHEDULED,
@@ -130,7 +132,9 @@ class TestGeneratePrematchComments:
         assert bot_calls[0].kwargs["args"][3] == bet.pk
 
     def test_dispatches_with_none_bet_slip_id_when_bot_has_no_bet(self):
-        BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         now = timezone.now()
         match = MatchFactory(
             status=Match.Status.SCHEDULED,
@@ -147,7 +151,9 @@ class TestGeneratePrematchComments:
             assert call.kwargs["args"][3] is None
 
     def test_dispatches_tasks_for_upcoming_matches(self):
-        BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         now = timezone.now()
         match = MatchFactory(
             status=Match.Status.SCHEDULED,
@@ -162,7 +168,9 @@ class TestGeneratePrematchComments:
         assert "dispatched" in result
 
     def test_skips_matches_outside_window(self):
-        BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         now = timezone.now()
         # Kickoff too far out (>24h)
         MatchFactory(
@@ -181,7 +189,9 @@ class TestGeneratePrematchComments:
         assert mock_dispatch.call_count == 0
 
     def test_skips_finished_matches(self):
-        BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         now = timezone.now()
         MatchFactory(
             status=Match.Status.FINISHED,
@@ -200,7 +210,9 @@ class TestGeneratePrematchComments:
 
 class TestGeneratePostmatchComments:
     def test_dispatches_for_bots_with_bets_on_finished_match(self):
-        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         UserBalanceFactory(user=bot)
         now = timezone.now()
         match = MatchFactory(
@@ -217,7 +229,9 @@ class TestGeneratePostmatchComments:
         assert "dispatched" in result
 
     def test_skips_matches_finished_too_long_ago(self):
-        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         UserBalanceFactory(user=bot)
         match = MatchFactory(status=Match.Status.FINISHED, home_score=1, away_score=0)
         BetSlipFactory(user=bot, match=match)
@@ -234,7 +248,9 @@ class TestGeneratePostmatchComments:
         assert mock_dispatch.call_count == 0
 
     def test_skips_bots_who_already_commented(self):
-        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         UserBalanceFactory(user=bot)
         now = timezone.now()
         match = MatchFactory(
@@ -263,8 +279,12 @@ class TestGeneratePostmatchComments:
         """Color commentary bot passes its own bet_slip_id if it placed a bet."""
         # The "color bot" is the one picked by select_bots_for_match after bettor bots are excluded.
         # Use two bots: one is a bettor (already enqueued), one is the color bot that also has a bet.
-        bettor = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
-        color_bot = BotUserFactory(email="allinalice@bots.eplbets.local")
+        bettor = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
+        color_bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.ALL_IN_ALICE,
+        )
         UserBalanceFactory(user=bettor)
         UserBalanceFactory(user=color_bot)
 
@@ -404,7 +424,9 @@ class TestMaybeReplyToHumanComment:
     def test_dispatches_reply_when_candidate_found(self):
         user = UserFactory()
         # Create an always-eligible bot
-        BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         match = MatchFactory()
         comment = Comment.objects.create(match=match, user=user, body="great odds on this match!")
 
@@ -453,7 +475,9 @@ class TestMaybeDispatchReply:
 class TestPostmatchDedup:
     def test_skips_duplicate_bets_from_same_user(self):
         """When a bot has multiple bets on one match, only one dispatch happens."""
-        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         UserBalanceFactory(user=bot)
         now = timezone.now()
         match = MatchFactory(

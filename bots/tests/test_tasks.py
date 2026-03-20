@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from betting.models import BetSlip, Parlay
 from betting.tests.factories import BetSlipFactory, OddsFactory, UserBalanceFactory
-from bots.models import BotComment
+from bots.models import BotComment, BotProfile
 from bots.tasks import (
     execute_bot_strategy,
     generate_bot_comment_task,
@@ -82,8 +82,8 @@ class TestExecuteBotStrategy:
 
         assert result == "bot not found"
 
-    def test_returns_early_for_unregistered_bot_email(self):
-        bot = BotUserFactory(email="unknown@bots.eplbets.local")
+    def test_returns_early_for_bot_without_profile(self):
+        bot = BotUserFactory(email="unknown@bots.eplbets.local", bot_profile=None)
         UserBalanceFactory(user=bot)
 
         result = execute_bot_strategy.run(bot.pk)
@@ -91,7 +91,9 @@ class TestExecuteBotStrategy:
         assert result == "no strategy"
 
     def test_returns_early_when_no_matches_available(self):
-        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER,
+        )
         UserBalanceFactory(user=bot)
         # No bettable matches
         MatchFactory(status=Match.Status.FINISHED)
@@ -101,7 +103,9 @@ class TestExecuteBotStrategy:
         assert result == "no matches"
 
     def test_returns_early_when_no_odds(self):
-        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER,
+        )
         UserBalanceFactory(user=bot)
         MatchFactory(status=Match.Status.SCHEDULED)
         # Match exists but no odds
@@ -111,7 +115,9 @@ class TestExecuteBotStrategy:
         assert result == "no odds"
 
     def test_triggers_topup_when_balance_is_low(self):
-        bot = BotUserFactory(email="chaoscharlie@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
         UserBalanceFactory(user=bot, balance="10.00")
         # No bettable matches so task exits early, but topup should have run
         MatchFactory(status=Match.Status.FINISHED)
@@ -122,7 +128,9 @@ class TestExecuteBotStrategy:
         mock_topup.assert_called_once_with(bot)
 
     def test_returns_no_balance_when_balance_missing(self):
-        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER,
+        )
         # No UserBalance created
         match = MatchFactory(status=Match.Status.SCHEDULED)
         OddsFactory(match=match, home_win="1.40", draw="3.80", away_win="5.50")
@@ -132,7 +140,9 @@ class TestExecuteBotStrategy:
         assert result == "no balance"
 
     def test_value_hunter_bot_uses_full_odds(self):
-        bot = BotUserFactory(email="valuehunter@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.VALUE_HUNTER,
+        )
         UserBalanceFactory(user=bot, balance="500.00")
         match = MatchFactory(status=Match.Status.SCHEDULED)
         # Two bookmakers with a large spread on home_win (> 0.30)
@@ -144,7 +154,9 @@ class TestExecuteBotStrategy:
         assert "Value Victor" in result or "bets" in result
 
     def test_parlay_bot_places_parlay(self):
-        bot = BotUserFactory(email="parlaypete@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.PARLAY,
+        )
         UserBalanceFactory(user=bot, balance="500.00")
 
         # Create enough matches with odds in ParlayStrategy value range (1.40-2.50)
@@ -177,7 +189,7 @@ class TestGenerateBotCommentTask:
         assert result == "match not found"
 
     def test_returns_skipped_when_generate_returns_none(self):
-        bot = BotUserFactory(email="ghost@bots.eplbets.local")
+        bot = BotUserFactory(email="ghost@bots.eplbets.local", bot_profile=None)
         match = MatchFactory()
         result = generate_bot_comment_task.run(bot.pk, match.pk, BotComment.TriggerType.PRE_MATCH)
         assert result == "skipped (dedup or filter)"

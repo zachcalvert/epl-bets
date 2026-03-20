@@ -135,9 +135,50 @@ PROFILE_MAP = {p["email"]: p for p in BOT_PROFILES}
 # Lookup: email -> strategy class (convenience)
 STRATEGY_MAP = {p["email"]: p["strategy"] for p in BOT_PROFILES}
 
+# Lookup: BotProfile.StrategyType value -> strategy class
+# (imported lazily in get_strategy_for_bot, but the mapping is static)
+STRATEGY_TYPE_TO_CLASS = {
+    "frontrunner": FrontrunnerStrategy,
+    "underdog": UnderdogStrategy,
+    "parlay": ParlayStrategy,
+    "draw_specialist": DrawSpecialistStrategy,
+    "value_hunter": ValueHunterStrategy,
+    "chaos_agent": ChaosAgentStrategy,
+    "all_in_alice": AllInAliceStrategy,
+    "homer": HomerBotStrategy,
+}
+
 
 def get_strategy_for_bot(user):
-    """Return an instantiated strategy for the given bot user, or None."""
+    """Return an instantiated strategy for the given bot user, or None.
+
+    Reads strategy_type and team_tla from the database-backed BotProfile.
+    Falls back to the hardcoded PROFILE_MAP for bots that haven't been
+    migrated yet.
+    """
+    from bots.models import BotProfile
+
+    bp = getattr(user, "bot_profile", None)
+    if bp is None:
+        try:
+            bp = BotProfile.objects.get(user=user)
+        except BotProfile.DoesNotExist:
+            bp = None
+
+    if bp:
+        cls = STRATEGY_TYPE_TO_CLASS.get(bp.strategy_type)
+        if cls is None:
+            return None
+        if cls is HomerBotStrategy:
+            from matches.models import Team
+
+            team = Team.objects.filter(tla=bp.team_tla).first()
+            if not team:
+                return None
+            return HomerBotStrategy(team_id=team.pk)
+        return cls()
+
+    # Fallback to hardcoded registry (pre-migration compatibility)
     profile = PROFILE_MAP.get(user.email)
     if not profile:
         return None

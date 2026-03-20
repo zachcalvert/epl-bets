@@ -14,9 +14,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 
 from betting.models import BetSlip, Odds
-from bots.models import BotComment
-from bots.personas import BOT_PERSONA_PROMPTS
-from bots.registry import PROFILE_MAP
+from bots.models import BotComment, BotProfile
 from bots.services import get_best_odds_map
 from discussions.models import Comment
 from matches.models import MatchStats
@@ -78,6 +76,14 @@ FOOTBALL_KEYWORDS = {
 }
 
 
+def _get_bot_profile(bot_user):
+    """Return the BotProfile for a bot user, or None."""
+    try:
+        return bot_user.bot_profile
+    except BotProfile.DoesNotExist:
+        return None
+
+
 def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None, parent_comment=None):
     """Generate and post an LLM-powered comment for a bot user.
 
@@ -85,11 +91,12 @@ def generate_bot_comment(bot_user, match, trigger_type, bet_slip=None, parent_co
     Dedup is enforced by the BotComment unique constraint.
     """
     # Build prompts (before touching the DB so we only claim the slot if we can generate)
-    system_prompt = BOT_PERSONA_PROMPTS.get(bot_user.email)
-    if not system_prompt:
+    profile = _get_bot_profile(bot_user)
+    if not profile or not profile.persona_prompt:
         logger.warning("No persona prompt for bot %s", bot_user.email)
         return None
 
+    system_prompt = profile.persona_prompt
     user_prompt = _build_user_prompt(match, trigger_type, bet_slip, parent_comment)
     full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
 
@@ -199,12 +206,16 @@ def select_bots_for_match(match, trigger_type, max_bots=2, exclude_user_ids=None
     match_odds = odds_map.get(match.pk, {})
 
     candidates = []
-    for bot in User.objects.filter(is_bot=True, is_active=True):
+    for profile in BotProfile.objects.filter(
+        is_active=True,
+        user__is_bot=True,
+        user__is_active=True,
+        persona_prompt__gt="",
+    ).select_related("user"):
+        bot = profile.user
         if bot.pk in excluded:
             continue
-        if bot.email not in BOT_PERSONA_PROMPTS:
-            continue
-        if _is_bot_relevant(bot, match, match_odds):
+        if _is_bot_relevant(profile, match, match_odds):
             candidates.append(bot)
 
     if not candidates:
@@ -242,16 +253,20 @@ def select_reply_bot(match, target_comment):
     if target_comment.user.is_bot:
         # Bot-to-bot: use affinity map
         author_email = target_comment.user.email
-        for bot in User.objects.filter(is_bot=True, is_active=True):
+        for profile in BotProfile.objects.filter(
+            is_active=True,
+            user__is_bot=True,
+            user__is_active=True,
+            persona_prompt__gt="",
+        ).select_related("user"):
+            bot = profile.user
             if bot.pk in already_replied or bot.pk == author_id:
-                continue
-            if bot.email not in BOT_PERSONA_PROMPTS:
                 continue
             affinities = BOT_REPLY_AFFINITIES.get(bot.email, [])
             if author_email in affinities:
                 candidates.append(bot)
             # Homer bots reply when their team is mentioned in the comment
-            elif _homer_team_mentioned(bot, target_comment.body):
+            elif _homer_team_mentioned(profile, target_comment.body):
                 candidates.append(bot)
     else:
         # Human comment: ~30% chance of ANY bot reply (single coin flip),
@@ -262,12 +277,16 @@ def select_reply_bot(match, target_comment):
 
         odds_map = get_best_odds_map([match.pk])
         match_odds = odds_map.get(match.pk, {})
-        for bot in User.objects.filter(is_bot=True, is_active=True):
+        for profile in BotProfile.objects.filter(
+            is_active=True,
+            user__is_bot=True,
+            user__is_active=True,
+            persona_prompt__gt="",
+        ).select_related("user"):
+            bot = profile.user
             if bot.pk in already_replied:
                 continue
-            if bot.email not in BOT_PERSONA_PROMPTS:
-                continue
-            if _is_bot_relevant(bot, match, match_odds):
+            if _is_bot_relevant(profile, match, match_odds):
                 candidates.append(bot)
 
     if not candidates:
@@ -279,13 +298,12 @@ def select_reply_bot(match, target_comment):
 _homer_team_cache: dict[str, tuple[str, str, str] | None] = {}
 
 
-def _homer_team_mentioned(bot, text):
+def _homer_team_mentioned(profile, text):
     """Check if a homer bot's team is mentioned in a comment body."""
-    profile = PROFILE_MAP.get(bot.email)
-    if not profile or not profile.get("team_tla"):
+    if not profile.team_tla:
         return False
 
-    tla_key = profile["team_tla"]
+    tla_key = profile.team_tla
 
     # Lazily populate the cache to avoid repeated DB lookups
     if tla_key not in _homer_team_cache:
@@ -320,42 +338,40 @@ def _homer_team_mentioned(bot, text):
     return False
 
 
-def _is_bot_relevant(bot, match, match_odds):
+def _is_bot_relevant(profile, match, match_odds):
     """Check if a bot's strategy makes them relevant to this match."""
     home = match_odds.get("home_win")
     draw = match_odds.get("draw")
     away = match_odds.get("away_win")
 
-    email = bot.email
-    if email == "frontrunner@bots.eplbets.local":
+    st = profile.strategy_type
+    if st == BotProfile.StrategyType.FRONTRUNNER:
         # Relevant when there's a clear favorite
         if home and away:
             return min(home, away) < 1.80
-    elif email == "underdog@bots.eplbets.local":
+    elif st == BotProfile.StrategyType.UNDERDOG:
         # Relevant when there's a clear underdog
         if home and away:
             return max(home, away) >= 3.00
-    elif email == "drawdoctor@bots.eplbets.local":
+    elif st == BotProfile.StrategyType.DRAW_SPECIALIST:
         # Relevant when draw odds are in the sweet spot
         if draw:
             return 2.80 <= float(draw) <= 3.80
-    elif email == "valuehunter@bots.eplbets.local":
+    elif st == BotProfile.StrategyType.VALUE_HUNTER:
         # Relevant when there's odds spread — check if we have multiple bookmakers
         bookmaker_count = Odds.objects.filter(match=match).count()
         return bookmaker_count >= 2
-    elif email in (
-        "parlaypete@bots.eplbets.local",
-        "chaoscharlie@bots.eplbets.local",
-        "allinalice@bots.eplbets.local",
+    elif st in (
+        BotProfile.StrategyType.PARLAY,
+        BotProfile.StrategyType.CHAOS_AGENT,
+        BotProfile.StrategyType.ALL_IN_ALICE,
     ):
         # Always eligible
         return True
-    else:
+    elif st == BotProfile.StrategyType.HOMER:
         # Homer bots — only relevant if their team is playing.
-        # Compare TLA directly against already-loaded match teams to avoid N+1 queries.
-        profile = PROFILE_MAP.get(email)
-        if profile and profile.get("team_tla"):
-            tla = profile["team_tla"]
+        tla = profile.team_tla
+        if tla:
             return (
                 getattr(match.home_team, "tla", None) == tla
                 or getattr(match.away_team, "tla", None) == tla

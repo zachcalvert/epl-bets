@@ -20,7 +20,7 @@ class ChallengeTemplate(BaseModel):
         WIN_STREAK = "WIN_STREAK", _("Win N in a row")
         PARLAY_PLACED = "PARLAY_PLACED", _("Place a parlay")
         PARLAY_WON = "PARLAY_WON", _("Win a parlay")
-        TOTAL_STAKED = "TOTAL_STAKED", _("Stake N+ total")
+        TOTAL_STAKED = "TOTAL_STAKED", _("Stake N+ credits")
         BET_ALL_MATCHES = "BET_ALL_MATCHES", _("Bet on every match")
         CORRECT_PREDICTIONS = "CORRECT_PREDICTIONS", _("Predict N+ correct")
 
