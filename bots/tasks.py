@@ -95,7 +95,7 @@ def execute_bot_strategy(self, bot_user_id):
             queue_activity_event(
                 "bot_bet",
                 f"{user.display_name} placed a bet on {result.match}",
-                url=f"/matches/{pick.match_id}/",
+                url=f"/match/{pick.match_id}/",
                 icon="coin",
             )
             # Post-bet comment (~50% chance, staggered 30s-5min)
@@ -115,7 +115,7 @@ def execute_bot_strategy(self, bot_user_id):
             queue_activity_event(
                 "bot_bet",
                 f"{user.display_name} placed a {len(pp.legs)}-leg parlay",
-                url=f"/matches/{pp.legs[0]['match_id']}/",
+                url=f"/match/{pp.legs[0]['match_id']}/",
                 icon="coins",
             )
 
@@ -160,7 +160,7 @@ def generate_bot_comment_task(bot_user_id, match_id, trigger_type, bet_slip_id=N
     queue_activity_event(
         "bot_comment",
         f"{bot_user.display_name} commented on {match}",
-        url=f"/matches/{match.pk}/",
+        url=f"/match/{match.pk}/",
         icon="chat-circle",
     )
 

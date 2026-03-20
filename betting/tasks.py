@@ -308,7 +308,7 @@ def settle_match_bets(self, match_id):
         queue_activity_event(
             "bet_settlement",
             f"{total} bets settled on {match.home_team.short_name} vs {match.away_team.short_name}",
-            url=f"/matches/{match_id}/",
+            url=f"/match/{match_id}/",
             icon="check-circle",
         )
 
