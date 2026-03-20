@@ -9,8 +9,12 @@ class BotProfileAdmin(admin.ModelAdmin):
     list_display = ("user_display_name", "strategy_type", "team_tla", "is_active")
     list_filter = ("strategy_type", "is_active")
     list_select_related = ("user",)
-    readonly_fields = ("user",)
     search_fields = ("user__display_name", "user__email")
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is not None:
+            return ("user",)
+        return ()
 
     fieldsets = (
         (_("Identity"), {

@@ -206,11 +206,14 @@ def select_bots_for_match(match, trigger_type, max_bots=2, exclude_user_ids=None
     match_odds = odds_map.get(match.pk, {})
 
     candidates = []
-    for profile in BotProfile.objects.filter(is_active=True).select_related("user"):
+    for profile in BotProfile.objects.filter(
+        is_active=True,
+        user__is_bot=True,
+        user__is_active=True,
+        persona_prompt__gt="",
+    ).select_related("user"):
         bot = profile.user
         if bot.pk in excluded:
-            continue
-        if not bot.is_active:
             continue
         if _is_bot_relevant(profile, match, match_odds):
             candidates.append(bot)
@@ -250,11 +253,14 @@ def select_reply_bot(match, target_comment):
     if target_comment.user.is_bot:
         # Bot-to-bot: use affinity map
         author_email = target_comment.user.email
-        for profile in BotProfile.objects.filter(is_active=True).select_related("user"):
+        for profile in BotProfile.objects.filter(
+            is_active=True,
+            user__is_bot=True,
+            user__is_active=True,
+            persona_prompt__gt="",
+        ).select_related("user"):
             bot = profile.user
             if bot.pk in already_replied or bot.pk == author_id:
-                continue
-            if not bot.is_active:
                 continue
             affinities = BOT_REPLY_AFFINITIES.get(bot.email, [])
             if author_email in affinities:
@@ -271,11 +277,14 @@ def select_reply_bot(match, target_comment):
 
         odds_map = get_best_odds_map([match.pk])
         match_odds = odds_map.get(match.pk, {})
-        for profile in BotProfile.objects.filter(is_active=True).select_related("user"):
+        for profile in BotProfile.objects.filter(
+            is_active=True,
+            user__is_bot=True,
+            user__is_active=True,
+            persona_prompt__gt="",
+        ).select_related("user"):
             bot = profile.user
             if bot.pk in already_replied:
-                continue
-            if not bot.is_active:
                 continue
             if _is_bot_relevant(profile, match, match_odds):
                 candidates.append(bot)

@@ -104,7 +104,10 @@ def _select_bot(post_type, prefer_homer_tla=None):
 
     # If we have a TLA preference, try that homer bot first
     if prefer_homer_tla:
-        homer = eligible.filter(team_tla=prefer_homer_tla).first()
+        homer = eligible.filter(
+            team_tla=prefer_homer_tla,
+            strategy_type=BotProfile.StrategyType.HOMER,
+        ).first()
         if homer and homer.user_id != last_poster_id:
             return homer.user
 
