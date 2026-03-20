@@ -146,6 +146,23 @@ def _broadcast_score_changes(pre_sync):
             send("live_scores", {"type": "score_update", "match_id": pk})
             send(f"match_{pk}", {"type": "match_score_update", "match_id": pk})
 
+            # Activity toast for actual score changes
+            if old and (old[0] != m["home_score"] or old[1] != m["away_score"]):
+                from activity.services import queue_activity_event
+
+                match_obj = Match.objects.filter(pk=pk).select_related(
+                    "home_team", "away_team"
+                ).first()
+                if match_obj:
+                    queue_activity_event(
+                        "score_change",
+                        f"GOAL! {match_obj.home_team.short_name} "
+                        f"{m['home_score']}-{m['away_score']} "
+                        f"{match_obj.away_team.short_name}",
+                        url=f"/match/{pk}/",
+                        icon="soccer-ball",
+                    )
+
             # Trigger bet settlement when a match finishes
             old_status = old[2] if old else None
             new_status = m["status"]

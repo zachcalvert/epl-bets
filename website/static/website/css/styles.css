@@ -653,6 +653,66 @@ button.htmx-request .htmx-indicator {
 }
 
 /* ================================================
+   Activity Feed Toasts (bottom-left)
+   ================================================ */
+@keyframes slide-in-left {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out-left {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
+}
+
+.animate-slide-in-left {
+    animation: slide-in-left 300ms ease-out;
+}
+
+.animate-slide-out-left {
+    animation: slide-out-left 300ms ease-in forwards;
+}
+
+.activity-toast {
+    align-items: center;
+    background-color: rgb(var(--color-surface));
+    border: 1px solid var(--theme-border-soft);
+    border-radius: 0.5rem;
+    box-shadow: var(--theme-shadow-lg);
+    display: flex;
+    gap: 0.5rem;
+    max-width: 280px;
+    padding: 0.625rem 0.75rem;
+    text-decoration: none;
+    transition: background-color 150ms, border-color 150ms;
+}
+
+.activity-toast:hover {
+    border-color: rgb(var(--color-accent) / 0.4);
+}
+
+.activity-toast-icon {
+    color: rgb(var(--color-accent));
+    flex-shrink: 0;
+    font-size: 1.125rem;
+}
+
+.activity-toast-message {
+    color: var(--theme-panel-text);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.activity-toast--nudge {
+    border-color: rgb(var(--color-accent) / 0.25);
+    background: linear-gradient(
+        135deg,
+        rgb(var(--color-surface)) 0%,
+        color-mix(in srgb, rgb(var(--color-surface)) 94%, rgb(var(--color-accent))) 100%
+    );
+}
+
+/* ================================================
    Form Error Shake
    ================================================ */
 @keyframes shake {

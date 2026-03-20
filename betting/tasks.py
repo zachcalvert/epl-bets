@@ -176,6 +176,15 @@ def fetch_odds(self):
     try:
         created, updated = sync_odds()
         logger.info("fetch_odds: done created=%d updated=%d", created, updated)
+        if created > 0:
+            from activity.services import queue_activity_event
+
+            queue_activity_event(
+                "odds_update",
+                f"Fresh odds available ({created} new lines)",
+                url="/odds/",
+                icon="chart-line-up",
+            )
     except Exception as exc:
         logger.exception("fetch_odds failed")
         raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
@@ -290,6 +299,18 @@ def settle_match_bets(self, match_id):
     )
     # Settle parlay legs for this match
     settle_parlay_legs(match, winning_selection)
+
+    # Activity feed event
+    total = won_count + lost_count
+    if total > 0:
+        from activity.services import queue_activity_event
+
+        queue_activity_event(
+            "bet_settlement",
+            f"{total} bets settled on {match.home_team.short_name} vs {match.away_team.short_name}",
+            url=f"/match/{match_id}/",
+            icon="check-circle",
+        )
 
     # TODO: trigger bot reactions on settlement — e.g. celebratory/rage
     # board posts or match comments when a bot's bet wins/loses big.

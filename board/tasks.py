@@ -169,6 +169,16 @@ def _generate_board_post(bot_user, post_type, prompt_key):
         post_type=post_type,
         body=raw_text,
     )
+
+    from activity.services import queue_activity_event
+
+    queue_activity_event(
+        "bot_board_post",
+        f"{bot_user.display_name} posted on the board",
+        url="/board/",
+        icon="newspaper",
+    )
+
     logger.info(
         "Bot %s posted %s board post: %r",
         bot_user.display_name, post_type, raw_text[:80],

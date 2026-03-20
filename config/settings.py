@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "bots",
     "board",
     "discussions",
+    "activity",
     "flags",
     "website",
 ]
@@ -78,6 +79,7 @@ TEMPLATES = [
                 "rewards.context_processors.unseen_rewards",
                 "betting.context_processors.bankruptcy",
                 "betting.context_processors.parlay_slip",
+                "activity.context_processors.activity_toasts",
             ],
         },
     },
@@ -264,6 +266,15 @@ CELERY_BEAT_SCHEDULE = {
     "board-feature-request-biweekly": {
         "task": "board.tasks.generate_bot_feature_request_post",
         "schedule": crontab(hour=14, minute=0, day_of_week="tue"),  # every other tue (stubbed)
+    },
+    # Activity feed
+    "broadcast-activity-event-20s": {
+        "task": "activity.tasks.broadcast_next_activity_event",
+        "schedule": 20.0,
+    },
+    "cleanup-old-activity-events-daily": {
+        "task": "activity.tasks.cleanup_old_activity_events",
+        "schedule": crontab(hour=4, minute=30),
     },
 }
 
