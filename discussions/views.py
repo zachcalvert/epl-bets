@@ -82,7 +82,7 @@ class CommentListView(View):
             .prefetch_related(
                 Prefetch("replies", queryset=replies_qs, to_attr="prefetched_replies")
             )
-            .order_by("created_at")[offset : offset + COMMENTS_PER_PAGE]
+            .order_by("-created_at")[offset : offset + COMMENTS_PER_PAGE]
         )
 
         total_count = visible_qs.count()

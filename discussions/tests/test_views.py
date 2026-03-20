@@ -134,8 +134,8 @@ def test_comment_list_paginates_at_20(client):
     response = client.get(reverse("discussions:comment_list", args=[match.pk]))
 
     content = response.content.decode()
-    assert "Comment 19" in content
-    assert "Comment 20" not in content
+    assert "Comment 24" in content  # newest first
+    assert "Comment 4" not in content  # 21st newest not on first page
     assert "Load more comments" in content
 
 
@@ -151,8 +151,8 @@ def test_comment_list_offset_returns_next_page(client):
     )
 
     content = response.content.decode()
-    assert "Comment 20" in content
-    assert "Comment 24" in content
+    assert "Comment 4" in content  # oldest remaining after first 20
+    assert "Comment 0" in content
     assert "Load more" not in content
 
 
