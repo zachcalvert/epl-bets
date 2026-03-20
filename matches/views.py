@@ -408,25 +408,27 @@ class MatchNotesView(UserPassesTestMixin, View):
 
     def post(self, request, pk):
         match = get_object_or_404(Match, pk=pk)
-        try:
-            notes = match.notes
-        except MatchNotes.DoesNotExist:
-            notes = None
+        notes, _created = MatchNotes.objects.get_or_create(
+            match=match, defaults={"body": ""}
+        )
 
         form = MatchNotesForm(request.POST, instance=notes)
+        saved = False
+        status = 200
         if form.is_valid():
-            obj = form.save(commit=False)
-            obj.match = match
-            obj.save()
-            notes = obj
+            form.save()
+            notes.refresh_from_db()
             form = MatchNotesForm(instance=notes)
+            saved = True
+        else:
+            status = 400
 
         html = render_to_string(
             "matches/partials/match_notes_panel.html",
-            {"match": match, "match_notes_form": form, "match_notes": notes, "saved": True},
+            {"match": match, "match_notes_form": form, "match_notes": notes, "saved": saved},
             request=request,
         )
-        return HttpResponse(html)
+        return HttpResponse(html, status=status)
 
 
 class MatchOddsPartialView(MatchDetailView):

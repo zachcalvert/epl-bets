@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from django.db import IntegrityError
 from django.urls import reverse
 
 from bots.comment_service import _build_user_prompt
@@ -24,7 +25,7 @@ class TestMatchNotesModel:
 
     def test_one_to_one_constraint(self):
         notes = MatchNotesFactory()
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             MatchNotesFactory(match=notes.match)
 
     def test_accessible_via_match_reverse_relation(self):

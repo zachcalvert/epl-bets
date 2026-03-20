@@ -19,7 +19,13 @@
           hx-target="#match-notes-panel"
           hx-swap="outerHTML">
         {% csrf_token %}
+        <label for="{{ match_notes_form.body.id_for_label }}" class="sr-only">Match notes</label>
         {{ match_notes_form.body }}
+        {% if match_notes_form.body.errors %}
+            <div class="mt-1 text-xs text-red-400">
+                {% for error in match_notes_form.body.errors %}{{ error }}{% endfor %}
+            </div>
+        {% endif %}
         <div class="flex items-center justify-between mt-3">
             <p class="text-xs text-muted">
                 These notes are injected into bot prompts for post-match and reply comments.

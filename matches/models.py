@@ -145,6 +145,7 @@ class MatchNotes(BaseModel):
     )
     body = models.TextField(
         _("notes"),
+        blank=True,
         help_text=_("Free-form match observations for bot context"),
     )
 

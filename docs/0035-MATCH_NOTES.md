@@ -25,7 +25,7 @@ Inherits `BaseModel`. One-to-one relationship with the Match model.
 
 ### Inline panel on match detail page
 
-A collapsible panel appears above the two-column layout on the match detail page, visible only to superusers. Features:
+An inline panel appears above the two-column layout on the match detail page, visible only to superusers. Features:
 
 - HTMX-powered form — saves via POST to `/match/<id>/notes/` without page reload
 - Success banner confirms save with context about how notes are used
