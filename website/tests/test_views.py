@@ -361,7 +361,7 @@ def test_account_view_shows_display_name_form_with_current_value(client):
     response = client.get(reverse("website:account"))
 
     assert response.status_code == 200
-    assert "Public display name" in response.content.decode()
+    assert "Account &amp; Preferences" in response.content.decode()
     assert "Top Punter" in response.content.decode()
 
 
@@ -507,7 +507,7 @@ def test_currency_update_view_saves_currency_and_returns_partial(client):
     assert response.status_code == 200
     assert user.currency == "USD"
     assert any(
-        template.name == "website/partials/currency_settings_card.html"
+        template.name == "website/partials/account_settings_card.html"
         for template in response.templates
     )
 
@@ -545,7 +545,7 @@ def test_currency_update_view_rejects_invalid_currency_with_htmx(client):
     assert response.status_code == 422
     assert user.currency == "GBP"
     assert any(
-        template.name == "website/partials/currency_settings_card.html"
+        template.name == "website/partials/account_settings_card.html"
         for template in response.templates
     )
 

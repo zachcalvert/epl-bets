@@ -1,6 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from django.template.loader import render_to_string
+from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 
@@ -11,9 +10,11 @@ def toggle_toasts(request):
     user = request.user
     user.show_activity_toasts = "show_activity_toasts" in request.POST
     user.save(update_fields=["show_activity_toasts"])
-    html = render_to_string(
-        "activity/partials/activity_settings_card.html",
-        {"user": user},
-        request=request,
+
+    from website.views import _settings_card_context
+
+    return render(
+        request,
+        "website/partials/account_settings_card.html",
+        _settings_card_context(user),
     )
-    return HttpResponse(html)

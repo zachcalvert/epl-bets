@@ -215,13 +215,11 @@ class ThemeToggleView(View):
 class AccountView(LoginRequiredMixin, View):
     def _partial_context(self, form, save_success=False):
         """Minimal context for HTMX partial responses — no extra DB queries."""
-        user = self.request.user
-        return {
-            "display_name_form": form,
-            "account_masked_email": mask_email(user.email),
-            "account_public_identity": get_public_identity(user),
-            "account_save_success": save_success,
-        }
+        return _settings_card_context(
+            self.request.user,
+            display_name_form=form,
+            account_save_success=save_success,
+        )
 
     def _build_context(self, form=None, save_success=False, currency_form=None, currency_save_success=False):
         user = self.request.user
@@ -299,6 +297,19 @@ class AccountView(LoginRequiredMixin, View):
         return render(request, "website/account.html", self._build_context(form=form), status=422)
 
 
+def _settings_card_context(user, **overrides):
+    """Shared context for the combined account settings card partial."""
+    ctx = {
+        "display_name_form": overrides.get("display_name_form", DisplayNameForm(instance=user)),
+        "currency_form": overrides.get("currency_form", CurrencyForm(instance=user)),
+        "account_masked_email": mask_email(user.email),
+        "account_public_identity": get_public_identity(user),
+        "account_save_success": overrides.get("account_save_success", False),
+        "currency_save_success": overrides.get("currency_save_success", False),
+    }
+    return ctx
+
+
 class CurrencyUpdateView(LoginRequiredMixin, View):
     def post(self, request):
         form = CurrencyForm(request.POST, instance=request.user)
@@ -308,16 +319,16 @@ class CurrencyUpdateView(LoginRequiredMixin, View):
             if request.htmx:
                 return render(
                     request,
-                    "website/partials/currency_settings_card.html",
-                    {"currency_form": fresh_form, "currency_save_success": True},
+                    "website/partials/account_settings_card.html",
+                    _settings_card_context(request.user, currency_form=fresh_form, currency_save_success=True),
                 )
             return redirect("website:account")
 
         if request.htmx:
             return render(
                 request,
-                "website/partials/currency_settings_card.html",
-                {"currency_form": form},
+                "website/partials/account_settings_card.html",
+                _settings_card_context(request.user, currency_form=form),
                 status=422,
             )
         return redirect("website:account")
