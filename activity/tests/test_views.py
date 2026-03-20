@@ -21,11 +21,31 @@ class TestToggleToastsView:
         user = UserFactory(show_activity_toasts=False)
         client.force_login(user)
 
-        response = client.post(reverse("activity:toggle_toasts"))
+        response = client.post(reverse("activity:toggle_toasts"), {"show_activity_toasts": "on"})
 
         assert response.status_code == 200
         user.refresh_from_db()
         assert user.show_activity_toasts is True
+
+    def test_idempotent_on(self, client):
+        user = UserFactory(show_activity_toasts=True)
+        client.force_login(user)
+
+        client.post(reverse("activity:toggle_toasts"), {"show_activity_toasts": "on"})
+        client.post(reverse("activity:toggle_toasts"), {"show_activity_toasts": "on"})
+
+        user.refresh_from_db()
+        assert user.show_activity_toasts is True
+
+    def test_idempotent_off(self, client):
+        user = UserFactory(show_activity_toasts=False)
+        client.force_login(user)
+
+        client.post(reverse("activity:toggle_toasts"))
+        client.post(reverse("activity:toggle_toasts"))
+
+        user.refresh_from_db()
+        assert user.show_activity_toasts is False
 
     def test_returns_settings_card_partial(self, client):
         user = UserFactory()

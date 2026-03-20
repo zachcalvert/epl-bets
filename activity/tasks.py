@@ -4,6 +4,7 @@ from datetime import timedelta
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
+from django.db import transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -14,16 +15,18 @@ def broadcast_next_activity_event():
     """Pop the oldest queued event and broadcast it to all connected clients."""
     from .models import ActivityEvent
 
-    event = (
-        ActivityEvent.objects.filter(broadcast_at__isnull=True)
-        .order_by("created_at")
-        .first()
-    )
-    if not event:
-        return
+    with transaction.atomic():
+        event = (
+            ActivityEvent.objects.select_for_update(skip_locked=True)
+            .filter(broadcast_at__isnull=True)
+            .order_by("created_at")
+            .first()
+        )
+        if not event:
+            return
 
-    event.broadcast_at = timezone.now()
-    event.save(update_fields=["broadcast_at"])
+        event.broadcast_at = timezone.now()
+        event.save(update_fields=["broadcast_at"])
 
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(

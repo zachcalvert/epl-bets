@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 def toggle_toasts(request):
     """Toggle the user's activity toast preference."""
     user = request.user
-    user.show_activity_toasts = not user.show_activity_toasts
+    user.show_activity_toasts = "show_activity_toasts" in request.POST
     user.save(update_fields=["show_activity_toasts"])
     html = render_to_string(
         "activity/partials/activity_settings_card.html",
