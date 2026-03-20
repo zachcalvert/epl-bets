@@ -7,26 +7,6 @@
     <p class="text-muted text-sm">All players ranked across multiple categories</p>
 </div>
 
-{# Tab bar #}
-<div class="flex gap-1 mb-6 bg-dark/40 rounded-lg p-1 overflow-x-auto">
-    {% for bt in board_types %}
-    <button
-        hx-get="{% url 'matches:leaderboard' %}?type={{ bt }}"
-        hx-target="#leaderboard-content"
-        hx-swap="innerHTML"
-        hx-push-url="true"
-        class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap
-            {% if bt == board_type %}bg-accent/20 text-accent{% else %}text-muted hover:text-white hover:bg-surface/50{% endif %}"
-    >
-        {% if bt == "balance" %}Balance
-        {% elif bt == "profit" %}Profit
-        {% elif bt == "win_rate" %}Win Rate
-        {% elif bt == "streak" %}Streaks
-        {% endif %}
-    </button>
-    {% endfor %}
-</div>
-
 <div id="leaderboard-content">
     {% include "matches/partials/leaderboard_table.html" %}
 </div>
