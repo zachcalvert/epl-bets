@@ -55,8 +55,8 @@ class TestToggleToastsView:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert "activity-settings-card" in content
-        assert "Live Activity Feed" in content
+        assert "account-settings-card" in content
+        assert "Show live activity toasts" in content
 
     def test_requires_login(self, client):
         url = reverse("activity:toggle_toasts")

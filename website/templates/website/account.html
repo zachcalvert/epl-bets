@@ -9,14 +9,8 @@
 
     {# Left column: settings + info panels #}
     <div class="flex flex-col gap-6">
-        {# Display name form #}
+        {# Combined settings panel: display name, currency, notifications #}
         {% include "website/partials/account_settings_card.html" %}
-
-        {# Currency preference #}
-        {% include "website/partials/currency_settings_card.html" %}
-
-        {# Activity feed preference #}
-        {% include "activity/partials/activity_settings_card.html" %}
 
         {# Rank summary #}
         {% if user_rank %}

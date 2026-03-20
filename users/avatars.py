@@ -11,43 +11,25 @@ AVATAR_ICONS = [
     "user-circle",
     "soccer-ball",
     "crown",
-    "flame",
     "shield-star",
-    "lightning",
     "trophy",
     "target",
-    "ghost",
-    "robot",
-    "alien",
-    "skull",
-    "paw-print",
-    "bird",
-    "wolf",
-    "cat",
-    "horse",
-    "sparkle",
-    "sword",
-    "smiley",
+    "lightning",
+    "flame",
     "star",
-    "rocket",
+    "sword",
 ]
 
 # ── Background hex colors (legible in both dark and light themes) ────────────
 
 AVATAR_COLORS = [
     "#374151",  # Gray (default)
-    "#f1f5f9",  # Light (light mode bg)
+    "#f1f5f9",  # Light
     "#1e40af",  # Blue
-    "#059669",  # Green
-    "#7c3aed",  # Purple
     "#dc2626",  # Red
+    "#059669",  # Green
     "#d97706",  # Amber
-    "#0891b2",  # Cyan
-    "#db2777",  # Pink
-    "#4f46e5",  # Indigo
-    "#65a30d",  # Lime
-    "#ea580c",  # Orange
-    "#0d9488",  # Teal
+    "#7c3aed",  # Purple
 ]
 
 # ── Frame definitions (1:1 mapping with badges) ─────────────────────────────
