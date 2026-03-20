@@ -127,3 +127,31 @@ class MatchStats(models.Model):
                 return (timezone.now() - self.last_attempt_at) > timedelta(minutes=15)
             return True
         return (timezone.now() - self.fetched_at) > timedelta(hours=24)
+
+
+class MatchNotes(BaseModel):
+    """Admin-authored match notes injected into bot comment prompts.
+
+    Free-form observations from watching a match — key moments, drama,
+    goalscorers, red cards, etc. Available to all bots via the user prompt
+    for POST_MATCH and REPLY triggers.
+    """
+
+    match = models.OneToOneField(
+        Match,
+        on_delete=models.CASCADE,
+        related_name="notes",
+        verbose_name=_("match"),
+    )
+    body = models.TextField(
+        _("notes"),
+        blank=True,
+        help_text=_("Free-form match observations for bot context"),
+    )
+
+    class Meta:
+        verbose_name = "match notes"
+        verbose_name_plural = "match notes"
+
+    def __str__(self):
+        return f"Notes for {self.match}"

@@ -7,6 +7,7 @@ from matches.views import (
     LeaderboardView,
     LeagueTableView,
     MatchDetailView,
+    MatchNotesView,
     MatchOddsPartialView,
     MatchStatusCardPartialView,
 )
@@ -25,5 +26,6 @@ urlpatterns = [
         MatchStatusCardPartialView.as_view(),
         name="match_status_card",
     ),
+    path("match/<int:pk>/notes/", MatchNotesView.as_view(), name="match_notes"),
     path("match/<int:pk>/odds/", MatchOddsPartialView.as_view(), name="match_odds_partial"),
 ]
