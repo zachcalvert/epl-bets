@@ -12,6 +12,7 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
+from activity.services import queue_activity_event
 from board.context import format_board_context_for_prompt, get_board_context
 from board.models import BoardPost, PostType
 from bots.personas import BOT_PERSONA_PROMPTS
@@ -169,8 +170,6 @@ def _generate_board_post(bot_user, post_type, prompt_key):
         post_type=post_type,
         body=raw_text,
     )
-
-    from activity.services import queue_activity_event
 
     queue_activity_event(
         "bot_board_post",

@@ -50,10 +50,10 @@ ignore = ["E501"]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "--strict-markers --strict-config"
-testpaths = ["activity", "core", "users", "matches", "betting", "rewards", "website", "bots", "discussions", "flags"]
+testpaths = ["activity", "core", "users", "matches", "betting", "rewards", "website", "bots", "discussions", "flags", "board"]
 
 [tool.coverage.run]
-source = ["activity", "core", "users", "matches", "betting", "rewards", "website", "bots", "discussions", "flags"]
+source = ["activity", "core", "users", "matches", "betting", "rewards", "website", "bots", "discussions", "flags", "board"]
 omit = [
     "*/migrations/*",
     "*/tests/*",
