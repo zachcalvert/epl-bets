@@ -461,6 +461,10 @@
     border-color: var(--theme-border-strong) !important;
 }
 
+[data-theme="light"] .hover\:border-accent\/50:hover {
+    border-color: rgb(var(--color-accent) / 0.5) !important;
+}
+
 [data-theme="light"] .text-gray-100,
 [data-theme="light"] .text-white {
     color: var(--theme-panel-text) !important;
