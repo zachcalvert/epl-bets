@@ -130,3 +130,40 @@ class TestProfileView:
         response = client.get(reverse("profile", args=[user.pk]))
 
         assert len(response.context["recent_bets"]) == 0
+
+    def test_profile_shows_recent_comments(self, client):
+        from discussions.tests.factories import CommentFactory
+
+        user = UserFactory()
+        UserBalanceFactory(user=user)
+        comment = CommentFactory(user=user)
+
+        response = client.get(reverse("profile", args=[user.pk]))
+
+        assert response.status_code == 200
+        assert comment in response.context["recent_comments"]
+
+    def test_profile_excludes_deleted_comments(self, client):
+        from discussions.tests.factories import CommentFactory
+
+        user = UserFactory()
+        UserBalanceFactory(user=user)
+        CommentFactory(user=user, is_deleted=True)
+
+        response = client.get(reverse("profile", args=[user.pk]))
+
+        assert len(response.context["recent_comments"]) == 0
+
+    def test_profile_comments_ordered_newest_first(self, client):
+        from discussions.tests.factories import CommentFactory
+
+        user = UserFactory()
+        UserBalanceFactory(user=user)
+        comment1 = CommentFactory(user=user)
+        comment2 = CommentFactory(user=user)
+
+        response = client.get(reverse("profile", args=[user.pk]))
+
+        comments = list(response.context["recent_comments"])
+        assert comments[0] == comment2
+        assert comments[1] == comment1

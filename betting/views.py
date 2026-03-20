@@ -35,6 +35,7 @@ from betting.models import (
 )
 from betting.services import get_public_identity, get_user_rank
 from challenges.engine import update_challenge_progress
+from discussions.models import Comment
 from matches.models import Match
 from rewards.models import RewardDistribution
 from website.templatetags.currency_tags import format_currency
@@ -442,6 +443,14 @@ class ProfileView(TemplateView):
             self.request.user.is_authenticated
             and self.request.user.pk == profile_user.pk
         )
+
+        # Recent comments (last 20 non-deleted, newest first)
+        recent_comments = (
+            Comment.objects.filter(user=profile_user, is_deleted=False)
+            .select_related("match__home_team", "match__away_team", "parent")
+            .order_by("-created_at")[:20]
+        )
+        ctx["recent_comments"] = recent_comments
 
         return ctx
 

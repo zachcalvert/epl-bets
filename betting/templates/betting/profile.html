@@ -171,4 +171,28 @@
 {% if not recent_bets and not recent_parlays %}
 {% include "website/components/empty_state.html" with icon="chart" title="No bet history" message="This player hasn't had any bets settle yet." %}
 {% endif %}
+
+{# Comment History #}
+{% if recent_comments %}
+<div class="mt-6">
+    <h2 class="text-lg font-bold text-white mb-3">Comment History</h2>
+    <div class="space-y-3">
+        {% for comment in recent_comments %}
+        <div class="bg-surface rounded-lg border border-gray-700 p-4">
+            <div class="flex items-start justify-between gap-4 mb-1">
+                <a href="{% url 'matches:match_detail' comment.match.pk %}#discussions"
+                   class="text-sm font-medium text-accent hover:underline">
+                    {{ comment.match.home_team.short_name|default:comment.match.home_team.name }} vs {{ comment.match.away_team.short_name|default:comment.match.away_team.name }}
+                </a>
+                <span class="text-xs text-muted whitespace-nowrap">{{ comment.created_at|date:"d M Y" }}</span>
+            </div>
+            {% if comment.parent %}
+            <p class="text-xs text-muted mb-1">↳ Reply to a comment</p>
+            {% endif %}
+            <p class="text-sm text-white">{{ comment.body }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

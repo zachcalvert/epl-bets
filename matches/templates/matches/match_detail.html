@@ -103,7 +103,7 @@
         {% endif %}
 
         <!-- Discussion — lazy-loaded -->
-        <div hx-get="{% url 'discussions:comment_list' match.pk %}"
+        <div id="discussions" hx-get="{% url 'discussions:comment_list' match.pk %}"
              hx-trigger="load"
              hx-swap="outerHTML">
             <div class="animate-pulse">
