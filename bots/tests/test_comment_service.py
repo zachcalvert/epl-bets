@@ -18,7 +18,7 @@ from bots.comment_service import (
     select_reply_bot,
 )
 from bots.models import BotComment, BotProfile
-from bots.tests.factories import BotProfileFactory, BotUserFactory
+from bots.tests.factories import BotUserFactory
 from discussions.models import Comment
 from matches.tests.factories import MatchFactory, TeamFactory
 
