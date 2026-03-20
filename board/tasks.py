@@ -15,25 +15,21 @@ from django.contrib.auth import get_user_model
 from activity.services import queue_activity_event
 from board.context import format_board_context_for_prompt, get_board_context
 from board.models import BoardPost, PostType
-from bots.personas import BOT_PERSONA_PROMPTS
-from bots.registry import PROFILE_MAP
+from bots.models import BotProfile
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
-# Bot pools by post type affinity
-HOMER_BOT_EMAILS = [e for e, p in PROFILE_MAP.items() if p.get("team_tla")]
-STRATEGY_BOT_EMAILS = [e for e in BOT_PERSONA_PROMPTS if e not in HOMER_BOT_EMAILS]
-
-# Post type -> which bot pools are eligible
-POST_TYPE_BOT_POOLS = {
-    PostType.RESULTS_TABLE: HOMER_BOT_EMAILS + [
-        "valuehunter@bots.eplbets.local",
+# Post type -> which strategy types are eligible
+POST_TYPE_STRATEGY_POOLS = {
+    PostType.RESULTS_TABLE: [
+        BotProfile.StrategyType.HOMER,
+        BotProfile.StrategyType.VALUE_HUNTER,
     ],
-    PostType.PREDICTION: STRATEGY_BOT_EMAILS + HOMER_BOT_EMAILS,
+    PostType.PREDICTION: list(BotProfile.StrategyType),  # all strategies
     PostType.META: [
-        "chaoscharlie@bots.eplbets.local",  # VibesOnly
-        "parlaypete@bots.eplbets.local",    # parlay_graveyard
+        BotProfile.StrategyType.CHAOS_AGENT,
+        BotProfile.StrategyType.PARLAY,
     ],
 }
 
@@ -94,34 +90,33 @@ def _select_bot(post_type, prefer_homer_tla=None):
         post_type: PostType value
         prefer_homer_tla: If set, prefer the homer bot for this team TLA
     """
-    pool_emails = POST_TYPE_BOT_POOLS.get(post_type, STRATEGY_BOT_EMAILS)
+    strategy_types = POST_TYPE_STRATEGY_POOLS.get(
+        post_type, list(BotProfile.StrategyType),
+    )
     last_poster_id = _get_last_board_poster()
+
+    eligible = BotProfile.objects.filter(
+        is_active=True,
+        strategy_type__in=strategy_types,
+        user__is_active=True,
+        persona_prompt__gt="",
+    ).select_related("user")
 
     # If we have a TLA preference, try that homer bot first
     if prefer_homer_tla:
-        for email, profile in PROFILE_MAP.items():
-            if profile.get("team_tla") == prefer_homer_tla and email in pool_emails:
-                bot = User.objects.filter(email=email, is_bot=True, is_active=True).first()
-                if bot and bot.pk != last_poster_id:
-                    return bot
+        homer = eligible.filter(team_tla=prefer_homer_tla).first()
+        if homer and homer.user_id != last_poster_id:
+            return homer.user
 
     # General selection from pool
-    candidates = []
-    for email in pool_emails:
-        if email not in BOT_PERSONA_PROMPTS:
-            continue
-        bot = User.objects.filter(email=email, is_bot=True, is_active=True).first()
-        if bot and bot.pk != last_poster_id:
-            candidates.append(bot)
+    candidates = [
+        bp.user for bp in eligible
+        if bp.user_id != last_poster_id
+    ]
 
     if not candidates:
         # Fall back: allow the last poster if no other options
-        for email in pool_emails:
-            if email not in BOT_PERSONA_PROMPTS:
-                continue
-            bot = User.objects.filter(email=email, is_bot=True, is_active=True).first()
-            if bot:
-                candidates.append(bot)
+        candidates = [bp.user for bp in eligible]
 
     return random.choice(candidates) if candidates else None
 
@@ -131,7 +126,13 @@ def _generate_board_post(bot_user, post_type, prompt_key):
 
     Returns the created BoardPost or None.
     """
-    system_prompt = BOT_PERSONA_PROMPTS.get(bot_user.email)
+    profile = getattr(bot_user, "bot_profile", None)
+    if not profile:
+        try:
+            profile = BotProfile.objects.get(user=bot_user)
+        except BotProfile.DoesNotExist:
+            pass
+    system_prompt = profile.persona_prompt if profile else None
     if not system_prompt:
         logger.warning("No persona prompt for bot %s", bot_user.email)
         return None

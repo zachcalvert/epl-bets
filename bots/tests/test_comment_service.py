@@ -17,8 +17,8 @@ from bots.comment_service import (
     select_bots_for_match,
     select_reply_bot,
 )
-from bots.models import BotComment
-from bots.tests.factories import BotUserFactory
+from bots.models import BotComment, BotProfile
+from bots.tests.factories import BotProfileFactory, BotUserFactory
 from discussions.models import Comment
 from matches.tests.factories import MatchFactory, TeamFactory
 
@@ -60,7 +60,7 @@ class TestGenerateBotComment:
         assert result is None
 
     def test_returns_none_when_no_persona_prompt(self):
-        bot = BotUserFactory(email="ghost@bots.eplbets.local")
+        bot = BotUserFactory(email="ghost@bots.eplbets.local", bot_profile=None)
         match = MatchFactory()
 
         result = generate_bot_comment(bot, match, BotComment.TriggerType.PRE_MATCH)
@@ -167,7 +167,10 @@ class TestSelectBotsForMatch:
         assert result == []
 
     def test_excludes_bots_that_already_commented(self):
-        bot = BotUserFactory(email=PARLAY_PETE)
+        bot = BotUserFactory(
+            email=PARLAY_PETE,
+            bot_profile__strategy_type=BotProfile.StrategyType.PARLAY,
+        )
         match = MatchFactory()
         BotComment.objects.create(
             user=bot, match=match, trigger_type=BotComment.TriggerType.PRE_MATCH
@@ -177,8 +180,8 @@ class TestSelectBotsForMatch:
 
         assert result == []
 
-    def test_excludes_bots_without_persona_prompt(self):
-        BotUserFactory(email="orphan@bots.eplbets.local")
+    def test_excludes_bots_without_profile(self):
+        BotUserFactory(email="orphan@bots.eplbets.local", bot_profile=None)
         match = MatchFactory()
 
         result = select_bots_for_match(match, BotComment.TriggerType.PRE_MATCH)
@@ -186,8 +189,12 @@ class TestSelectBotsForMatch:
         assert result == []
 
     def test_returns_at_most_max_bots(self):
-        for email in (PARLAY_PETE, "chaoscharlie@bots.eplbets.local", "allinalice@bots.eplbets.local"):
-            BotUserFactory(email=email)
+        for st in (
+            BotProfile.StrategyType.PARLAY,
+            BotProfile.StrategyType.CHAOS_AGENT,
+            BotProfile.StrategyType.ALL_IN_ALICE,
+        ):
+            BotUserFactory(bot_profile__strategy_type=st)
         match = MatchFactory()
 
         result = select_bots_for_match(match, BotComment.TriggerType.PRE_MATCH, max_bots=2)
@@ -195,7 +202,7 @@ class TestSelectBotsForMatch:
         assert len(result) <= 2
 
     def test_returns_single_bot_when_max_bots_1(self):
-        BotUserFactory(email=PARLAY_PETE)
+        BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.PARLAY)
         match = MatchFactory()
 
         result = select_bots_for_match(match, BotComment.TriggerType.PRE_MATCH, max_bots=1)
@@ -207,95 +214,105 @@ class TestSelectBotsForMatch:
 
 
 class TestIsBotRelevant:
+    def _profile(self, user):
+        return user.bot_profile
+
     def test_frontrunner_relevant_with_clear_favourite(self):
-        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER)
         match = MatchFactory()
         odds = {"home_win": Decimal("1.40"), "draw": Decimal("3.80"), "away_win": Decimal("5.50")}
-        assert _is_bot_relevant(bot, match, odds) is True
+        assert _is_bot_relevant(self._profile(bot), match, odds) is True
 
     def test_frontrunner_not_relevant_when_odds_too_close(self):
-        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER)
         match = MatchFactory()
         odds = {"home_win": Decimal("2.20"), "draw": Decimal("3.20"), "away_win": Decimal("2.80")}
-        assert _is_bot_relevant(bot, match, odds) is False
+        assert _is_bot_relevant(self._profile(bot), match, odds) is False
 
     def test_frontrunner_not_relevant_when_no_odds(self):
-        bot = BotUserFactory(email="frontrunner@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER)
         match = MatchFactory()
-        assert _is_bot_relevant(bot, match, {}) is False
+        assert _is_bot_relevant(self._profile(bot), match, {}) is False
 
     def test_underdog_relevant_with_big_outsider(self):
-        bot = BotUserFactory(email="underdog@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.UNDERDOG)
         match = MatchFactory()
         odds = {"home_win": Decimal("1.50"), "draw": Decimal("3.50"), "away_win": Decimal("5.00")}
-        assert _is_bot_relevant(bot, match, odds) is True
+        assert _is_bot_relevant(self._profile(bot), match, odds) is True
 
     def test_underdog_not_relevant_when_no_odds(self):
-        bot = BotUserFactory(email="underdog@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.UNDERDOG)
         match = MatchFactory()
-        assert _is_bot_relevant(bot, match, {}) is False
+        assert _is_bot_relevant(self._profile(bot), match, {}) is False
 
     def test_drawdoctor_relevant_in_sweet_spot(self):
-        bot = BotUserFactory(email="drawdoctor@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.DRAW_SPECIALIST)
         match = MatchFactory()
-        assert _is_bot_relevant(bot, match, {"draw": Decimal("3.20")}) is True
+        assert _is_bot_relevant(self._profile(bot), match, {"draw": Decimal("3.20")}) is True
 
     def test_drawdoctor_not_relevant_outside_range(self):
-        bot = BotUserFactory(email="drawdoctor@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.DRAW_SPECIALIST)
         match = MatchFactory()
-        assert _is_bot_relevant(bot, match, {"draw": Decimal("4.50")}) is False
+        assert _is_bot_relevant(self._profile(bot), match, {"draw": Decimal("4.50")}) is False
 
     def test_drawdoctor_not_relevant_when_no_draw_odds(self):
-        bot = BotUserFactory(email="drawdoctor@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.DRAW_SPECIALIST)
         match = MatchFactory()
-        assert _is_bot_relevant(bot, match, {}) is False
+        assert _is_bot_relevant(self._profile(bot), match, {}) is False
 
     def test_valuehunter_relevant_with_two_bookmakers(self):
-        bot = BotUserFactory(email="valuehunter@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.VALUE_HUNTER)
         match = MatchFactory()
         OddsFactory(match=match, bookmaker="BookieA")
         OddsFactory(match=match, bookmaker="BookieB")
-        assert _is_bot_relevant(bot, match, {}) is True
+        assert _is_bot_relevant(self._profile(bot), match, {}) is True
 
     def test_valuehunter_not_relevant_with_one_bookmaker(self):
-        bot = BotUserFactory(email="valuehunter@bots.eplbets.local")
+        bot = BotUserFactory(bot_profile__strategy_type=BotProfile.StrategyType.VALUE_HUNTER)
         match = MatchFactory()
         OddsFactory(match=match)
-        assert _is_bot_relevant(bot, match, {}) is False
+        assert _is_bot_relevant(self._profile(bot), match, {}) is False
 
     def test_always_eligible_bots_return_true(self):
-        always_on = [PARLAY_PETE, "chaoscharlie@bots.eplbets.local", "allinalice@bots.eplbets.local"]
+        always_on = [
+            BotProfile.StrategyType.PARLAY,
+            BotProfile.StrategyType.CHAOS_AGENT,
+            BotProfile.StrategyType.ALL_IN_ALICE,
+        ]
         match = MatchFactory()
-        for email in always_on:
-            bot = BotUserFactory(email=email)
-            assert _is_bot_relevant(bot, match, {}) is True
+        for st in always_on:
+            bot = BotUserFactory(bot_profile__strategy_type=st)
+            assert _is_bot_relevant(self._profile(bot), match, {}) is True
 
     def test_homer_bot_relevant_when_their_team_is_playing(self):
         team = TeamFactory(tla="ARS")
-        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="ARS",
+        )
         match = MatchFactory(home_team=team)
 
-        assert _is_bot_relevant(bot, match, {}) is True
+        assert _is_bot_relevant(self._profile(bot), match, {}) is True
 
     def test_homer_bot_relevant_when_their_team_is_away(self):
         team = TeamFactory(tla="ARS")
-        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="ARS",
+        )
         match = MatchFactory(away_team=team)
 
-        assert _is_bot_relevant(bot, match, {}) is True
+        assert _is_bot_relevant(self._profile(bot), match, {}) is True
 
     def test_homer_bot_not_relevant_when_team_not_in_match(self):
         TeamFactory(tla="CHE")
-        bot = BotUserFactory(email="chelsea-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="CHE",
+        )
         match = MatchFactory()  # random teams, not Chelsea
 
-        assert _is_bot_relevant(bot, match, {}) is False
-
-    def test_unknown_bot_returns_false(self):
-        bot = BotUserFactory(email="mystery@bots.eplbets.local")
-        match = MatchFactory()
-
-        assert _is_bot_relevant(bot, match, {}) is False
+        assert _is_bot_relevant(self._profile(bot), match, {}) is False
 
 
 # ── _filter_comment ───────────────────────────────────────────────────────────
@@ -421,7 +438,11 @@ class TestSelectReplyBot:
 
     def test_homer_bot_replies_when_team_mentioned(self):
         team = TeamFactory(tla="ARS", name="Arsenal FC", short_name="Arsenal")
-        homer = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        homer = BotUserFactory(
+            email="arsenal-homer@bots.eplbets.local",
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="ARS",
+        )
         other_bot = BotUserFactory(email=PARLAY_PETE)
         match = MatchFactory(home_team=team)
         comment = Comment.objects.create(
@@ -437,41 +458,61 @@ class TestSelectReplyBot:
 
 
 class TestHomerTeamMentioned:
+    def _profile(self, user):
+        return user.bot_profile
+
     def test_returns_true_when_team_name_in_text(self):
         TeamFactory(tla="ARS", name="Arsenal FC")
-        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="ARS",
+        )
 
-        assert _homer_team_mentioned(bot, "Arsenal FC are looking great") is True
+        assert _homer_team_mentioned(self._profile(bot), "Arsenal FC are looking great") is True
 
     def test_returns_true_when_short_name_in_text(self):
         TeamFactory(tla="ARS", name="Arsenal FC", short_name="Arsenal")
-        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="ARS",
+        )
 
-        assert _homer_team_mentioned(bot, "Arsenal are bottling it") is True
+        assert _homer_team_mentioned(self._profile(bot), "Arsenal are bottling it") is True
 
     def test_returns_true_when_tla_in_text(self):
         TeamFactory(tla="LIV", name="Liverpool FC")
-        bot = BotUserFactory(email="liverpool-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="LIV",
+        )
 
-        assert _homer_team_mentioned(bot, "LIV should win this") is True
+        assert _homer_team_mentioned(self._profile(bot), "LIV should win this") is True
 
     def test_tla_uses_word_boundary(self):
         TeamFactory(tla="ARS", name="Arsenal FC")
-        bot = BotUserFactory(email="arsenal-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="ARS",
+        )
 
         # "ars" inside "stars" should NOT match
-        assert _homer_team_mentioned(bot, "the stars aligned today") is False
+        assert _homer_team_mentioned(self._profile(bot), "the stars aligned today") is False
 
     def test_returns_false_when_no_mention(self):
         TeamFactory(tla="CHE", name="Chelsea FC")
-        bot = BotUserFactory(email="chelsea-homer@bots.eplbets.local")
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.HOMER,
+            bot_profile__team_tla="CHE",
+        )
 
-        assert _homer_team_mentioned(bot, "Great match ahead") is False
+        assert _homer_team_mentioned(self._profile(bot), "Great match ahead") is False
 
     def test_returns_false_for_non_homer_bot(self):
-        bot = BotUserFactory(email=FRONTRUNNER)
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.FRONTRUNNER,
+        )
 
-        assert _homer_team_mentioned(bot, "anything") is False
+        assert _homer_team_mentioned(self._profile(bot), "anything") is False
 
 
 # ── generate_bot_comment with REPLY trigger ──────────────────────────────────
