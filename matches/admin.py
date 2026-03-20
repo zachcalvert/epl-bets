@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from matches.models import Match, MatchStats, Standing, Team
+from matches.models import Match, MatchNotes, MatchStats, Standing, Team
 
 
 @admin.register(Team)
@@ -22,6 +22,14 @@ class StandingAdmin(admin.ModelAdmin):
     list_display = ["position", "team", "played", "won", "drawn", "lost", "goal_difference", "points", "season"]
     list_filter = ["season"]
     search_fields = ["team__name"]
+
+
+@admin.register(MatchNotes)
+class MatchNotesAdmin(admin.ModelAdmin):
+    list_display = ["match", "created_at", "updated_at"]
+    list_select_related = ["match__home_team", "match__away_team"]
+    search_fields = ["match__home_team__name", "match__away_team__name"]
+    raw_id_fields = ["match"]
 
 
 @admin.register(MatchStats)

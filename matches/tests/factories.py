@@ -3,7 +3,7 @@ from datetime import timedelta
 import factory
 from django.utils import timezone
 
-from matches.models import Match, MatchStats, Standing, Team
+from matches.models import Match, MatchNotes, MatchStats, Standing, Team
 
 
 class TeamFactory(factory.django.DjangoModelFactory):
@@ -43,6 +43,14 @@ class MatchStatsFactory(factory.django.DjangoModelFactory):
     home_form_json = factory.LazyFunction(list)
     away_form_json = factory.LazyFunction(list)
     fetched_at = factory.LazyFunction(timezone.now)
+
+
+class MatchNotesFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = MatchNotes
+
+    match = factory.SubFactory(MatchFactory)
+    body = "Bruno Fernandes scored a screamer from 30 yards. Red card to Maguire in the 80th minute."
 
 
 class StandingFactory(factory.django.DjangoModelFactory):

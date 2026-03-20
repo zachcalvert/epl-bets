@@ -1,12 +1,17 @@
 from django.conf import settings
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Case, Count, IntegerField, Min, Q, Sum, Value, When
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.utils import timezone
-from django.views.generic import DetailView, TemplateView
+from django.views.generic import DetailView, TemplateView, View
 
 from betting.forms import PlaceBetForm
 from betting.models import BetSlip, Odds
 from betting.services import BOARD_TYPES, get_leaderboard_entries, get_user_rank
-from matches.models import Match, Standing
+from matches.forms import MatchNotesForm
+from matches.models import Match, MatchNotes, Standing
 from matches.services import fetch_match_hype_data
 
 
@@ -333,6 +338,15 @@ class MatchDetailView(DetailView):
             Match.Status.FINISHED,
         )
 
+        # Match notes form (superusers only)
+        if self.request.user.is_authenticated and self.request.user.is_superuser:
+            try:
+                notes = match.notes
+            except MatchNotes.DoesNotExist:
+                notes = None
+            ctx["match_notes_form"] = MatchNotesForm(instance=notes)
+            ctx["match_notes"] = notes
+
         # Standings for header league-position display
         standings = Standing.objects.filter(
             season=settings.CURRENT_SEASON,
@@ -384,6 +398,35 @@ class MatchStatusCardPartialView(DetailView):
             )
 
         return ctx
+
+
+class MatchNotesView(UserPassesTestMixin, View):
+    """HTMX endpoint for superusers to create/update match notes."""
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+        try:
+            notes = match.notes
+        except MatchNotes.DoesNotExist:
+            notes = None
+
+        form = MatchNotesForm(request.POST, instance=notes)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.match = match
+            obj.save()
+            notes = obj
+            form = MatchNotesForm(instance=notes)
+
+        html = render_to_string(
+            "matches/partials/match_notes_panel.html",
+            {"match": match, "match_notes_form": form, "match_notes": notes, "saved": True},
+            request=request,
+        )
+        return HttpResponse(html)
 
 
 class MatchOddsPartialView(MatchDetailView):

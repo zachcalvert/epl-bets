@@ -17,7 +17,7 @@ from betting.models import BetSlip, Odds
 from bots.models import BotComment, BotProfile
 from bots.services import get_best_odds_map
 from discussions.models import Comment
-from matches.models import MatchStats
+from matches.models import MatchNotes, MatchStats
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -427,6 +427,17 @@ def _build_user_prompt(match, trigger_type, bet_slip=None, parent_comment=None):
             lines.append(f"{away.short_name or away.tla} form: {form_str}")
     except MatchStats.DoesNotExist:
         pass
+
+    # Match notes (admin-authored context) for POST_MATCH and REPLY
+    if trigger_type in (BotComment.TriggerType.POST_MATCH, BotComment.TriggerType.REPLY):
+        try:
+            notes = MatchNotes.objects.get(match=match)
+            if notes.body.strip():
+                lines.append("")
+                lines.append("Match notes (from a real viewer):")
+                lines.append(notes.body.strip())
+        except MatchNotes.DoesNotExist:
+            pass
 
     # Trigger-specific context
     if trigger_type == BotComment.TriggerType.REPLY and parent_comment:
