@@ -5,8 +5,15 @@ from celery import shared_task
 from django.db import transaction
 
 from betting.balance import log_transaction
-from betting.models import BalanceTransaction, BetSlip, Parlay, ParlayLeg, UserBalance
-from betting.services import sync_odds
+from betting.models import (
+    BalanceTransaction,
+    BetSlip,
+    Odds,
+    Parlay,
+    ParlayLeg,
+    UserBalance,
+)
+from betting.odds_engine import generate_all_upcoming_odds
 from betting.stats import record_bet_result
 from matches.models import Match
 
@@ -171,22 +178,71 @@ def _evaluate_parlay(parlay_id):
 
 
 @shared_task(bind=True, max_retries=3)
-def fetch_odds(self):
-    logger.info("fetch_odds: starting")
+def generate_odds(self):
+    """Generate house odds for all upcoming matches based on current standings."""
+    logger.info("generate_odds: starting")
     try:
-        created, updated = sync_odds()
-        logger.info("fetch_odds: done created=%d updated=%d", created, updated)
+        from django.conf import settings as django_settings
+        from django.utils import timezone as tz
+
+        results = generate_all_upcoming_odds(django_settings.CURRENT_SEASON)
+        now = tz.now()
+        created = updated = 0
+
+        # Prefetch existing house odds to avoid N+1 and skip unchanged lines
+        match_objs = [r["match"] for r in results]
+        existing_by_match_id = {
+            o.match_id: o
+            for o in Odds.objects.filter(match__in=match_objs, bookmaker="House")
+        }
+
+        to_create = []
+        to_update = []
+
+        for r in results:
+            match = r["match"]
+            home_win, draw, away_win = r["home_win"], r["draw"], r["away_win"]
+            existing = existing_by_match_id.get(match.pk)
+
+            if existing is None:
+                to_create.append(
+                    Odds(
+                        match=match,
+                        bookmaker="House",
+                        home_win=home_win,
+                        draw=draw,
+                        away_win=away_win,
+                        fetched_at=now,
+                    )
+                )
+                created += 1
+            elif existing.home_win != home_win or existing.draw != draw or existing.away_win != away_win:
+                existing.home_win = home_win
+                existing.draw = draw
+                existing.away_win = away_win
+                existing.fetched_at = now
+                to_update.append(existing)
+                updated += 1
+
+        with transaction.atomic():
+            if to_create:
+                Odds.objects.bulk_create(to_create)
+            if to_update:
+                Odds.objects.bulk_update(to_update, ["home_win", "draw", "away_win", "fetched_at"])
+
+        logger.info("generate_odds: done created=%d updated=%d", created, updated)
+
         if created > 0:
             from activity.services import queue_activity_event
 
             queue_activity_event(
                 "odds_update",
-                f"Fresh odds available ({created} new lines)",
+                f"Fresh odds generated ({created} new lines)",
                 url="/odds/",
                 icon="chart-line-up",
             )
     except Exception as exc:
-        logger.exception("fetch_odds failed")
+        logger.exception("generate_odds failed")
         raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
 
 

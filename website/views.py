@@ -57,9 +57,9 @@ ARCHITECTURE_COMPONENTS = {
     "celery": {
         "label": "Celery Worker",
         "subtitle": "Background Tasks + Periodic Jobs",
-        "description": "Celery workers process background tasks: fetching fixtures and standings from football-data.org, pulling odds from The Odds API, and settling bets when matches finish. Celery Beat schedules periodic polling tasks.",
+        "description": "Celery workers process background tasks: fetching fixtures and standings from football-data.org, generating house odds from standings data, and settling bets when matches finish. Celery Beat schedules periodic polling tasks.",
         "tech": ["Celery 5.x", "Celery Beat", "django-celery-beat", "httpx (async HTTP)"],
-        "pages": ["fetch_fixtures — every 6 hours", "fetch_standings — every 6 hours", "fetch_odds — every 30 minutes", "fetch_live_scores — every 60s during matches", "settle_bets — triggered on match completion"],
+        "pages": ["fetch_fixtures — every 6 hours", "fetch_standings — every 6 hours", "generate_odds — every 10 minutes", "fetch_live_scores — every 60s during matches", "settle_bets — triggered on match completion"],
     },
 }
 

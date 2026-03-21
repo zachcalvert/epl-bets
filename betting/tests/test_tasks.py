@@ -3,35 +3,92 @@ from unittest.mock import Mock
 
 import pytest
 
-from betting.models import BetSlip
-from betting.tasks import fetch_odds, settle_match_bets
+from betting.models import BetSlip, Odds
+from betting.tasks import generate_odds, settle_match_bets
 from betting.tests.factories import BetSlipFactory, UserBalanceFactory
 from matches.models import Match
-from matches.tests.factories import MatchFactory
+from matches.tests.factories import MatchFactory, StandingFactory, TeamFactory
 
 pytestmark = pytest.mark.django_db
 
 
-def test_fetch_odds_calls_sync(monkeypatch):
-    called = Mock(return_value=(1, 1))
-    monkeypatch.setattr("betting.tasks.sync_odds", called)
+def test_generate_odds_creates_house_odds_for_upcoming_matches():
+    home = TeamFactory(name="Arsenal FC")
+    away = TeamFactory(name="Chelsea FC")
+    StandingFactory(team=home, position=2, points=60, played=30)
+    StandingFactory(team=away, position=5, points=50, played=30)
+    MatchFactory(home_team=home, away_team=away, status=Match.Status.SCHEDULED)
 
-    fetch_odds.run()
+    generate_odds.run()
 
-    called.assert_called_once_with()
+    assert Odds.objects.filter(bookmaker="House").count() == 1
+    odds = Odds.objects.get(bookmaker="House")
+    assert odds.home_win > Decimal("1.00")
+    assert odds.draw > Decimal("1.00")
+    assert odds.away_win > Decimal("1.00")
 
 
-def test_fetch_odds_retries_with_exponential_backoff(monkeypatch):
+def test_generate_odds_updates_existing_house_odds_when_changed(monkeypatch):
+    home = TeamFactory(name="Liverpool FC")
+    away = TeamFactory(name="Everton FC")
+    StandingFactory(team=home, position=1, points=70, played=30)
+    StandingFactory(team=away, position=15, points=30, played=30)
+    match = MatchFactory(home_team=home, away_team=away, status=Match.Status.SCHEDULED)
+
+    generate_odds.run()
+    first_odds = Odds.objects.get(match=match, bookmaker="House")
+
+    # Simulate standings changing by patching the engine to return different values
+    from decimal import Decimal
+
+    from betting.odds_engine import generate_all_upcoming_odds as real_fn
+
+    def patched_fn(season=None):
+        results = real_fn(season)
+        for r in results:
+            r["home_win"] = Decimal("9.99")
+        return results
+
+    monkeypatch.setattr("betting.tasks.generate_all_upcoming_odds", patched_fn)
+    generate_odds.run()
+
+    assert Odds.objects.filter(match=match, bookmaker="House").count() == 1
+    first_odds.refresh_from_db()
+    assert first_odds.home_win == Decimal("9.99")
+
+
+def test_generate_odds_skips_unchanged_house_odds(monkeypatch):
+    home = TeamFactory(name="Man City FC")
+    away = TeamFactory(name="Wolves FC")
+    StandingFactory(team=home, position=2, points=65, played=30)
+    StandingFactory(team=away, position=14, points=32, played=30)
+    match = MatchFactory(home_team=home, away_team=away, status=Match.Status.SCHEDULED)
+
+    generate_odds.run()
+    first_odds = Odds.objects.get(match=match, bookmaker="House")
+    original_fetched_at = first_odds.fetched_at
+
+    # Run again with identical standings — fetched_at should NOT change (no update issued)
+    generate_odds.run()
+
+    first_odds.refresh_from_db()
+    assert first_odds.fetched_at == original_fetched_at
+
+
+def test_generate_odds_retries_on_failure(monkeypatch):
     retry = Mock(side_effect=RuntimeError("retry"))
-    monkeypatch.setattr("betting.tasks.sync_odds", Mock(side_effect=ValueError("boom")))
-    fetch_odds.push_request(retries=1)
-    monkeypatch.setattr(fetch_odds, "retry", retry)
+    monkeypatch.setattr(
+        "betting.tasks.generate_all_upcoming_odds",
+        Mock(side_effect=ValueError("boom")),
+    )
+    generate_odds.push_request(retries=1)
+    monkeypatch.setattr(generate_odds, "retry", retry)
 
     try:
         with pytest.raises(RuntimeError, match="retry"):
-            fetch_odds.run()
+            generate_odds.run()
     finally:
-        fetch_odds.pop_request()
+        generate_odds.pop_request()
 
     assert retry.call_args.kwargs["countdown"] == 240
 

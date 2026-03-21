@@ -44,7 +44,6 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/epl_bets_test
       REDIS_URL: redis://localhost:6379/0
       FOOTBALL_DATA_API_KEY: ci-football-data-key
-      ODDS_API_KEY: ci-odds-api-key
 
     steps:
       - name: Check out code

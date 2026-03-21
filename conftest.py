@@ -19,7 +19,6 @@ def configure_test_settings(settings):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.FOOTBALL_DATA_API_KEY = "test-football-data-key"
-    settings.ODDS_API_KEY = "test-odds-key"
     settings.PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
     ]
