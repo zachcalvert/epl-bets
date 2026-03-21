@@ -68,8 +68,9 @@ class Match(BaseModel):
         return f"{self.home_team.short_name or self.home_team.name} vs {self.away_team.short_name or self.away_team.name}{score}"
 
     def generate_slug(self):
-        home = (self.home_team.tla or self.home_team.short_name or "xxx").lower()
-        away = (self.away_team.tla or self.away_team.short_name or "xxx").lower()
+        from django.utils.text import slugify
+        home = slugify(self.home_team.tla or self.home_team.short_name or "xxx")
+        away = slugify(self.away_team.tla or self.away_team.short_name or "xxx")
         kickoff = self.kickoff
         if isinstance(kickoff, str):
             from django.utils.dateparse import parse_datetime

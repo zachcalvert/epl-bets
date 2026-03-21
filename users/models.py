@@ -62,25 +62,24 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_display_name = self.display_name
+
     def generate_slug(self):
         name_part = slugify(self.display_name or self.email.split("@")[0])
+        # id_hash is 8 chars + 1 hyphen = 9, so truncate name_part to fit max_length=70
+        max_name = 70 - len(self.id_hash) - 1
+        name_part = name_part[:max_name]
         return f"{name_part}-{self.id_hash}"
 
     def save(self, *args, **kwargs):
         if not self.id_hash:
             self.id_hash = generate_short_id()
-        if not self.slug or self._slug_needs_update():
+        if not self.slug or self.display_name != self._original_display_name:
             self.slug = self.generate_slug()
         super().save(*args, **kwargs)
-
-    def _slug_needs_update(self):
-        if not self.pk:
-            return True
-        try:
-            old = User.objects.only("display_name").get(pk=self.pk)
-            return old.display_name != self.display_name
-        except User.DoesNotExist:
-            return True
+        self._original_display_name = self.display_name
 
     def get_absolute_url(self):
         return reverse("profile", kwargs={"slug": self.slug})

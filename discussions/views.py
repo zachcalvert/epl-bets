@@ -216,8 +216,12 @@ class CreateReplyView(LoginRequiredMixin, View):
 
 class DeleteCommentView(LoginRequiredMixin, View):
     def post(self, request, match_slug, comment_pk):
-        match = get_object_or_404(Match, slug=match_slug)
-        comment = get_object_or_404(Comment, pk=comment_pk, match=match)
+        comment = get_object_or_404(
+            Comment.objects.select_related("match"),
+            pk=comment_pk,
+            match__slug=match_slug,
+        )
+        match = comment.match
 
         if comment.user_id != request.user.pk:
             return HttpResponseForbidden()

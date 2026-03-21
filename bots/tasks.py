@@ -5,6 +5,7 @@ import random
 
 from celery import shared_task
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from django.utils import timezone
 
 from activity.services import queue_activity_event
@@ -65,8 +66,9 @@ def execute_bot_strategy(self, bot_user_id):
     if not available.exists():
         return "no matches"
 
-    match_ids = list(available.values_list("pk", flat=True))
-    slug_map = dict(available.values_list("pk", "slug"))
+    pk_slug_rows = list(available.values_list("pk", "slug"))
+    match_ids = [row[0] for row in pk_slug_rows]
+    slug_map = dict(pk_slug_rows)
     odds_map = get_best_odds_map(match_ids)
 
     if not odds_map:
@@ -116,7 +118,7 @@ def execute_bot_strategy(self, bot_user_id):
             queue_activity_event(
                 "bot_bet",
                 f"{user.display_name} placed a {len(pp.legs)}-leg parlay",
-                url=f"/matches/{slug_map.get(pp.legs[0]['match_id'], pp.legs[0]['match_id'])}/",
+                url=reverse("matches:match_detail", kwargs={"slug": slug_map[pp.legs[0]["match_id"]]}),
                 icon="coins",
             )
 
