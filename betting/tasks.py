@@ -189,21 +189,46 @@ def generate_odds(self):
         now = tz.now()
         created = updated = 0
 
+        # Prefetch existing house odds to avoid N+1 and skip unchanged lines
+        match_objs = [r["match"] for r in results]
+        existing_by_match_id = {
+            o.match_id: o
+            for o in Odds.objects.filter(match__in=match_objs, bookmaker="House")
+        }
+
+        to_create = []
+        to_update = []
+
         for r in results:
-            _, was_created = Odds.objects.update_or_create(
-                match=r["match"],
-                bookmaker="House",
-                defaults={
-                    "home_win": r["home_win"],
-                    "draw": r["draw"],
-                    "away_win": r["away_win"],
-                    "fetched_at": now,
-                },
-            )
-            if was_created:
+            match = r["match"]
+            home_win, draw, away_win = r["home_win"], r["draw"], r["away_win"]
+            existing = existing_by_match_id.get(match.pk)
+
+            if existing is None:
+                to_create.append(
+                    Odds(
+                        match=match,
+                        bookmaker="House",
+                        home_win=home_win,
+                        draw=draw,
+                        away_win=away_win,
+                        fetched_at=now,
+                    )
+                )
                 created += 1
-            else:
+            elif existing.home_win != home_win or existing.draw != draw or existing.away_win != away_win:
+                existing.home_win = home_win
+                existing.draw = draw
+                existing.away_win = away_win
+                existing.fetched_at = now
+                to_update.append(existing)
                 updated += 1
+
+        with transaction.atomic():
+            if to_create:
+                Odds.objects.bulk_create(to_create)
+            if to_update:
+                Odds.objects.bulk_update(to_update, ["home_win", "draw", "away_win", "fetched_at"])
 
         logger.info("generate_odds: done created=%d updated=%d", created, updated)
 

@@ -29,7 +29,7 @@ def test_seed_epl_command_skips_odds_with_flag(monkeypatch, capsys):
     assert "Odds: skipped (--skip-odds)" in output
 
 
-def test_seed_epl_command_skips_odds_in_offline_mode(monkeypatch, capsys):
+def test_seed_epl_command_generates_odds_in_offline_mode(monkeypatch, capsys):
     monkeypatch.setattr("matches.management.commands.seed_epl.sync_teams", lambda season, offline=False: (20, 0))
     monkeypatch.setattr("matches.management.commands.seed_epl.sync_matches", lambda season, offline=False: (380, 0))
     monkeypatch.setattr("matches.management.commands.seed_epl.sync_standings", lambda season, offline=False: (20, 0))

@@ -116,7 +116,7 @@ def execute_bot_strategy(self, bot_user_id):
             queue_activity_event(
                 "bot_bet",
                 f"{user.display_name} placed a {len(pp.legs)}-leg parlay",
-                url=f"/matches/{slug_map.get(pp.legs[0]['match_id'])}/",
+                url=f"/matches/{slug_map.get(pp.legs[0]['match_id'], pp.legs[0]['match_id'])}/",
                 icon="coins",
             )
 

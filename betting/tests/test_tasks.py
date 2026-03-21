@@ -28,18 +28,50 @@ def test_generate_odds_creates_house_odds_for_upcoming_matches():
     assert odds.away_win > Decimal("1.00")
 
 
-def test_generate_odds_updates_existing_house_odds():
+def test_generate_odds_updates_existing_house_odds_when_changed(monkeypatch):
     home = TeamFactory(name="Liverpool FC")
     away = TeamFactory(name="Everton FC")
     StandingFactory(team=home, position=1, points=70, played=30)
     StandingFactory(team=away, position=15, points=30, played=30)
     match = MatchFactory(home_team=home, away_team=away, status=Match.Status.SCHEDULED)
 
-    # Run twice — second should update, not create duplicate
     generate_odds.run()
+    first_odds = Odds.objects.get(match=match, bookmaker="House")
+
+    # Simulate standings changing by patching the engine to return different values
+    from betting.odds_engine import generate_all_upcoming_odds as real_fn
+    from decimal import Decimal
+
+    def patched_fn(season=None):
+        results = real_fn(season)
+        for r in results:
+            r["home_win"] = Decimal("9.99")
+        return results
+
+    monkeypatch.setattr("betting.tasks.generate_all_upcoming_odds", patched_fn)
     generate_odds.run()
 
     assert Odds.objects.filter(match=match, bookmaker="House").count() == 1
+    first_odds.refresh_from_db()
+    assert first_odds.home_win == Decimal("9.99")
+
+
+def test_generate_odds_skips_unchanged_house_odds(monkeypatch):
+    home = TeamFactory(name="Man City FC")
+    away = TeamFactory(name="Wolves FC")
+    StandingFactory(team=home, position=2, points=65, played=30)
+    StandingFactory(team=away, position=14, points=32, played=30)
+    match = MatchFactory(home_team=home, away_team=away, status=Match.Status.SCHEDULED)
+
+    generate_odds.run()
+    first_odds = Odds.objects.get(match=match, bookmaker="House")
+    original_fetched_at = first_odds.fetched_at
+
+    # Run again with identical standings — fetched_at should NOT change (no update issued)
+    generate_odds.run()
+
+    first_odds.refresh_from_db()
+    assert first_odds.fetched_at == original_fetched_at
 
 
 def test_generate_odds_retries_on_failure(monkeypatch):

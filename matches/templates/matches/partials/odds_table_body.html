@@ -13,15 +13,15 @@
     <div class="grid grid-cols-3 gap-3">
         <div class="rounded-xl border border-gray-700/50 bg-surface/30 p-4 text-center">
             <p class="text-xs text-muted uppercase tracking-wider mb-2">Home</p>
-            <p class="font-mono text-lg text-accent font-bold">{{ best_home|format_odds|default:"—" }}</p>
+            <p class="font-mono text-lg text-accent font-bold">{{ best_home|format_odds }}</p>
         </div>
         <div class="rounded-xl border border-gray-700/50 bg-surface/30 p-4 text-center">
             <p class="text-xs text-muted uppercase tracking-wider mb-2">Draw</p>
-            <p class="font-mono text-lg text-accent font-bold">{{ best_draw|format_odds|default:"—" }}</p>
+            <p class="font-mono text-lg text-accent font-bold">{{ best_draw|format_odds }}</p>
         </div>
         <div class="rounded-xl border border-gray-700/50 bg-surface/30 p-4 text-center">
             <p class="text-xs text-muted uppercase tracking-wider mb-2">Away</p>
-            <p class="font-mono text-lg text-accent font-bold">{{ best_away|format_odds|default:"—" }}</p>
+            <p class="font-mono text-lg text-accent font-bold">{{ best_away|format_odds }}</p>
         </div>
     </div>
 </div>

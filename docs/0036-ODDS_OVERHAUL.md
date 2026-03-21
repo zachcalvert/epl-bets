@@ -122,14 +122,15 @@ Replace:
 
 With:
 ```python
-"generate-odds-on-standings-sync": {
+"generate-odds-10m": {
     "task": "betting.tasks.generate_odds",
-    "schedule": crontab(hour="3,9,15,21", minute=15, day_of_week="tue,wed,thu,fri,sat,sun,mon"),
+    "schedule": timedelta(minutes=10),
 },
 ```
 
-This fires after standings syncs (which run at :00), so odds reflect the latest table.
-Also consider chaining: have `fetch_standings` trigger `generate_odds` on success.
+Runs every 10 minutes. Since odds generation is pure local computation (no external API),
+the overhead is negligible. The task skips unchanged lines via a bulk upsert pattern,
+so DB writes are minimal when standings haven't changed.
 
 ### Step 4: Remove external API code
 
