@@ -39,8 +39,9 @@ def test_generate_odds_updates_existing_house_odds_when_changed(monkeypatch):
     first_odds = Odds.objects.get(match=match, bookmaker="House")
 
     # Simulate standings changing by patching the engine to return different values
-    from betting.odds_engine import generate_all_upcoming_odds as real_fn
     from decimal import Decimal
+
+    from betting.odds_engine import generate_all_upcoming_odds as real_fn
 
     def patched_fn(season=None):
         results = real_fn(season)
