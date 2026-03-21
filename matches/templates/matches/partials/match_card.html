@@ -3,7 +3,7 @@
 <div id="match-{{ match.pk }}"
    class="bg-surface rounded-lg border border-gray-700 p-4 hover:border-accent/50 transition-colors
           {% if match.status == 'IN_PLAY' or match.status == 'PAUSED' %}live-match-card{% endif %}">
-    <a href="{% url 'matches:match_detail' match.pk %}" class="block">
+    <a href="{% url 'matches:match_detail' match.slug %}" class="block">
         <div class="flex items-center justify-between mb-3">
             {% status_badge match %}
             <span class="text-xs text-muted">MD {{ match.matchday }}</span>
@@ -40,7 +40,7 @@
         <div class="flex gap-2 text-xs border-t border-gray-700 pt-2">
             {% if match.best_home_odds %}
             <button class="flex-1 text-center py-1 rounded bg-dark font-mono text-accent font-bold hover:bg-accent/10 transition-colors"
-                    hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=HOME_WIN&container=dashboard-quick-bet-{{ match.pk }}"
+                    hx-get="{% url 'betting:quick_bet_form' match.slug %}?selection=HOME_WIN&container=dashboard-quick-bet-{{ match.pk }}"
                     hx-target="#dashboard-quick-bet-{{ match.pk }}"
                     hx-swap="innerHTML">
                 {{ match.best_home_odds|format_odds }}
@@ -50,7 +50,7 @@
             {% endif %}
             {% if match.best_draw_odds %}
             <button class="flex-1 text-center py-1 rounded bg-dark font-mono text-accent font-bold hover:bg-accent/10 transition-colors"
-                    hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=DRAW&container=dashboard-quick-bet-{{ match.pk }}"
+                    hx-get="{% url 'betting:quick_bet_form' match.slug %}?selection=DRAW&container=dashboard-quick-bet-{{ match.pk }}"
                     hx-target="#dashboard-quick-bet-{{ match.pk }}"
                     hx-swap="innerHTML">
                 {{ match.best_draw_odds|format_odds }}
@@ -60,7 +60,7 @@
             {% endif %}
             {% if match.best_away_odds %}
             <button class="flex-1 text-center py-1 rounded bg-dark font-mono text-accent font-bold hover:bg-accent/10 transition-colors"
-                    hx-get="{% url 'betting:quick_bet_form' match.pk %}?selection=AWAY_WIN&container=dashboard-quick-bet-{{ match.pk }}"
+                    hx-get="{% url 'betting:quick_bet_form' match.slug %}?selection=AWAY_WIN&container=dashboard-quick-bet-{{ match.pk }}"
                     hx-target="#dashboard-quick-bet-{{ match.pk }}"
                     hx-swap="innerHTML">
                 {{ match.best_away_odds|format_odds }}

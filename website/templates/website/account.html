@@ -86,7 +86,7 @@
 
             <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
                 <div class="text-xs text-muted uppercase mb-1">Public Profile</div>
-                <a href="{% url 'profile' user.pk %}" class="text-sm text-accent hover:text-accent/80 transition-colors">
+                <a href="{% url 'profile' user.slug %}" class="text-sm text-accent hover:text-accent/80 transition-colors">
                     View your profile &rarr;
                 </a>
             </div>
@@ -140,7 +140,7 @@
     if (!canvas) return;
     var symbol = '{% currency_symbol user %}';
 
-    fetch('/api/balance-history/{{ user.pk }}/')
+    fetch('/api/balance-history/{{ user.slug }}/')
         .then(function(r) { return r.json(); })
         .then(function(json) {
             var accentColor = getComputedStyle(document.documentElement)

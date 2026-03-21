@@ -20,12 +20,12 @@ urlpatterns = [
     path("leaderboard/partial/", LeaderboardPartialView.as_view(), name="leaderboard_partial"),
     path("fixtures/", RedirectView.as_view(url="/", permanent=True), name="fixtures"),
     path("table/", LeagueTableView.as_view(), name="table"),
-    path("match/<int:pk>/", MatchDetailView.as_view(), name="match_detail"),
+    path("match/<slug:slug>/", MatchDetailView.as_view(), name="match_detail"),
     path(
-        "match/<int:pk>/status-card/",
+        "match/<slug:slug>/status-card/",
         MatchStatusCardPartialView.as_view(),
         name="match_status_card",
     ),
-    path("match/<int:pk>/notes/", MatchNotesView.as_view(), name="match_notes"),
-    path("match/<int:pk>/odds/", MatchOddsPartialView.as_view(), name="match_odds_partial"),
+    path("match/<slug:slug>/notes/", MatchNotesView.as_view(), name="match_notes"),
+    path("match/<slug:slug>/odds/", MatchOddsPartialView.as_view(), name="match_odds_partial"),
 ]

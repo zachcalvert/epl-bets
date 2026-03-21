@@ -85,7 +85,7 @@ class TestProfileView:
         )
         UserBalanceFactory(user=stats.user, balance="1150.00")
 
-        response = client.get(reverse("profile", args=[stats.user.pk]))
+        response = client.get(reverse("profile", args=[stats.user.slug]))
 
         assert response.status_code == 200
         assert response.context["display_identity"] == "SharpShooter"
@@ -96,13 +96,13 @@ class TestProfileView:
         user = UserFactory()
         UserBalanceFactory(user=user)
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         assert response.status_code == 200
         assert response.context["stats"] is None
 
     def test_profile_returns_404_for_nonexistent_user(self, client):
-        response = client.get(reverse("profile", args=[99999]))
+        response = client.get(reverse("profile", args=["no-such-user-xYz12345"]))
 
         assert response.status_code == 404
 
@@ -114,7 +114,7 @@ class TestProfileView:
         UserBalanceFactory(user=user)
         bet = BetSlipFactory(user=user, status=BetSlip.Status.WON, payout="21.00")
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         assert response.status_code == 200
         assert bet in response.context["recent_bets"]
@@ -127,7 +127,7 @@ class TestProfileView:
         UserBalanceFactory(user=user)
         BetSlipFactory(user=user, status=BetSlip.Status.PENDING)
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         assert len(response.context["recent_bets"]) == 0
 
@@ -138,7 +138,7 @@ class TestProfileView:
         UserBalanceFactory(user=user)
         comment = CommentFactory(user=user)
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         assert response.status_code == 200
         assert comment in response.context["recent_comments"]
@@ -150,7 +150,7 @@ class TestProfileView:
         UserBalanceFactory(user=user)
         CommentFactory(user=user, is_deleted=True)
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         assert len(response.context["recent_comments"]) == 0
 
@@ -162,7 +162,7 @@ class TestProfileView:
         comment1 = CommentFactory(user=user)
         comment2 = CommentFactory(user=user)
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         comments = list(response.context["recent_comments"])
         assert comments[0] == comment2

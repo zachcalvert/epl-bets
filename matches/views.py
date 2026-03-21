@@ -297,6 +297,8 @@ class MatchDetailView(DetailView):
     model = Match
     template_name = "matches/match_detail.html"
     context_object_name = "match"
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
 
     def get_queryset(self):
         return Match.objects.select_related("home_team", "away_team").prefetch_related(
@@ -364,6 +366,8 @@ class MatchStatusCardPartialView(DetailView):
 
     model = Match
     context_object_name = "match"
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
 
     def get_queryset(self):
         return Match.objects.select_related("home_team", "away_team").prefetch_related(
@@ -406,8 +410,8 @@ class MatchNotesView(UserPassesTestMixin, View):
     def test_func(self):
         return self.request.user.is_superuser
 
-    def post(self, request, pk):
-        match = get_object_or_404(Match, pk=pk)
+    def post(self, request, slug):
+        match = get_object_or_404(Match, slug=slug)
         notes, _created = MatchNotes.objects.get_or_create(
             match=match, defaults={"body": ""}
         )

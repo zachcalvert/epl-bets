@@ -1,5 +1,5 @@
 <form id="comment-form"
-      hx-post="{% url 'discussions:create_comment' match.pk %}"
+      hx-post="{% url 'discussions:create_comment' match.slug %}"
       hx-target="#comment-list"
       hx-swap="beforeend"
       hx-on::after-request="if(event.detail.successful) this.reset()"

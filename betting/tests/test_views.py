@@ -54,7 +54,7 @@ def test_odds_board_partial_uses_partial_template(client):
 def test_place_bet_redirects_anonymous_user_to_login(client):
     match = MatchFactory()
 
-    response = client.post(reverse("betting:place_bet", args=[match.pk]))
+    response = client.post(reverse("betting:place_bet", args=[match.slug]))
 
     assert response.status_code == 302
     assert reverse("website:login") in response.url
@@ -65,7 +65,7 @@ def test_place_bet_rejects_non_upcoming_match(client):
     match = MatchFactory(status=Match.Status.FINISHED)
     client.force_login(user)
 
-    response = client.post(reverse("betting:place_bet", args=[match.pk]), data={})
+    response = client.post(reverse("betting:place_bet", args=[match.slug]), data={})
 
     assert response.status_code == 200
     assert "no longer accepting bets" in response.content.decode()
@@ -77,7 +77,7 @@ def test_place_bet_rerenders_invalid_form(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "stake": "0.10"},
     )
 
@@ -93,7 +93,7 @@ def test_place_bet_returns_error_when_no_odds_available(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "stake": "10.00"},
     )
 
@@ -109,7 +109,7 @@ def test_place_bet_returns_error_for_insufficient_balance(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "stake": "10.00"},
     )
 
@@ -127,7 +127,7 @@ def test_place_bet_creates_bet_and_deducts_balance(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "stake": "10.00"},
     )
 
@@ -148,7 +148,7 @@ def test_place_bet_confirmation_includes_oob_sentiment_update(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "stake": "10.00"},
     )
 
@@ -170,7 +170,7 @@ def test_place_bet_auto_creates_balance_when_missing(client):
     client.force_login(user)
 
     client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.DRAW, "stake": "25.00"},
     )
 
@@ -200,7 +200,7 @@ def test_quick_bet_form_view_returns_initial_selection(client):
     client.force_login(user)
 
     response = client.get(
-        reverse("betting:quick_bet_form", args=[match.pk]),
+        reverse("betting:quick_bet_form", args=[match.slug]),
         data={"selection": BetSlip.Selection.AWAY_WIN, "container": f"quick-bet-{match.pk}"},
     )
 
@@ -216,7 +216,7 @@ def test_quick_bet_form_view_passes_container_id_to_template(client):
     client.force_login(user)
 
     response = client.get(
-        reverse("betting:quick_bet_form", args=[match.pk]),
+        reverse("betting:quick_bet_form", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "container": f"quick-bet-mobile-{match.pk}"},
     )
 
@@ -232,7 +232,7 @@ def test_place_bet_from_odds_board_returns_quick_bet_form_on_error(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={
             "selection": BetSlip.Selection.HOME_WIN,
             "stake": "0.10",
@@ -255,7 +255,7 @@ def test_place_bet_from_odds_board_returns_quick_bet_form_on_no_odds(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={
             "selection": BetSlip.Selection.HOME_WIN,
             "stake": "10.00",
@@ -281,7 +281,7 @@ def test_place_bet_from_odds_board_returns_quick_bet_form_on_insufficient_balanc
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={
             "selection": BetSlip.Selection.HOME_WIN,
             "stake": "10.00",
@@ -303,7 +303,7 @@ def test_place_bet_without_container_id_returns_bet_form_on_error(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("betting:place_bet", args=[match.pk]),
+        reverse("betting:place_bet", args=[match.slug]),
         data={"selection": BetSlip.Selection.HOME_WIN, "stake": "0.10"},
     )
 

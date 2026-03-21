@@ -106,7 +106,7 @@
                 {% for bet in recent_bets %}
                 <tr class="border-b border-gray-700/50 hover:bg-surface/50 transition-colors">
                     <td class="px-2 sm:px-3 py-2">
-                        <a href="{% url 'matches:match_detail' bet.match.pk %}" class="text-sm text-white hover:text-accent transition-colors">
+                        <a href="{% url 'matches:match_detail' bet.match.slug %}" class="text-sm text-white hover:text-accent transition-colors">
                             {{ bet.match.home_team.short_name|default:bet.match.home_team.name }} vs {{ bet.match.away_team.short_name|default:bet.match.away_team.name }}
                         </a>
                     </td>
@@ -180,7 +180,7 @@
         {% for comment in recent_comments %}
         <div class="bg-surface rounded-lg border border-gray-700 p-4">
             <div class="flex items-start justify-between gap-4 mb-1">
-                <a href="{% url 'matches:match_detail' comment.match.pk %}#discussions"
+                <a href="{% url 'matches:match_detail' comment.match.slug %}#discussions"
                    class="text-sm font-medium text-accent hover:underline">
                     {{ comment.match.home_team.short_name|default:comment.match.home_team.name }} vs {{ comment.match.away_team.short_name|default:comment.match.away_team.name }}
                 </a>

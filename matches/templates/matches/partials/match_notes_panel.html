@@ -15,7 +15,7 @@
         </div>
     {% endif %}
 
-    <form hx-post="{% url 'matches:match_notes' match.pk %}"
+    <form hx-post="{% url 'matches:match_notes' match.slug %}"
           hx-target="#match-notes-panel"
           hx-swap="outerHTML">
         {% csrf_token %}

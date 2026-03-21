@@ -52,7 +52,7 @@
             {% if entry.type == "bet" %}
             <tr class="hover:bg-dark/50 transition-colors">
                 <td class="py-3 px-2">
-                    <a href="{% url 'matches:match_detail' entry.item.match.pk %}" class="text-white hover:text-accent transition-colors">
+                    <a href="{% url 'matches:match_detail' entry.item.match.slug %}" class="text-white hover:text-accent transition-colors">
                         {{ entry.item.match.home_team.short_name|default:entry.item.match.home_team.tla }}
                         vs
                         {{ entry.item.match.away_team.short_name|default:entry.item.match.away_team.tla }}
@@ -158,7 +158,7 @@
 <div class="md:hidden space-y-3">
     {% for entry in activity %}
     {% if entry.type == "bet" %}
-    <a href="{% url 'matches:match_detail' entry.item.match.pk %}"
+    <a href="{% url 'matches:match_detail' entry.item.match.slug %}"
        class="block bg-surface/50 rounded-lg border border-gray-700/50 p-4 hover:border-gray-600 transition-colors">
         <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium text-white">

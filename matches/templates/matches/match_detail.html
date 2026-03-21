@@ -86,7 +86,7 @@
     <!-- Main column — status card + discussion -->
     <div class="space-y-4">
         {% if has_status_card %}
-        <div hx-get="{% url 'matches:match_status_card' match.pk %}"
+        <div hx-get="{% url 'matches:match_status_card' match.slug %}"
              hx-trigger="load"
              hx-swap="outerHTML">
             <div class="rounded-lg border border-gray-700 bg-surface overflow-hidden animate-pulse">
@@ -103,7 +103,7 @@
         {% endif %}
 
         <!-- Discussion — lazy-loaded -->
-        <div id="discussions" hx-get="{% url 'discussions:comment_list' match.pk %}"
+        <div id="discussions" hx-get="{% url 'discussions:comment_list' match.slug %}"
              hx-trigger="load"
              hx-swap="outerHTML">
             <div class="animate-pulse">
@@ -133,7 +133,7 @@
 
     <div class="border-t border-gray-700 px-5 py-4 sm:px-6">
         <div class="overflow-x-auto" id="odds-table"
-             hx-get="{% url 'matches:match_odds_partial' match.pk %}"
+             hx-get="{% url 'matches:match_odds_partial' match.slug %}"
              hx-trigger="every 30s"
              hx-swap="innerHTML"
              hx-indicator="#match-odds-loading">

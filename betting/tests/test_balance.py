@@ -92,7 +92,7 @@ class TestLogTransaction:
 class TestBalanceHistoryAPI:
     def test_requires_login(self, client):
         user = UserFactory()
-        response = client.get(reverse("balance_history_api", args=[user.pk]))
+        response = client.get(reverse("balance_history_api", args=[user.slug]))
         assert response.status_code == 302
 
     def test_returns_403_for_other_user(self, client):
@@ -100,7 +100,7 @@ class TestBalanceHistoryAPI:
         other = UserFactory()
         client.force_login(user)
 
-        response = client.get(reverse("balance_history_api", args=[other.pk]))
+        response = client.get(reverse("balance_history_api", args=[other.slug]))
 
         assert response.status_code == 403
 
@@ -111,7 +111,7 @@ class TestBalanceHistoryAPI:
         log_transaction(ub, Decimal("500.00"), BalanceTransaction.Type.BET_WIN)
         client.force_login(user)
 
-        response = client.get(reverse("balance_history_api", args=[user.pk]))
+        response = client.get(reverse("balance_history_api", args=[user.slug]))
 
         assert response.status_code == 200
         data = json.loads(response.content)["data"]
@@ -129,7 +129,7 @@ class TestBalanceHistoryAPI:
         BalanceTransaction.objects.filter(user=user).update(created_at=five_days_ago)
         client.force_login(user)
 
-        response = client.get(reverse("balance_history_api", args=[user.pk]))
+        response = client.get(reverse("balance_history_api", args=[user.slug]))
 
         data = json.loads(response.content)["data"]
         # Should have 6 points (day -5 through today), each carrying forward 1200
@@ -144,7 +144,7 @@ class TestBalanceHistoryAPI:
         log_transaction(ub, Decimal("420.00"), BalanceTransaction.Type.BET_WIN)
         client.force_login(user)
 
-        response = client.get(reverse("balance_history_api", args=[user.pk]))
+        response = client.get(reverse("balance_history_api", args=[user.slug]))
 
         data = json.loads(response.content)["data"]
         dates = [p["t"] for p in data]
@@ -155,7 +155,7 @@ class TestBalanceHistoryAPI:
         user = UserFactory()
         client.force_login(user)
 
-        response = client.get(reverse("balance_history_api", args=[user.pk]))
+        response = client.get(reverse("balance_history_api", args=[user.slug]))
 
         assert response.status_code == 200
         assert json.loads(response.content)["data"] == []
@@ -172,7 +172,7 @@ class TestBetPlacementLogsTransaction:
         client.force_login(user)
 
         client.post(
-            reverse("betting:place_bet", args=[match.pk]),
+            reverse("betting:place_bet", args=[match.slug]),
             data={"selection": BetSlip.Selection.HOME_WIN, "stake": "10.00"},
         )
 
@@ -386,7 +386,7 @@ class TestAccountChart:
         user = UserFactory()
         client.force_login(user)
 
-        response = client.get(reverse("profile", args=[user.pk]))
+        response = client.get(reverse("profile", args=[user.slug]))
 
         assert response.status_code == 200
         assert b"balanceChart" not in response.content

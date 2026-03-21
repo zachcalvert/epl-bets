@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -56,6 +57,7 @@ class Match(BaseModel):
     matchday = models.IntegerField(_("matchday"))
     kickoff = models.DateTimeField(_("kickoff"))
     season = models.CharField(_("season"), max_length=10, help_text=_("e.g. 2025"))
+    slug = models.SlugField(_("slug"), max_length=50, unique=True, blank=True)
 
     class Meta:
         ordering = ["kickoff"]
@@ -64,6 +66,30 @@ class Match(BaseModel):
     def __str__(self):
         score = f" {self.home_score}-{self.away_score}" if self.home_score is not None else ""
         return f"{self.home_team.short_name or self.home_team.name} vs {self.away_team.short_name or self.away_team.name}{score}"
+
+    def generate_slug(self):
+        home = (self.home_team.tla or self.home_team.short_name or "xxx").lower()
+        away = (self.away_team.tla or self.away_team.short_name or "xxx").lower()
+        kickoff = self.kickoff
+        if isinstance(kickoff, str):
+            from django.utils.dateparse import parse_datetime
+            kickoff = parse_datetime(kickoff) or kickoff
+        date_str = kickoff.strftime("%Y-%m-%d") if hasattr(kickoff, "strftime") else kickoff[:10]
+        base = f"{home}-{away}-{date_str}"
+        slug = base
+        counter = 2
+        while Match.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base}-{counter}"
+            counter += 1
+        return slug
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = self.generate_slug()
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("matches:match_detail", kwargs={"slug": self.slug})
 
 
 class Standing(BaseModel):

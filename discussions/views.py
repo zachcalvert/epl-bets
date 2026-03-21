@@ -62,9 +62,9 @@ def _annotate_bet_positions(comments, bet_map, match):
 
 
 class CommentListView(View):
-    def get(self, request, match_pk):
+    def get(self, request, match_slug):
         match = get_object_or_404(
-            Match.objects.select_related("home_team", "away_team"), pk=match_pk
+            Match.objects.select_related("home_team", "away_team"), slug=match_slug
         )
         try:
             offset = max(0, int(request.GET.get("offset", 0)))
@@ -90,7 +90,7 @@ class CommentListView(View):
         user_ids = {c.user_id for c in comments}
         for c in comments:
             user_ids.update(r.user_id for r in c.prefetched_replies)
-        bet_map = _build_bet_map(match_pk, user_ids) if user_ids else {}
+        bet_map = _build_bet_map(match.pk, user_ids) if user_ids else {}
         _annotate_bet_positions(comments, bet_map, match)
 
         has_more = (offset + COMMENTS_PER_PAGE) < total_count
@@ -118,9 +118,9 @@ class CommentListView(View):
 
 
 class CreateCommentView(LoginRequiredMixin, View):
-    def post(self, request, match_pk):
+    def post(self, request, match_slug):
         match = get_object_or_404(
-            Match.objects.select_related("home_team", "away_team"), pk=match_pk
+            Match.objects.select_related("home_team", "away_team"), slug=match_slug
         )
         form = CommentForm(request.POST)
         if not form.is_valid():
@@ -147,7 +147,7 @@ class CreateCommentView(LoginRequiredMixin, View):
             except Exception:
                 logger.warning("Failed to dispatch bot reply task", exc_info=True)
 
-        bet_map = _build_bet_map(match_pk, {request.user.pk})
+        bet_map = _build_bet_map(match.pk, {request.user.pk})
         comment.prefetched_replies = []
         _annotate_bet_positions([comment], bet_map, match)
 
@@ -166,9 +166,9 @@ class CreateCommentView(LoginRequiredMixin, View):
 
 
 class CreateReplyView(LoginRequiredMixin, View):
-    def post(self, request, match_pk, comment_pk):
+    def post(self, request, match_slug, comment_pk):
         match = get_object_or_404(
-            Match.objects.select_related("home_team", "away_team"), pk=match_pk
+            Match.objects.select_related("home_team", "away_team"), slug=match_slug
         )
         parent = get_object_or_404(Comment, pk=comment_pk, match=match)
 
@@ -202,7 +202,7 @@ class CreateReplyView(LoginRequiredMixin, View):
             except Exception:
                 logger.warning("Failed to dispatch bot reply task", exc_info=True)
 
-        bet_map = _build_bet_map(match_pk, {request.user.pk})
+        bet_map = _build_bet_map(match.pk, {request.user.pk})
         reply.prefetched_replies = []
         _annotate_bet_positions([reply], bet_map, match)
 
@@ -215,8 +215,9 @@ class CreateReplyView(LoginRequiredMixin, View):
 
 
 class DeleteCommentView(LoginRequiredMixin, View):
-    def post(self, request, match_pk, comment_pk):
-        comment = get_object_or_404(Comment, pk=comment_pk, match_id=match_pk)
+    def post(self, request, match_slug, comment_pk):
+        match = get_object_or_404(Match, slug=match_slug)
+        comment = get_object_or_404(Comment, pk=comment_pk, match=match)
 
         if comment.user_id != request.user.pk:
             return HttpResponseForbidden()
@@ -232,12 +233,8 @@ class DeleteCommentView(LoginRequiredMixin, View):
                 .select_related("user")
                 .order_by("created_at")
             )
-            match = Match.objects.select_related("home_team", "away_team").get(
-                pk=match_pk
-            )
             user_ids = {comment.user_id} | {r.user_id for r in comment.prefetched_replies}
-            bet_map = _build_bet_map(match_pk, user_ids) if user_ids else {}
-            # Pass only the parent — _annotate_bet_positions handles its prefetched_replies
+            bet_map = _build_bet_map(match.pk, user_ids) if user_ids else {}
             _annotate_bet_positions([comment], bet_map, match)
             html = render_to_string(
                 "discussions/partials/comment_single.html",
@@ -248,9 +245,6 @@ class DeleteCommentView(LoginRequiredMixin, View):
             html = ""
 
         if not has_replies and comment.parent_id is None:
-            match = get_object_or_404(
-                Match.objects.select_related("home_team", "away_team"), pk=match_pk
-            )
             new_count = _visible_top_level_qs(match).count()
             html += render_to_string(
                 "discussions/partials/comment_count_oob.html",

@@ -159,7 +159,7 @@ def _broadcast_score_changes(pre_sync):
                         f"GOAL! {match_obj.home_team.short_name} "
                         f"{m['home_score']}-{m['away_score']} "
                         f"{match_obj.away_team.short_name}",
-                        url=f"/match/{pk}/",
+                        url=match_obj.get_absolute_url(),
                         icon="soccer-ball",
                     )
 
