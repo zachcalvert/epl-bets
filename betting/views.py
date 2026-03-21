@@ -165,10 +165,10 @@ class PlaceBetView(LoginRequiredMixin, View):
         )
         return {"best_home": result["best_home"], "best_draw": result["best_draw"], "best_away": result["best_away"]}
 
-    def post(self, request, match_pk):
+    def post(self, request, match_slug):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team"),
-            pk=match_pk,
+            slug=match_slug,
         )
         container_id = request.POST.get("container_id", "")
 
@@ -384,7 +384,7 @@ class ProfileView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         User = get_user_model()
-        profile_user = get_object_or_404(User, pk=self.kwargs["user_pk"])
+        profile_user = get_object_or_404(User, slug=self.kwargs["slug"])
 
         if profile_user.is_superuser:
             raise Http404
@@ -460,12 +460,12 @@ class BalanceHistoryAPI(LoginRequiredMixin, View):
 
     WINDOW_DAYS = 10
 
-    def get(self, request, user_pk):
-        if request.user.pk != user_pk:
+    def get(self, request, slug):
+        if request.user.slug != slug:
             return JsonResponse({"error": "Forbidden"}, status=403)
 
         all_txns = list(
-            BalanceTransaction.objects.filter(user_id=user_pk)
+            BalanceTransaction.objects.filter(user=request.user)
             .order_by("created_at")
             .values_list("created_at", "balance_after")
         )
@@ -497,10 +497,10 @@ class QuickBetFormView(LoginRequiredMixin, View):
         "AWAY_WIN": "away_win",
     }
 
-    def get(self, request, match_pk):
+    def get(self, request, match_slug):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team"),
-            pk=match_pk,
+            slug=match_slug,
         )
         selection = request.GET.get("selection", "")
         container_id = request.GET.get("container", "")

@@ -66,6 +66,7 @@ def execute_bot_strategy(self, bot_user_id):
         return "no matches"
 
     match_ids = list(available.values_list("pk", flat=True))
+    slug_map = dict(available.values_list("pk", "slug"))
     odds_map = get_best_odds_map(match_ids)
 
     if not odds_map:
@@ -95,7 +96,7 @@ def execute_bot_strategy(self, bot_user_id):
             queue_activity_event(
                 "bot_bet",
                 f"{user.display_name} placed a bet on {result.match}",
-                url=f"/match/{pick.match_id}/",
+                url=result.match.get_absolute_url(),
                 icon="coin",
             )
             # Post-bet comment (~50% chance, staggered 30s-5min)
@@ -115,7 +116,7 @@ def execute_bot_strategy(self, bot_user_id):
             queue_activity_event(
                 "bot_bet",
                 f"{user.display_name} placed a {len(pp.legs)}-leg parlay",
-                url=f"/match/{pp.legs[0]['match_id']}/",
+                url=f"/match/{slug_map.get(pp.legs[0]['match_id'], pp.legs[0]['match_id'])}/",
                 icon="coins",
             )
 
@@ -160,7 +161,7 @@ def generate_bot_comment_task(bot_user_id, match_id, trigger_type, bet_slip_id=N
     queue_activity_event(
         "bot_comment",
         f"{bot_user.display_name} commented on {match}",
-        url=f"/match/{match.pk}/",
+        url=match.get_absolute_url(),
         icon="chat-circle",
     )
 

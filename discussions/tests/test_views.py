@@ -17,7 +17,7 @@ pytestmark = pytest.mark.django_db
 def test_comment_list_returns_200(client):
     match = MatchFactory()
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert response.status_code == 200
     assert "Discussion" in response.content.decode()
@@ -26,7 +26,7 @@ def test_comment_list_returns_200(client):
 def test_comment_list_shows_empty_state_when_no_comments(client):
     match = MatchFactory()
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert response.status_code == 200
     assert "No comments yet" in response.content.decode()
@@ -37,7 +37,7 @@ def test_comment_list_shows_comments_for_match(client):
     CommentFactory(match=match, body="Great match ahead")
     CommentFactory(body="Comment on different match")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert "Great match ahead" in content
@@ -49,7 +49,7 @@ def test_comment_list_shows_replies_nested_under_parent(client):
     parent = CommentFactory(match=match, body="Top-level comment")
     CommentFactory(match=match, parent=parent, body="A reply to the parent")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert "Top-level comment" in content
@@ -62,7 +62,7 @@ def test_comment_list_shows_bet_position_badge(client):
     BetSlipFactory(user=user, match=match, selection=BetSlip.Selection.HOME_WIN)
     CommentFactory(match=match, user=user, body="Backing the home team here")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert "Backing the home team here" in content
@@ -75,7 +75,7 @@ def test_comment_list_shows_draw_badge(client):
     BetSlipFactory(user=user, match=match, selection=BetSlip.Selection.DRAW)
     CommentFactory(match=match, user=user, body="Draw is the play")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert "Backing Draw" in response.content.decode()
 
@@ -86,7 +86,7 @@ def test_comment_list_shows_away_badge(client):
     BetSlipFactory(user=user, match=match, selection=BetSlip.Selection.AWAY_WIN)
     CommentFactory(match=match, user=user, body="Away win incoming")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert f"Backing {match.away_team.short_name}" in response.content.decode()
 
@@ -98,7 +98,7 @@ def test_comment_list_uses_most_recent_bet_for_badge(client):
     BetSlipFactory(user=user, match=match, selection=BetSlip.Selection.AWAY_WIN)
     CommentFactory(match=match, user=user, body="Changed my mind")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert f"Backing {match.away_team.short_name}" in content
@@ -110,7 +110,7 @@ def test_comment_list_shows_comment_count(client):
     CommentFactory(match=match)
     CommentFactory(match=match)
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert "(3)" in response.content.decode()
 
@@ -120,7 +120,7 @@ def test_comment_list_does_not_count_replies_in_total(client):
     parent = CommentFactory(match=match)
     CommentFactory(match=match, parent=parent)
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert "(1)" in response.content.decode()
 
@@ -131,7 +131,7 @@ def test_comment_list_paginates_at_20(client):
     for i in range(25):
         CommentFactory(match=match, user=user, body=f"Comment {i}")
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert "Comment 24" in content  # newest first
@@ -146,7 +146,7 @@ def test_comment_list_offset_returns_next_page(client):
         CommentFactory(match=match, user=user, body=f"Comment {i}")
 
     response = client.get(
-        reverse("discussions:comment_list", args=[match.pk]),
+        reverse("discussions:comment_list", args=[match.slug]),
         data={"offset": "20"},
     )
 
@@ -159,7 +159,7 @@ def test_comment_list_offset_returns_next_page(client):
 def test_comment_list_shows_login_cta_for_anonymous(client):
     match = MatchFactory()
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     assert "Log in to join the discussion" in response.content.decode()
 
@@ -169,7 +169,7 @@ def test_comment_list_shows_form_for_authenticated_user(client):
     user = UserFactory()
     client.force_login(user)
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert "Log in to join the discussion" not in content
@@ -181,7 +181,7 @@ def test_comment_list_hides_deleted_comments_without_replies(client):
     CommentFactory(match=match, body="Visible comment")
     CommentFactory(match=match, body="Deleted comment", is_deleted=True)
 
-    response = client.get(reverse("discussions:comment_list", args=[match.pk]))
+    response = client.get(reverse("discussions:comment_list", args=[match.slug]))
 
     content = response.content.decode()
     assert "Visible comment" in content
@@ -196,7 +196,7 @@ def test_create_comment_redirects_anonymous_to_login(client):
     match = MatchFactory()
 
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "Hello"},
     )
 
@@ -210,7 +210,7 @@ def test_create_comment_creates_top_level_comment(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "My prediction for this match"},
     )
 
@@ -228,7 +228,7 @@ def test_create_comment_returns_comment_html(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "Nice odds on this one"},
     )
 
@@ -243,11 +243,11 @@ def test_create_comment_includes_oob_count_update(client):
     client.force_login(user)
 
     client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "First comment"},
     )
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "Second comment"},
     )
 
@@ -264,7 +264,7 @@ def test_create_comment_shows_bet_badge(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "Drawing vibes"},
     )
 
@@ -277,7 +277,7 @@ def test_create_comment_rejects_empty_body(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": ""},
     )
 
@@ -291,7 +291,7 @@ def test_create_comment_rejects_body_over_1000_chars(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_comment", args=[match.pk]),
+        reverse("discussions:create_comment", args=[match.slug]),
         data={"body": "x" * 1001},
     )
 
@@ -307,7 +307,7 @@ def test_create_reply_redirects_anonymous_to_login(client):
     comment = CommentFactory(match=match)
 
     response = client.post(
-        reverse("discussions:create_reply", args=[match.pk, comment.pk]),
+        reverse("discussions:create_reply", args=[match.slug, comment.pk]),
         data={"body": "Nice one"},
     )
 
@@ -322,7 +322,7 @@ def test_create_reply_creates_reply_to_comment(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_reply", args=[match.pk, parent.pk]),
+        reverse("discussions:create_reply", args=[match.slug, parent.pk]),
         data={"body": "I agree with you"},
     )
 
@@ -340,7 +340,7 @@ def test_create_reply_returns_reply_html(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_reply", args=[match.pk, parent.pk]),
+        reverse("discussions:create_reply", args=[match.slug, parent.pk]),
         data={"body": "My reply here"},
     )
 
@@ -357,7 +357,7 @@ def test_create_reply_rejects_reply_to_reply(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_reply", args=[match.pk, reply.pk]),
+        reverse("discussions:create_reply", args=[match.slug, reply.pk]),
         data={"body": "Nested too deep"},
     )
 
@@ -372,7 +372,7 @@ def test_create_reply_rejects_empty_body(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_reply", args=[match.pk, parent.pk]),
+        reverse("discussions:create_reply", args=[match.slug, parent.pk]),
         data={"body": ""},
     )
 
@@ -388,7 +388,7 @@ def test_create_reply_shows_bet_badge(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:create_reply", args=[match.pk, parent.pk]),
+        reverse("discussions:create_reply", args=[match.slug, parent.pk]),
         data={"body": "Home win for sure"},
     )
 
@@ -403,7 +403,7 @@ def test_delete_comment_redirects_anonymous_to_login(client):
     comment = CommentFactory(match=match)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, comment.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, comment.pk]),
     )
 
     assert response.status_code == 302
@@ -417,7 +417,7 @@ def test_delete_comment_soft_deletes_own_comment(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, comment.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, comment.pk]),
     )
 
     assert response.status_code == 200
@@ -432,7 +432,7 @@ def test_delete_comment_returns_empty_when_no_replies(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, comment.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, comment.pk]),
     )
 
     content = response.content.decode()
@@ -449,7 +449,7 @@ def test_delete_comment_preserves_placeholder_when_has_replies(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, comment.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, comment.pk]),
     )
 
     content = response.content.decode()
@@ -465,7 +465,7 @@ def test_delete_comment_forbidden_for_other_user(client):
     client.force_login(other_user)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, comment.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, comment.pk]),
     )
 
     assert response.status_code == 403
@@ -481,7 +481,7 @@ def test_delete_comment_updates_count_oob(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, to_delete.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, to_delete.pk]),
     )
 
     content = response.content.decode()
@@ -498,7 +498,7 @@ def test_delete_reply_does_not_update_count(client):
     client.force_login(user)
 
     response = client.post(
-        reverse("discussions:delete_comment", args=[match.pk, reply.pk]),
+        reverse("discussions:delete_comment", args=[match.slug, reply.pk]),
     )
 
     assert response.status_code == 200

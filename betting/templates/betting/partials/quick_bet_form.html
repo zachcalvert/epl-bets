@@ -5,7 +5,7 @@
         <p class="text-danger text-xs">{{ error }}</p>
     </div>
     {% endif %}
-    <form hx-post="{% url 'betting:place_bet' match.pk %}"
+    <form hx-post="{% url 'betting:place_bet' match.slug %}"
           hx-target="#{{ container_id }}"
           hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']"

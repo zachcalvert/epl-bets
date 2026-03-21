@@ -38,7 +38,7 @@
                 Reply
             </button>
             <form class="hidden w-full"
-                  hx-post="{% url 'discussions:create_reply' match.pk comment.pk %}"
+                  hx-post="{% url 'discussions:create_reply' match.slug comment.pk %}"
                   hx-target="#replies-{{ comment.id_hash }}"
                   hx-swap="beforeend"
                   hx-on::after-request="if(event.detail.successful){this.reset();this.classList.add('hidden')}"
@@ -60,7 +60,7 @@
             {% endif %}
 
             {% if request.user == comment.user and not comment.is_deleted %}
-            <button hx-post="{% url 'discussions:delete_comment' match.pk comment.pk %}"
+            <button hx-post="{% url 'discussions:delete_comment' match.slug comment.pk %}"
                     hx-target="#comment-{{ comment.id_hash }}"
                     hx-swap="outerHTML"
                     hx-confirm="Delete this comment?"

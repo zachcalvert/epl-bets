@@ -11,22 +11,22 @@ app_name = "discussions"
 
 urlpatterns = [
     path(
-        "match/<int:match_pk>/comments/",
+        "match/<slug:match_slug>/comments/",
         CommentListView.as_view(),
         name="comment_list",
     ),
     path(
-        "match/<int:match_pk>/comments/create/",
+        "match/<slug:match_slug>/comments/create/",
         CreateCommentView.as_view(),
         name="create_comment",
     ),
     path(
-        "match/<int:match_pk>/comments/<int:comment_pk>/reply/",
+        "match/<slug:match_slug>/comments/<int:comment_pk>/reply/",
         CreateReplyView.as_view(),
         name="create_reply",
     ),
     path(
-        "match/<int:match_pk>/comments/<int:comment_pk>/delete/",
+        "match/<slug:match_slug>/comments/<int:comment_pk>/delete/",
         DeleteCommentView.as_view(),
         name="delete_comment",
     ),

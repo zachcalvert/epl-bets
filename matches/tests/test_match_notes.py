@@ -42,7 +42,7 @@ class TestMatchNotesInDetail:
         client.force_login(user)
         match = MatchFactory()
 
-        response = client.get(reverse("matches:match_detail", args=[match.pk]))
+        response = client.get(reverse("matches:match_detail", args=[match.slug]))
 
         assert response.status_code == 200
         assert "match_notes_form" in response.context
@@ -52,7 +52,7 @@ class TestMatchNotesInDetail:
         client.force_login(user)
         match = MatchFactory()
 
-        response = client.get(reverse("matches:match_detail", args=[match.pk]))
+        response = client.get(reverse("matches:match_detail", args=[match.slug]))
 
         assert response.status_code == 200
         assert "match_notes_form" not in response.context
@@ -60,7 +60,7 @@ class TestMatchNotesInDetail:
     def test_anonymous_user_does_not_see_notes_form(self, client):
         match = MatchFactory()
 
-        response = client.get(reverse("matches:match_detail", args=[match.pk]))
+        response = client.get(reverse("matches:match_detail", args=[match.slug]))
 
         assert response.status_code == 200
         assert "match_notes_form" not in response.context
@@ -70,7 +70,7 @@ class TestMatchNotesInDetail:
         client.force_login(user)
         notes = MatchNotesFactory(body="Maguire red card 80'")
 
-        response = client.get(reverse("matches:match_detail", args=[notes.match.pk]))
+        response = client.get(reverse("matches:match_detail", args=[notes.match.slug]))
 
         assert response.context["match_notes"].body == "Maguire red card 80'"
 
@@ -85,7 +85,7 @@ class TestMatchNotesView:
         match = MatchFactory()
 
         response = client.post(
-            reverse("matches:match_notes", args=[match.pk]),
+            reverse("matches:match_notes", args=[match.slug]),
             {"body": "Bruno screamer from 30 yards"},
         )
 
@@ -99,7 +99,7 @@ class TestMatchNotesView:
         notes = MatchNotesFactory(body="First half boring")
 
         response = client.post(
-            reverse("matches:match_notes", args=[notes.match.pk]),
+            reverse("matches:match_notes", args=[notes.match.slug]),
             {"body": "First half boring. Second half madness."},
         )
 
@@ -113,7 +113,7 @@ class TestMatchNotesView:
         match = MatchFactory()
 
         response = client.post(
-            reverse("matches:match_notes", args=[match.pk]),
+            reverse("matches:match_notes", args=[match.slug]),
             {"body": "sneaky notes"},
         )
 
@@ -124,7 +124,7 @@ class TestMatchNotesView:
         match = MatchFactory()
 
         response = client.post(
-            reverse("matches:match_notes", args=[match.pk]),
+            reverse("matches:match_notes", args=[match.slug]),
             {"body": "sneaky notes"},
         )
 
@@ -136,7 +136,7 @@ class TestMatchNotesView:
         match = MatchFactory()
 
         response = client.post(
-            reverse("matches:match_notes", args=[match.pk]),
+            reverse("matches:match_notes", args=[match.slug]),
             {"body": "Great match"},
         )
 

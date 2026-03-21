@@ -2,6 +2,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.urls import reverse
+from django.utils.text import slugify
+
+from core.models import generate_short_id
 
 from .managers import UserManager
 
@@ -33,6 +37,13 @@ class User(AbstractUser):
         default=True,
         help_text="Show live activity feed toasts on every page.",
     )
+    id_hash = models.CharField(
+        max_length=8,
+        default=generate_short_id,
+        editable=False,
+        unique=True,
+    )
+    slug = models.SlugField(max_length=70, unique=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -50,3 +61,26 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    def generate_slug(self):
+        name_part = slugify(self.display_name or self.email.split("@")[0])
+        return f"{name_part}-{self.id_hash}"
+
+    def save(self, *args, **kwargs):
+        if not self.id_hash:
+            self.id_hash = generate_short_id()
+        if not self.slug or self._slug_needs_update():
+            self.slug = self.generate_slug()
+        super().save(*args, **kwargs)
+
+    def _slug_needs_update(self):
+        if not self.pk:
+            return True
+        try:
+            old = User.objects.only("display_name").get(pk=self.pk)
+            return old.display_name != self.display_name
+        except User.DoesNotExist:
+            return True
+
+    def get_absolute_url(self):
+        return reverse("profile", kwargs={"slug": self.slug})
