@@ -9,9 +9,9 @@
             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-accent/80">Market freshness</p>
             <p class="mt-1 text-sm text-white">
                 {% if last_odds_refresh %}
-                    Odds synced {{ last_odds_refresh|relative_time }}
+                    Odds generated {{ last_odds_refresh|relative_time }}
                 {% else %}
-                    Waiting for bookmaker prices
+                    Waiting for odds generation
                 {% endif %}
             </p>
         </div>
@@ -138,12 +138,12 @@
 <!-- Mobile card list -->
 <div class="md:hidden space-y-3">
     <div class="rounded-2xl border border-accent/20 bg-gradient-to-br from-surface to-dark px-4 py-4 shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
-        <p class="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-accent/80">Live odds board</p>
+        <p class="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-accent/80">Odds board</p>
         <p class="mt-1 text-sm font-semibold text-white">
             {% if last_odds_refresh %}
-                Odds synced {{ last_odds_refresh|relative_time }}
+                Odds generated {{ last_odds_refresh|relative_time }}
             {% else %}
-                Waiting for bookmaker prices
+                Waiting for odds generation
             {% endif %}
         </p>
     </div>

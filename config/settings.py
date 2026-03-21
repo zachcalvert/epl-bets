@@ -213,10 +213,10 @@ CELERY_BEAT_SCHEDULE = {
         # Every 15 min on matchdays, only during match hours (11 AM – 11 PM UTC)
         "schedule": crontab(minute="0,15,30,45", hour="11-23", day_of_week="fri,sat,sun,mon"),
     },
-    "fetch-odds-4x-thu-mon": {
-        "task": "betting.tasks.fetch_odds",
-        # 4x daily Thu evening through Mon morning
-        "schedule": crontab(hour="6,12,17,22", minute=0, day_of_week="thu,fri,sat,sun,mon"),
+    "generate-odds-on-standings-sync": {
+        "task": "betting.tasks.generate_odds",
+        # Runs 15 min after standings sync hours so odds reflect the latest table
+        "schedule": crontab(hour="3,9,15,21", minute=15, day_of_week="tue,wed,thu,fri,sat,sun,mon"),
     },
     "prefetch-hype-data-6h": {
         "task": "matches.tasks.prefetch_upcoming_hype_data",
@@ -280,7 +280,6 @@ CELERY_BEAT_SCHEDULE = {
 
 # External APIs
 FOOTBALL_DATA_API_KEY = env("FOOTBALL_DATA_API_KEY", default="")
-ODDS_API_KEY = env("ODDS_API_KEY", default="")
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 API_TIMEOUT = 30
 CURRENT_SEASON = "2025"

@@ -5,8 +5,15 @@ from celery import shared_task
 from django.db import transaction
 
 from betting.balance import log_transaction
-from betting.models import BalanceTransaction, BetSlip, Parlay, ParlayLeg, UserBalance
-from betting.services import sync_odds
+from betting.models import (
+    BalanceTransaction,
+    BetSlip,
+    Odds,
+    Parlay,
+    ParlayLeg,
+    UserBalance,
+)
+from betting.odds_engine import generate_all_upcoming_odds
 from betting.stats import record_bet_result
 from matches.models import Match
 
@@ -171,22 +178,46 @@ def _evaluate_parlay(parlay_id):
 
 
 @shared_task(bind=True, max_retries=3)
-def fetch_odds(self):
-    logger.info("fetch_odds: starting")
+def generate_odds(self):
+    """Generate house odds for all upcoming matches based on current standings."""
+    logger.info("generate_odds: starting")
     try:
-        created, updated = sync_odds()
-        logger.info("fetch_odds: done created=%d updated=%d", created, updated)
+        from django.conf import settings as django_settings
+        from django.utils import timezone as tz
+
+        results = generate_all_upcoming_odds(django_settings.CURRENT_SEASON)
+        now = tz.now()
+        created = updated = 0
+
+        for r in results:
+            _, was_created = Odds.objects.update_or_create(
+                match=r["match"],
+                bookmaker="House",
+                defaults={
+                    "home_win": r["home_win"],
+                    "draw": r["draw"],
+                    "away_win": r["away_win"],
+                    "fetched_at": now,
+                },
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+        logger.info("generate_odds: done created=%d updated=%d", created, updated)
+
         if created > 0:
             from activity.services import queue_activity_event
 
             queue_activity_event(
                 "odds_update",
-                f"Fresh odds available ({created} new lines)",
+                f"Fresh odds generated ({created} new lines)",
                 url="/odds/",
                 icon="chart-line-up",
             )
     except Exception as exc:
-        logger.exception("fetch_odds failed")
+        logger.exception("generate_odds failed")
         raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
 
 

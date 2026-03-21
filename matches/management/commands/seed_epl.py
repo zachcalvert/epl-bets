@@ -1,12 +1,14 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
-from betting.services import sync_odds
+from betting.models import Odds
+from betting.odds_engine import generate_all_upcoming_odds
 from matches.services import sync_matches, sync_standings, sync_teams
 
 
 class Command(BaseCommand):
-    help = "Seed the database with EPL data from football-data.org and The Odds API"
+    help = "Seed the database with EPL data from football-data.org and generate house odds"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -17,7 +19,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--skip-odds",
             action="store_true",
-            help="Skip fetching odds (saves Odds API credits)",
+            help="Skip generating odds",
         )
         parser.add_argument(
             "--offline",
@@ -49,15 +51,28 @@ class Command(BaseCommand):
         created, updated = sync_standings(season, offline=offline)
         self.stdout.write(self.style.SUCCESS(f"  Standings: {created} created, {updated} updated"))
 
-        # Odds
+        # Odds — generate from standings (no external API needed)
         if skip_odds:
             self.stdout.write(self.style.WARNING("  Odds: skipped (--skip-odds)"))
-        elif offline:
-            self.stdout.write(self.style.WARNING("  Odds: skipped (offline mode)"))
         else:
-            self.stdout.write("Syncing odds...")
-            created, updated = sync_odds()
-            self.stdout.write(self.style.SUCCESS(f"  Odds: {created} created, {updated} updated"))
+            self.stdout.write("Generating house odds...")
+            results = generate_all_upcoming_odds(season)
+            now = timezone.now()
+            created = 0
+            for r in results:
+                _, was_created = Odds.objects.update_or_create(
+                    match=r["match"],
+                    bookmaker="House",
+                    defaults={
+                        "home_win": r["home_win"],
+                        "draw": r["draw"],
+                        "away_win": r["away_win"],
+                        "fetched_at": now,
+                    },
+                )
+                if was_created:
+                    created += 1
+            self.stdout.write(self.style.SUCCESS(f"  Odds: {created} generated for {len(results)} matches"))
 
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("Done!"))

@@ -115,16 +115,16 @@
 
 </div>
 
-<!-- Odds comparison -->
+<!-- House odds -->
 <details class="mb-6 rounded-lg border border-gray-700 bg-surface shadow-sm">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
         <div>
-            <h3 class="text-lg font-bold text-white">Odds Comparison</h3>
+            <h3 class="text-lg font-bold text-white">House Odds</h3>
             <p class="mt-0.5 text-xs text-muted">
                 {% if latest_odds_refresh %}
-                    Best prices synced {{ latest_odds_refresh|relative_time }}
+                    Odds generated {{ latest_odds_refresh|relative_time }}
                 {% else %}
-                    Waiting for bookmakers to publish this market
+                    Waiting for odds generation
                 {% endif %}
             </p>
         </div>
