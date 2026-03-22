@@ -291,6 +291,7 @@ def generate_postmatch_comments():
     recently_finished = Match.objects.filter(
         status=Match.Status.FINISHED,
         updated_at__gte=now - timezone.timedelta(hours=2),
+        kickoff__gte=now - timezone.timedelta(weeks=1),
     ).select_related("home_team", "away_team")
 
     dispatched = 0

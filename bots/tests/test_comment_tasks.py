@@ -247,6 +247,25 @@ class TestGeneratePostmatchComments:
 
         assert mock_dispatch.call_count == 0
 
+    def test_skips_matches_with_kickoff_older_than_one_week(self):
+        bot = BotUserFactory(
+            bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
+        )
+        UserBalanceFactory(user=bot)
+        now = timezone.now()
+        match = MatchFactory(
+            status=Match.Status.FINISHED,
+            home_score=1, away_score=0,
+            kickoff=now - timezone.timedelta(days=8),
+            updated_at=now - timezone.timedelta(minutes=30),
+        )
+        BetSlipFactory(user=bot, match=match)
+
+        with patch("bots.tasks.generate_bot_comment_task.apply_async") as mock_dispatch:
+            generate_postmatch_comments.run()
+
+        assert mock_dispatch.call_count == 0
+
     def test_skips_bots_who_already_commented(self):
         bot = BotUserFactory(
             bot_profile__strategy_type=BotProfile.StrategyType.CHAOS_AGENT,
