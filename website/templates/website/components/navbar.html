@@ -35,6 +35,12 @@
                    class="nav-link {% if url_name == 'odds' %}nav-link-active{% endif %}">
                     Odds
                 </a>
+                {% if user.is_superuser %}
+                <a href="{% url 'website:admin_dashboard' %}"
+                   class="nav-link {% if url_name == 'admin_dashboard' %}nav-link-active{% endif %}">
+                    <i class="ph-duotone ph-gauge"></i> Admin
+                </a>
+                {% endif %}
                 {% endwith %}
             </div>
 
@@ -142,6 +148,11 @@
                 <a href="{% url 'board:board' %}" class="mobile-nav-link {% if url_name == 'board' %}nav-link-active{% endif %}">Community</a>
                 <a href="{% url 'matches:leaderboard' %}" class="mobile-nav-link {% if url_name == 'leaderboard' %}nav-link-active{% endif %}">Leaderboard</a>
                 <a href="{% url 'betting:odds' %}" class="mobile-nav-link {% if url_name == 'odds' %}nav-link-active{% endif %}">Odds</a>
+                {% if user.is_superuser %}
+                <a href="{% url 'website:admin_dashboard' %}" class="mobile-nav-link {% if url_name == 'admin_dashboard' %}nav-link-active{% endif %}">
+                    <i class="ph-duotone ph-gauge"></i> Admin
+                </a>
+                {% endif %}
             </div>
 
             {% if user.is_authenticated %}

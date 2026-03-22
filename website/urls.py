@@ -2,6 +2,12 @@ from django.urls import path
 
 from website.views import (
     AccountView,
+    AdminActivityQueuePartialView,
+    AdminBetsPartialView,
+    AdminCommentsPartialView,
+    AdminDashboardView,
+    AdminTasksPartialView,
+    AdminUsersPartialView,
     AvatarUpdateView,
     ComponentDetailView,
     CurrencyUpdateView,
@@ -24,4 +30,11 @@ urlpatterns = [
     path("theme/toggle/", ThemeToggleView.as_view(), name="theme_toggle"),
     path("how-it-works/", HowItWorksView.as_view(), name="how_it_works"),
     path("how-it-works/component/", ComponentDetailView.as_view(), name="component_detail"),
+    # Admin dashboard
+    path("admin-dashboard/", AdminDashboardView.as_view(), name="admin_dashboard"),
+    path("admin-dashboard/bets/", AdminBetsPartialView.as_view(), name="admin_dashboard_bets"),
+    path("admin-dashboard/comments/", AdminCommentsPartialView.as_view(), name="admin_dashboard_comments"),
+    path("admin-dashboard/tasks/", AdminTasksPartialView.as_view(), name="admin_dashboard_tasks"),
+    path("admin-dashboard/users/", AdminUsersPartialView.as_view(), name="admin_dashboard_users"),
+    path("admin-dashboard/activity-queue/", AdminActivityQueuePartialView.as_view(), name="admin_dashboard_activity_queue"),
 ]

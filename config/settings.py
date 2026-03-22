@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_htmx",
     "django_celery_beat",
+    "django_celery_results",
     # Local
     "core",
     "users",
@@ -185,7 +186,8 @@ CACHES = {
 
 # Celery
 CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
