@@ -409,7 +409,7 @@ class AvatarUpdateView(LoginRequiredMixin, View):
 # Admin Dashboard
 # ---------------------------------------------------------------------------
 
-ADMIN_PAGE_SIZE = 20
+ADMIN_PAGE_SIZE = 5
 ADMIN_MAX_OFFSET = 500
 
 
@@ -424,14 +424,11 @@ class AdminDashboardView(SuperuserRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         User = get_user_model()
-        ctx["total_users"] = User.objects.filter(is_bot=False).count()
-        ctx["total_bots"] = User.objects.filter(is_bot=True).count()
+        ctx["total_users"] = User.objects.count()
         ctx["active_bets"] = BetSlip.objects.filter(status=BetSlip.Status.PENDING).count()
         ctx["active_parlays"] = Parlay.objects.filter(status=Parlay.Status.PENDING).count()
         ctx["total_comments"] = Comment.objects.filter(is_deleted=False).count()
-        ctx["total_board_posts"] = BoardPost.objects.filter(
-            parent__isnull=True, is_hidden=False
-        ).count()
+        ctx["total_bets_all_time"] = BetSlip.objects.count() + Parlay.objects.count()
         ctx["total_in_play"] = (
             BetSlip.objects.filter(status=BetSlip.Status.PENDING).aggregate(
                 total=Sum("stake")
