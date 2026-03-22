@@ -49,7 +49,7 @@ Context expected:
                     <p class="text-xs text-muted">Got It Right</p>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-accent">{{ betting_outcome.total_won_payout|currency:request.user }}</p>
+                    <p class="text-2xl font-bold text-accent">{{ betting_outcome.total_won_payout|currency_rounded:request.user }}</p>
                     <p class="text-xs text-muted">Won</p>
                 </div>
             </div>
@@ -108,8 +108,6 @@ Context expected:
             </div>
         </div>
         {% endif %}
-
-        {% include "matches/partials/_section_form_guide.html" %}
 
     </div><!-- /divide-y -->
 </div>
