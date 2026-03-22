@@ -1,0 +1,68 @@
+{% comment %}
+Bet Station — consolidated sidebar: house odds, community sentiment, and bet form / CTA / closed message.
+
+Context expected:
+  match              — Match instance
+  odds               — list of Odds instances (may be empty)
+  best_home/draw/away — best odds values or None
+  latest_odds_refresh — datetime or None
+  sentiment          — dict with total/home_pct/draw_pct/away_pct/most_popular, or None
+  form               — PlaceBetForm (only for authenticated users)
+{% endcomment %}
+{% load match_tags currency_tags %}
+
+<div class="bg-surface rounded-lg border border-gray-700 p-5 space-y-5">
+
+    <!-- House Odds (compact) -->
+    {% if odds %}
+    <div id="odds-table"
+         hx-get="{% url 'matches:match_odds_partial' match.slug %}"
+         hx-trigger="every 30s"
+         hx-swap="innerHTML"
+         hx-indicator="#station-odds-loading">
+        <div class="grid grid-cols-3 gap-2 text-center">
+            <div>
+                <p class="text-[10px] text-muted uppercase tracking-wider">Home</p>
+                <p class="font-mono text-lg text-accent font-bold odds-value">{{ best_home|format_odds }}</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-muted uppercase tracking-wider">Draw</p>
+                <p class="font-mono text-lg text-accent font-bold odds-value">{{ best_draw|format_odds }}</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-muted uppercase tracking-wider">Away</p>
+                <p class="font-mono text-lg text-accent font-bold odds-value">{{ best_away|format_odds }}</p>
+            </div>
+        </div>
+        {% if latest_odds_refresh %}
+            <p class="text-[10px] text-muted text-center mt-1">Updated {{ latest_odds_refresh|relative_time }}</p>
+        {% endif %}
+    </div>
+    <div id="station-odds-loading" class="htmx-indicator text-center py-1">
+        <span class="spinner spinner-sm text-accent"></span>
+    </div>
+    {% endif %}
+
+    <!-- Community Sentiment -->
+    {% include "matches/partials/community_sentiment.html" %}
+
+    <!-- Bet form / Login CTA / Closed message -->
+    {% if match.status == "SCHEDULED" or match.status == "TIMED" %}
+        {% if user.is_authenticated %}
+            {% include "betting/partials/bet_form.html" %}
+        {% else %}
+            <div class="border border-gray-700 border-dashed rounded-md p-4 text-center">
+                <p class="text-muted text-sm mb-3">Log in to place a bet on this match.</p>
+                <a href="{% url 'website:login' %}?next={{ request.path }}"
+                   class="inline-block bg-accent text-dark font-bold py-2 px-6 rounded-md hover:bg-accent/90 transition-colors text-sm">
+                    Log In
+                </a>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="text-center text-muted">
+            <p class="text-sm">Betting is closed for this match.</p>
+        </div>
+    {% endif %}
+
+</div>

@@ -29,6 +29,19 @@
             {% if home_standing %}
                 <p class="text-xs text-muted mt-0.5">{{ home_standing.position|ordinal }} &middot; {{ home_standing.points }} pts</p>
             {% endif %}
+            {% if match_stats.home_form_json %}
+                <div class="flex justify-center gap-0.5 mt-1">
+                    {% for entry in match_stats.home_form_json reversed %}
+                        {% if entry.result == "W" %}
+                            <span class="text-[10px] font-bold text-green-500" title="{{ entry.home_team }} {{ entry.home_score }}–{{ entry.away_score }} {{ entry.away_team }}">W</span>
+                        {% elif entry.result == "D" %}
+                            <span class="text-[10px] font-bold text-amber-500" title="{{ entry.home_team }} {{ entry.home_score }}–{{ entry.away_score }} {{ entry.away_team }}">D</span>
+                        {% elif entry.result == "L" %}
+                            <span class="text-[10px] font-bold text-red-500" title="{{ entry.home_team }} {{ entry.home_score }}–{{ entry.away_score }} {{ entry.away_team }}">L</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
 
         <!-- Score / vs -->
@@ -48,6 +61,19 @@
             {% if away_standing %}
                 <p class="text-xs text-muted mt-0.5">{{ away_standing.position|ordinal }} &middot; {{ away_standing.points }} pts</p>
             {% endif %}
+            {% if match_stats.away_form_json %}
+                <div class="flex justify-center gap-0.5 mt-1">
+                    {% for entry in match_stats.away_form_json reversed %}
+                        {% if entry.result == "W" %}
+                            <span class="text-[10px] font-bold text-green-500" title="{{ entry.home_team }} {{ entry.home_score }}–{{ entry.away_score }} {{ entry.away_team }}">W</span>
+                        {% elif entry.result == "D" %}
+                            <span class="text-[10px] font-bold text-amber-500" title="{{ entry.home_team }} {{ entry.home_score }}–{{ entry.away_score }} {{ entry.away_team }}">D</span>
+                        {% elif entry.result == "L" %}
+                            <span class="text-[10px] font-bold text-red-500" title="{{ entry.home_team }} {{ entry.home_score }}–{{ entry.away_score }} {{ entry.away_team }}">L</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
     </div>
 
@@ -59,31 +85,15 @@
     </div>
 </div>
 
-<!-- Two-column layout: bet form (narrow left) | status card + discussion (wide right) -->
+<!-- Two-column layout: bet station (narrow left) | recap/discussion (wide right) -->
 <div class="grid grid-cols-1 lg:grid-cols-[26rem_minmax(0,1fr)] gap-6 mb-6">
 
-    <!-- Bet form — narrow sticky sidebar on desktop, first on mobile -->
-    <div class="lg:sticky lg:top-6 lg:self-start space-y-4">
-        {% if user.is_authenticated %}
-            {% if match.status == "SCHEDULED" or match.status == "TIMED" %}
-                {% include "betting/partials/bet_form.html" %}
-            {% else %}
-                <div class="bg-surface rounded-lg border border-gray-700 p-6 text-center text-muted">
-                    <p class="text-sm">Betting is closed for this match.</p>
-                </div>
-            {% endif %}
-        {% else %}
-            <div class="bg-surface rounded-lg border border-gray-700 border-dashed p-6 text-center">
-                <p class="text-muted text-sm mb-3">Log in to place a bet on this match.</p>
-                <a href="{% url 'website:login' %}?next={{ request.path }}"
-                   class="inline-block bg-accent text-dark font-bold py-2 px-6 rounded-md hover:bg-accent/90 transition-colors text-sm">
-                    Log In
-                </a>
-            </div>
-        {% endif %}
+    <!-- Bet station — odds, sentiment, bet form -->
+    <div class="lg:sticky lg:top-6 lg:self-start">
+        {% include "matches/partials/bet_station.html" %}
     </div>
 
-    <!-- Main column — status card + discussion -->
+    <!-- Main column — recap card (finished only) + discussion -->
     <div class="space-y-4">
         {% if has_status_card %}
         <div hx-get="{% url 'matches:match_status_card' match.slug %}"
@@ -114,36 +124,6 @@
     </div>
 
 </div>
-
-<!-- House odds -->
-<details class="mb-6 rounded-lg border border-gray-700 bg-surface shadow-sm">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6">
-        <div>
-            <h3 class="text-lg font-bold text-white">House Odds</h3>
-            <p class="mt-0.5 text-xs text-muted">
-                {% if latest_odds_refresh %}
-                    Odds generated {{ latest_odds_refresh|relative_time }}
-                {% else %}
-                    Waiting for odds generation
-                {% endif %}
-            </p>
-        </div>
-        <span class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted">Expand</span>
-    </summary>
-
-    <div class="border-t border-gray-700 px-5 py-4 sm:px-6">
-        <div class="overflow-x-auto" id="odds-table"
-             hx-get="{% url 'matches:match_odds_partial' match.slug %}"
-             hx-trigger="every 30s"
-             hx-swap="innerHTML"
-             hx-indicator="#match-odds-loading">
-            {% include "matches/partials/odds_table_body.html" %}
-        </div>
-        <div id="match-odds-loading" class="htmx-indicator text-center py-1">
-            <span class="spinner spinner-sm text-accent"></span>
-        </div>
-    </div>
-</details>
 
 <!-- Match notes — superuser only, bottom of page to stay out of recordings -->
 {% if match_notes_form %}
