@@ -410,6 +410,7 @@ class AvatarUpdateView(LoginRequiredMixin, View):
 # ---------------------------------------------------------------------------
 
 ADMIN_PAGE_SIZE = 20
+ADMIN_MAX_OFFSET = 500
 
 
 class SuperuserRequiredMixin(UserPassesTestMixin):
@@ -425,14 +426,14 @@ class AdminDashboardView(SuperuserRequiredMixin, TemplateView):
         User = get_user_model()
         ctx["total_users"] = User.objects.filter(is_bot=False).count()
         ctx["total_bots"] = User.objects.filter(is_bot=True).count()
-        ctx["active_bets"] = BetSlip.objects.filter(status="PENDING").count()
-        ctx["active_parlays"] = Parlay.objects.filter(status="PENDING").count()
+        ctx["active_bets"] = BetSlip.objects.filter(status=BetSlip.Status.PENDING).count()
+        ctx["active_parlays"] = Parlay.objects.filter(status=Parlay.Status.PENDING).count()
         ctx["total_comments"] = Comment.objects.filter(is_deleted=False).count()
         ctx["total_board_posts"] = BoardPost.objects.filter(
             parent__isnull=True, is_hidden=False
         ).count()
         ctx["total_in_play"] = (
-            BetSlip.objects.filter(status="PENDING").aggregate(
+            BetSlip.objects.filter(status=BetSlip.Status.PENDING).aggregate(
                 total=Sum("stake")
             )["total"]
             or 0
@@ -445,7 +446,7 @@ class AdminDashboardView(SuperuserRequiredMixin, TemplateView):
 
 def _parse_offset(request):
     try:
-        return max(0, int(request.GET.get("offset", 0)))
+        return min(ADMIN_MAX_OFFSET, max(0, int(request.GET.get("offset", 0))))
     except (TypeError, ValueError):
         return 0
 
