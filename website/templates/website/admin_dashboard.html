@@ -9,30 +9,12 @@
 </div>
 
 <!-- Stats Summary -->
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ total_users }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Users</div>
-    </div>
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ active_bets }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Active Bets</div>
-    </div>
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ active_parlays }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Active Parlays</div>
-    </div>
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ total_comments }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Comments</div>
-    </div>
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ total_bets_all_time }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Total Bets</div>
-    </div>
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ queued_events }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Queued Events</div>
+<div id="admin-stats"
+     hx-get="{% url 'website:admin_dashboard_stats' %}"
+     hx-trigger="load, every 30s"
+     hx-swap="innerHTML">
+    <div class="flex justify-center py-8">
+        <span class="spinner text-accent"></span>
     </div>
 </div>
 
@@ -44,7 +26,7 @@
     <p class="text-xs text-muted mb-3">Events waiting to be broadcast (one released every 20s)</p>
     <div id="admin-activity-queue"
             hx-get="{% url 'website:admin_dashboard_activity_queue' %}"
-            hx-trigger="load"
+            hx-trigger="load, every 20s"
             hx-swap="innerHTML">
         <div class="flex justify-center py-8">
             <span class="spinner text-accent"></span>
@@ -61,7 +43,7 @@
         </h2>
         <div id="admin-bets"
              hx-get="{% url 'website:admin_dashboard_bets' %}"
-             hx-trigger="load"
+             hx-trigger="load, every 30s"
              hx-swap="innerHTML">
             <div class="flex justify-center py-8">
                 <span class="spinner text-accent"></span>
@@ -76,7 +58,7 @@
         </h2>
         <div id="admin-comments"
              hx-get="{% url 'website:admin_dashboard_comments' %}"
-             hx-trigger="load"
+             hx-trigger="load, every 30s"
              hx-swap="innerHTML">
             <div class="flex justify-center py-8">
                 <span class="spinner text-accent"></span>
@@ -91,7 +73,7 @@
         </h2>
         <div id="admin-tasks"
              hx-get="{% url 'website:admin_dashboard_tasks' %}"
-             hx-trigger="load"
+             hx-trigger="load, every 30s"
              hx-swap="innerHTML">
             <div class="flex justify-center py-8">
                 <span class="spinner text-accent"></span>
@@ -106,7 +88,7 @@
         </h2>
         <div id="admin-users"
              hx-get="{% url 'website:admin_dashboard_users' %}"
-             hx-trigger="load"
+             hx-trigger="load, every 30s"
              hx-swap="innerHTML">
             <div class="flex justify-center py-8">
                 <span class="spinner text-accent"></span>

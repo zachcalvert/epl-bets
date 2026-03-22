@@ -6,6 +6,7 @@ from website.views import (
     AdminBetsPartialView,
     AdminCommentsPartialView,
     AdminDashboardView,
+    AdminStatsPartialView,
     AdminTasksPartialView,
     AdminUsersPartialView,
     AvatarUpdateView,
@@ -32,6 +33,7 @@ urlpatterns = [
     path("how-it-works/component/", ComponentDetailView.as_view(), name="component_detail"),
     # Admin dashboard
     path("admin-dashboard/", AdminDashboardView.as_view(), name="admin_dashboard"),
+    path("admin-dashboard/stats/", AdminStatsPartialView.as_view(), name="admin_dashboard_stats"),
     path("admin-dashboard/bets/", AdminBetsPartialView.as_view(), name="admin_dashboard_bets"),
     path("admin-dashboard/comments/", AdminCommentsPartialView.as_view(), name="admin_dashboard_comments"),
     path("admin-dashboard/tasks/", AdminTasksPartialView.as_view(), name="admin_dashboard_tasks"),

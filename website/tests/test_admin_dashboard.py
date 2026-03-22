@@ -27,6 +27,7 @@ def regular_user(db):
 
 DASHBOARD_URLS = [
     "website:admin_dashboard",
+    "website:admin_dashboard_stats",
     "website:admin_dashboard_bets",
     "website:admin_dashboard_comments",
     "website:admin_dashboard_tasks",
@@ -298,3 +299,48 @@ def test_activity_queue_shows_queued_count_in_stats(client, superuser):
     response = client.get(reverse("website:admin_dashboard"))
 
     assert response.context["queued_events"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Stats partial
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_stats_partial_returns_current_counts(client, superuser):
+    UserFactory()
+    BetSlipFactory(stake="10.00")
+    ParlayFactory()
+    CommentFactory()
+    ActivityEvent.objects.create(event_type="bot_bet", message="e1", icon="lightning")
+
+    client.force_login(superuser)
+    response = client.get(reverse("website:admin_dashboard_stats"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    # Stats grid tiles should be present
+    assert "Active Bets" in content
+    assert "Queued Events" in content
+    assert "Total Bets" in content
+
+
+@pytest.mark.django_db
+def test_stats_partial_reflects_broadcast_events(client, superuser):
+    """Queued Events count excludes already-broadcast events."""
+    ActivityEvent.objects.create(event_type="bot_bet", message="pending", icon="lightning")
+    ActivityEvent.objects.create(
+        event_type="bot_bet", message="done", icon="lightning",
+        broadcast_at=timezone.now(),
+    )
+
+    client.force_login(superuser)
+    response = client.get(reverse("website:admin_dashboard_stats"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    # Exactly 1 queued event; "Queued Events" tile label must be present
+    assert "Queued Events" in content
+    # The rendered tile value for queued_events should be "1", not "2"
+    queued_idx = content.index("Queued Events")
+    tile_snippet = content[max(0, queued_idx - 200) : queued_idx]
+    assert ">1<" in tile_snippet

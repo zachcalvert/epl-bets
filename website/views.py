@@ -4,7 +4,7 @@ from operator import attrgetter
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
@@ -439,6 +439,36 @@ class AdminDashboardView(SuperuserRequiredMixin, TemplateView):
             broadcast_at__isnull=True
         ).count()
         return ctx
+
+
+def _admin_stats_context():
+    User = get_user_model()
+    bet_agg = BetSlip.objects.aggregate(
+        active=Count("id", filter=Q(status=BetSlip.Status.PENDING)),
+        total=Count("id"),
+    )
+    parlay_agg = Parlay.objects.aggregate(
+        active=Count("id", filter=Q(status=Parlay.Status.PENDING)),
+        total=Count("id"),
+    )
+    return {
+        "total_users": User.objects.count(),
+        "active_bets": bet_agg["active"],
+        "active_parlays": parlay_agg["active"],
+        "total_comments": Comment.objects.filter(is_deleted=False).count(),
+        "total_bets_all_time": bet_agg["total"] + parlay_agg["total"],
+        "queued_events": ActivityEvent.objects.filter(broadcast_at__isnull=True).count(),
+    }
+
+
+class AdminStatsPartialView(SuperuserRequiredMixin, View):
+    def get(self, request):
+        html = render_to_string(
+            "website/partials/admin_stats.html",
+            _admin_stats_context(),
+            request=request,
+        )
+        return HttpResponse(html)
 
 
 def _parse_offset(request):
