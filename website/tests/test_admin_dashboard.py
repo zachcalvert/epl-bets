@@ -78,12 +78,10 @@ def test_dashboard_stats_context(client, superuser):
     client.force_login(superuser)
     response = client.get(reverse("website:admin_dashboard"))
 
-    # superuser + 1 regular + factory users from bets/comments, minus bots
-    assert response.context["total_bots"] == 1
     assert response.context["active_bets"] == 2
     assert response.context["active_parlays"] == 1
     assert response.context["total_comments"] == 1  # 1 not deleted
-    assert response.context["total_board_posts"] == 1
+    assert response.context["total_bets_all_time"] == 3  # 2 bets + 1 parlay
 
 
 @pytest.mark.django_db
@@ -92,9 +90,9 @@ def test_dashboard_empty_stats(client, superuser):
     response = client.get(reverse("website:admin_dashboard"))
 
     assert response.context["total_users"] == 1  # just the superuser
-    assert response.context["total_bots"] == 0
     assert response.context["active_bets"] == 0
     assert response.context["total_in_play"] == 0
+    assert response.context["total_bets_all_time"] == 0
 
 
 # ---------------------------------------------------------------------------

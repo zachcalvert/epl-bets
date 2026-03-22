@@ -9,14 +9,10 @@
 </div>
 
 <!-- Stats Summary -->
-<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-2xl font-bold text-accent font-mono">{{ total_users }}</div>
         <div class="text-xs text-muted uppercase tracking-wider mt-1">Users</div>
-    </div>
-    <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ total_bots }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Bots</div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-2xl font-bold text-accent font-mono">{{ active_bets }}</div>
@@ -31,8 +27,8 @@
         <div class="text-xs text-muted uppercase tracking-wider mt-1">Comments</div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
-        <div class="text-2xl font-bold text-accent font-mono">{{ total_board_posts }}</div>
-        <div class="text-xs text-muted uppercase tracking-wider mt-1">Board Posts</div>
+        <div class="text-2xl font-bold text-accent font-mono">{{ total_bets_all_time }}</div>
+        <div class="text-xs text-muted uppercase tracking-wider mt-1">Total Bets</div>
     </div>
     <div class="bg-surface rounded-lg border border-gray-700 p-4 text-center">
         <div class="text-2xl font-bold text-accent font-mono">{{ queued_events }}</div>
@@ -57,7 +53,7 @@
 </div>
 
 <!-- Panels Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
     <!-- Bets & Parlays -->
     <div class="bg-surface rounded-lg border border-gray-700 p-5">
         <h2 class="text-lg font-bold mb-4 flex items-center gap-2" style="font-family: 'Oswald', sans-serif;">
