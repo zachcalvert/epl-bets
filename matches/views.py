@@ -331,14 +331,14 @@ class MatchDetailView(DetailView):
         if self.request.user.is_authenticated:
             ctx["form"] = PlaceBetForm()
 
-        # Match stats (form guide) for header — fetched eagerly now
-        ctx["match_stats"] = fetch_match_hype_data(match)
-
-        # Community sentiment for sidebar bet station
-        ctx.update(_get_hype_context(match))
-
-        # Recap card is still lazy-loaded for FINISHED matches only
-        ctx["has_status_card"] = match.status == Match.Status.FINISHED
+        # Status card is lazy-loaded via HTMX for faster initial render
+        ctx["has_status_card"] = match.status in (
+            Match.Status.SCHEDULED,
+            Match.Status.TIMED,
+            Match.Status.IN_PLAY,
+            Match.Status.PAUSED,
+            Match.Status.FINISHED,
+        )
 
         # Match notes form (superusers only)
         if self.request.user.is_authenticated and self.request.user.is_superuser:
