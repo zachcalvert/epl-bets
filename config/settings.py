@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "website.middleware.BotScannerBlockMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "website.middleware.CanonicalHostMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
