@@ -9,9 +9,9 @@
             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-accent/80">Market freshness</p>
             <p class="mt-1 text-sm text-white">
                 {% if last_odds_refresh %}
-                    Odds generated {{ last_odds_refresh|relative_time }}
+                    Odds refreshed {{ last_odds_refresh|relative_time }}
                 {% else %}
-                    Waiting for odds generation
+                    Waiting for odds refresh
                 {% endif %}
             </p>
         </div>

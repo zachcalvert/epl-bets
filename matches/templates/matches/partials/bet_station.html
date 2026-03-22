@@ -13,35 +13,17 @@ Context expected:
 
 <div class="bg-surface rounded-lg border border-gray-700 p-5 space-y-5">
 
-    <!-- House Odds (compact) -->
-    {% if odds %}
+    <!-- House Odds -->
     <div id="odds-table"
          hx-get="{% url 'matches:match_odds_partial' match.slug %}"
          hx-trigger="every 30s"
          hx-swap="innerHTML"
          hx-indicator="#station-odds-loading">
-        <div class="grid grid-cols-3 gap-2 text-center">
-            <div>
-                <p class="text-[10px] text-muted uppercase tracking-wider">Home</p>
-                <p class="font-mono text-lg text-accent font-bold odds-value">{{ best_home|format_odds }}</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-muted uppercase tracking-wider">Draw</p>
-                <p class="font-mono text-lg text-accent font-bold odds-value">{{ best_draw|format_odds }}</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-muted uppercase tracking-wider">Away</p>
-                <p class="font-mono text-lg text-accent font-bold odds-value">{{ best_away|format_odds }}</p>
-            </div>
-        </div>
-        {% if latest_odds_refresh %}
-            <p class="text-[10px] text-muted text-center mt-1">Updated {{ latest_odds_refresh|relative_time }}</p>
-        {% endif %}
+        {% include "matches/partials/odds_table_body.html" %}
     </div>
     <div id="station-odds-loading" class="htmx-indicator text-center py-1">
         <span class="spinner spinner-sm text-accent"></span>
     </div>
-    {% endif %}
 
     <!-- Community Sentiment -->
     {% include "matches/partials/community_sentiment.html" %}
