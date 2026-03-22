@@ -72,7 +72,7 @@ def execute_bot_strategy(self, bot_user_id):
     odds_map = get_best_odds_map(match_ids)
 
     if not odds_map:
-        return "no odds"
+        return f"no odds for {user.email}"
 
     # ValueHunter needs full per-bookmaker odds
     from bots.strategies import ValueHunterStrategy

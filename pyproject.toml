@@ -19,6 +19,7 @@ channels = {version = "^4.0", extras = ["daphne"]}
 channels-redis = "^4.2"
 celery = {version = "^5.4", extras = ["redis"]}
 django-celery-beat = "^2.7"
+django-celery-results = "^2.6"
 redis = "^5.0"
 httpx = "^0.28"
 django-htmx = "^1.21"
