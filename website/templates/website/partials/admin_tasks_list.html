@@ -3,7 +3,7 @@
     <div class="flex items-center gap-3 py-2.5 text-sm">
         <div class="min-w-0 flex-1">
             <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="font-medium truncate">{{ item.task_name|truncatechars:45 }}</span>
+                <span class="font-medium truncate">{{ item.task_name|default:item.periodic_task_name|default:item.task_id|truncatechars:45 }}</span>
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
                     {% if item.status == 'SUCCESS' %}bg-green-500/20 text-green-300
                     {% elif item.status == 'FAILURE' %}bg-red-500/20 text-red-300
