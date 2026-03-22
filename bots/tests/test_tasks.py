@@ -112,7 +112,7 @@ class TestExecuteBotStrategy:
 
         result = execute_bot_strategy.run(bot.pk)
 
-        assert result == "no odds"
+        assert result == f"no odds for {bot.email}"
 
     def test_triggers_topup_when_balance_is_low(self):
         bot = BotUserFactory(
