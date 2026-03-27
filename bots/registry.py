@@ -127,6 +127,22 @@ BOT_PROFILES = [
         "avatar_icon": "anchor",
         "avatar_bg": "#003399",
     },
+    {
+        "email": "westham-homer@bots.eplbets.local",
+        "display_name": "forever_blowing",
+        "strategy": HomerBotStrategy,
+        "team_tla": "WHU",
+        "avatar_icon": "hammer",
+        "avatar_bg": "#7A263A",
+    },
+    {
+        "email": "bournemouth-homer@bots.eplbets.local",
+        "display_name": "CherryPicker",
+        "strategy": HomerBotStrategy,
+        "team_tla": "BOU",
+        "avatar_icon": "cherry",
+        "avatar_bg": "#DA291C",
+    },
 ]
 
 # Lookup: email -> full profile dict
